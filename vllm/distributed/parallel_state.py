@@ -38,6 +38,8 @@ from vllm.logger import init_logger
 from vllm.platforms import current_platform
 from vllm.utils import supports_custom_op
 
+# for measurements
+import time
 
 @dataclass
 class GraphCaptureContext:
@@ -177,6 +179,28 @@ class GroupCoordinator:
         self.local_rank = local_rank
         self.device_group = None
         self.cpu_group = None
+
+        self.file = open(f"log_{self.rank}.txt", "w")
+        self.event_start = torch.cuda.Event(enable_timing=True)
+        self.event_end = torch.cuda.Event(enable_timing=True)
+        self.num_allreduce = 0
+        
+        import deepspeed
+        from deepspeed.tops import create_comm, Layout
+        from deepspeed.comm import init_distributed
+        init_distributed(dist_backend='nccl')
+        global_rank = torch.distributed.get_rank()
+        group_stride = 1
+        group_size = torch.distributed.get_world_size() // group_stride
+        layout = Layout(group_size, group_stride, world_size=torch.distributed.get_world_size())
+        torch.distributed.barrier()
+        # print(f"global_rank {global_rank} group_size {group_size} group_stride {group_stride} layout {layout} device {torch.cuda.current_device()} is initialized {torch.distributed.is_initialized()}\n")
+        self.comm = create_comm(layout, set_device=False)
+
+        val = torch.arange(group_size, dtype=torch.bfloat16, device=torch.cuda.current_device())
+        # test to see all is working
+        val,_ = self.comm.all_to_all(val)
+        print(f'[{global_rank}]: alltoall -> {val}')
 
         for ranks in group_ranks:
             device_group = torch.distributed.new_group(
@@ -318,6 +342,7 @@ class GroupCoordinator:
             with maybe_pynccl_context:
                 yield graph_capture_context
 
+
     def all_reduce(self, input_: torch.Tensor) -> torch.Tensor:
         """
         User-facing all-reduce function before we actually call the
@@ -337,6 +362,32 @@ class GroupCoordinator:
         if self.world_size == 1:
             return input_
 
+        '''
+        # custom communication placeholder
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        time_start = time.perf_counter()
+        self.event_start.record()
+        # torch.distributed.all_reduce(input_, group=self.device_group)
+        self.comm.all_reduce(input_)
+        self.event_end.record()
+        torch.cuda.synchronize()
+        time_stop = time.perf_counter()
+        time_elapsed = self.event_start.elapsed_time(self.event_end)
+        torch.distributed.barrier()
+        time_max = torch.tensor([time_stop - time_start])
+        torch.distributed.all_reduce(time_max, group=self.cpu_group, op=torch.distributed.ReduceOp.MAX)
+        time_max = time_max.item()
+        bytes = input_.element_size() * input_.numel()
+        self.num_allreduce += 1
+        self.file.write(f"allreduce {self.num_allreduce} {input_.size()} {input_.numel()} elements {bytes} bytes perf {(time_stop - time_start)*1e6:.2f} us event {time_elapsed*1e3:.2f} max {time_max*1e6:.2f} ({bytes/time_max/1e9:.2f} GB/s)\n")
+        # self.file.flush() do not flush!
+        '''
+
+        # torch.distributed.all_reduce(input_, group=self.device_group)
+        self.comm.all_reduce(input_)
+        return input_
+
         if not supports_custom_op():
             return self._all_reduce(input_)
 
@@ -346,11 +397,9 @@ class GroupCoordinator:
             return self._all_reduce(input_)
 
         if self.ca_comm is not None and self.ca_comm.should_custom_ar(input_):
-            return torch.ops.vllm.outplace_all_reduce(
-                input_, group_name=self.unique_name)
+            return torch.ops.vllm.outplace_all_reduce(input_, group_name=self.unique_name)
         else:
-            torch.ops.vllm.inplace_all_reduce(input_,
-                                              group_name=self.unique_name)
+            torch.ops.vllm.inplace_all_reduce(input_, group_name=self.unique_name)
             return input_
 
     def _all_reduce(self, input_: torch.Tensor) -> torch.Tensor:
@@ -362,6 +411,8 @@ class GroupCoordinator:
         value as the output.
         """
         ca_comm = self.ca_comm
+
+        self.num_allreduce += 1
 
         # For TPUs, use TPU communicator.
         tpu_comm = self.tpu_communicator
