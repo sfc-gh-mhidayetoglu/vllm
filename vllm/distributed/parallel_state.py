@@ -201,6 +201,7 @@ class GroupCoordinator:
         # test to see all is working
         val,_ = self.comm.all_to_all(val)
         print(f'[{global_rank}]: alltoall -> {val}')
+        print(f"use pynccl {use_pynccl} use custom allreduce {use_custom_allreduce} use tpu communicator {use_tpu_communicator} use message queue broadcaster {use_message_queue_broadcaster}")
 
         for ranks in group_ranks:
             device_group = torch.distributed.new_group(
