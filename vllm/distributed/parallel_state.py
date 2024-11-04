@@ -385,7 +385,7 @@ class GroupCoordinator:
         # self.file.flush() do not flush!
         '''
 
-        # self.pynccl_comm.all_reduce(input_)
+        self.pynccl_comm.all_reduce(input_)
         # torch.distributed.all_reduce(input_, group=self.device_group)
         # self.comm.all_reduce(input_)
         return input_
