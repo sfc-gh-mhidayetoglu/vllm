@@ -402,9 +402,8 @@ class GroupCoordinator:
         import netifaces as ni
         from mscclpp import ProxyService, is_nvls_supported
 
-
-        self.pynccl_comm.all_reduce(input_)
-        # torch.distributed.all_reduce(input_, group=self.device_group)
+        # self.pynccl_comm.all_reduce(input_)
+        torch.distributed.all_reduce(input_, group=self.device_group)
         # self.comm.all_reduce(input_)
         return input_
 
