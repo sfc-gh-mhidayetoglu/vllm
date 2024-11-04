@@ -41,6 +41,7 @@ from vllm.utils import supports_custom_op
 # for measurements
 import time
 
+
 @dataclass
 class GraphCaptureContext:
     stream: torch.cuda.Stream
@@ -384,6 +385,23 @@ class GroupCoordinator:
         self.file.write(f"allreduce {self.num_allreduce} {input_.size()} {input_.numel()} elements {bytes} bytes perf {(time_stop - time_start)*1e6:.2f} us event {time_elapsed*1e3:.2f} max {time_max*1e6:.2f} ({bytes/time_max/1e9:.2f} GB/s)\n")
         # self.file.flush() do not flush!
         '''
+
+        import cupy as cp
+
+        from mscclpp_op import (
+            MscclppAllReduce1,
+            MscclppAllReduce2,
+            MscclppAllReduce3,
+            MscclppAllReduce4,
+            MscclppAllReduce5,
+            MscclppAllReduce6,
+        )
+        # from nccl_op import NcclAllReduce
+        import mscclpp.comm as mscclpp_comm
+        import ipaddress
+        import netifaces as ni
+        from mscclpp import ProxyService, is_nvls_supported
+
 
         self.pynccl_comm.all_reduce(input_)
         # torch.distributed.all_reduce(input_, group=self.device_group)
