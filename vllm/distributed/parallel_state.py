@@ -185,6 +185,11 @@ class GroupCoordinator:
         self.event_start = torch.cuda.Event(enable_timing=True)
         self.event_end = torch.cuda.Event(enable_timing=True)
         self.num_allreduce = 0
+
+        import sys
+        sys.path.append('/code/users/mhidayetoglu/mscclpp/python/mscclpp_benchmark')
+        if self.rank == 0:
+            print(sys.path)
         
         import deepspeed
         from deepspeed.tops import create_comm, Layout
@@ -402,9 +407,18 @@ class GroupCoordinator:
         import netifaces as ni
         from mscclpp import ProxyService, is_nvls_supported
 
+        from torch.utils.dlpack import to_dlpack
+        from torch.utils.dlpack import from_dlpack
+
+        dx = to_dlpack(input_)
+        cx = cp.fromDlpack(dx)
+
+        input_ = from_dlpack(cx.toDlpack())
+
         # self.pynccl_comm.all_reduce(input_)
         torch.distributed.all_reduce(input_, group=self.device_group)
         # self.comm.all_reduce(input_)
+
         return input_
 
         if not supports_custom_op():
