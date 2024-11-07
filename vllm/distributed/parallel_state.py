@@ -1109,6 +1109,21 @@ def initialize_model_parallel(
                                     backend,
                                     use_message_queue_broadcaster=True,
                                     group_name="tp")
+    
+    # Build the sequence model-parallel groups.
+    num_sequence_model_parallel_groups: int = (world_size //
+                                               sequence_model_parallel_size)
+    global _SP
+    assert _SP is None, (
+        "sequence model parallel group is already initialized")
+    group_ranks = []
+    for i in range(num_sequence_model_parallel_groups):
+        ranks = list(range(i, world_size, num_sequence_model_parallel_groups))
+        group_ranks.append(ranks)
+    _SP = init_model_parallel_group(group_ranks,
+                                    get_world_group().local_rank,
+                                    backend,
+                                    group_name="sp")
 
     # Build the pipeline model-parallel groups.
     num_pipeline_model_parallel_groups: int = (world_size //
@@ -1205,6 +1220,11 @@ def destroy_model_parallel():
     if _TP:
         _TP.destroy()
     _TP = None
+
+    global _SP
+    if _SP:
+        _SP.destroy()
+    _SP = None
 
     global _PP
     if _PP:
