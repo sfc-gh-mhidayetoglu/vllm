@@ -391,7 +391,7 @@ class GroupCoordinator:
         # self.file.flush() do not flush!
         '''
 
-        import cupy as cp
+        ''' import cupy as cp
 
         from mscclpp_op import (
             MscclppAllReduce1,
@@ -413,7 +413,7 @@ class GroupCoordinator:
         dx = to_dlpack(input_)
         cx = cp.fromDlpack(dx)
 
-        input_ = from_dlpack(cx.toDlpack())
+        input_ = from_dlpack(cx.toDlpack())'''
 
         # self.pynccl_comm.all_reduce(input_)
         torch.distributed.all_reduce(input_, group=self.device_group)
