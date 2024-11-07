@@ -1095,11 +1095,12 @@ def initialize_model_parallel(
     backend = backend or torch.distributed.get_backend(
         get_world_group().device_group)
 
-    if (world_size !=
-            tensor_model_parallel_size * pipeline_model_parallel_size):
+    if (world_size != tensor_model_parallel_size * sequence_model_parallel_size 
+        * pipeline_model_parallel_size):
         raise RuntimeError(
             f"world_size ({world_size}) is not equal to "
             f"tensor_model_parallel_size ({tensor_model_parallel_size}) x "
+            f"sequence_model_parallel_size ({sequence_model_parallel_size}) x "
             f"pipeline_model_parallel_size ({pipeline_model_parallel_size})")
 
     # Build the tensor model-parallel groups.
@@ -1113,6 +1114,7 @@ def initialize_model_parallel(
             range(i * tensor_model_parallel_size,
                   (i + 1) * tensor_model_parallel_size))
         group_ranks.append(ranks)
+    print(f"tensor group ranks: {group_ranks}")
 
     # message queue broadcaster is only used in tensor model parallel group
     _TP = init_model_parallel_group(group_ranks,
@@ -1131,6 +1133,7 @@ def initialize_model_parallel(
     for i in range(num_sequence_model_parallel_groups):
         ranks = list(range(i, world_size, num_sequence_model_parallel_groups))
         group_ranks.append(ranks)
+    print(f"sequence group ranks: {group_ranks}")
     _SP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -1146,6 +1149,7 @@ def initialize_model_parallel(
     for i in range(num_pipeline_model_parallel_groups):
         ranks = list(range(i, world_size, num_pipeline_model_parallel_groups))
         group_ranks.append(ranks)
+    print(f"pipeline group ranks: {group_ranks}")
     # pipeline parallel does not need custom allreduce
     _PP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
