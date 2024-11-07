@@ -186,12 +186,12 @@ class GroupCoordinator:
         self.event_end = torch.cuda.Event(enable_timing=True)
         self.num_allreduce = 0
 
-        import sys
-        sys.path.append('/code/users/mhidayetoglu/mscclpp/python/mscclpp_benchmark')
-        if self.rank == 0:
-            print(sys.path)
+        # import sys
+        # sys.path.append('/code/users/mhidayetoglu/mscclpp/python/mscclpp_benchmark')
+        # if self.rank == 0:
+        #     print(sys.path)
         
-        import deepspeed
+        '''import deepspeed
         from deepspeed.tops import create_comm, Layout
         from deepspeed.comm import init_distributed
         init_distributed(dist_backend='nccl')
@@ -207,7 +207,7 @@ class GroupCoordinator:
         # test to see all is working
         val,_ = self.comm.all_to_all(val)
         print(f'[{global_rank}]: alltoall -> {val}')
-        print(f"use pynccl {use_pynccl} use custom allreduce {use_custom_allreduce} use tpu communicator {use_tpu_communicator} use message queue broadcaster {use_message_queue_broadcaster}")
+        print(f"use pynccl {use_pynccl} use custom allreduce {use_custom_allreduce} use tpu communicator {use_tpu_communicator} use message queue broadcaster {use_message_queue_broadcaster}")'''
 
         for ranks in group_ranks:
             device_group = torch.distributed.new_group(
