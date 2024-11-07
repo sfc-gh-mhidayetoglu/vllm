@@ -1155,6 +1155,7 @@ def initialize_model_parallel(
 
 def ensure_model_parallel_initialized(
     tensor_model_parallel_size: int,
+    sequence_model_parallel_size: int,
     pipeline_model_parallel_size: int,
     backend: Optional[str] = None,
 ) -> None:
@@ -1166,6 +1167,7 @@ def ensure_model_parallel_initialized(
         get_world_group().device_group)
     if not model_parallel_is_initialized():
         initialize_model_parallel(tensor_model_parallel_size,
+                                  sequence_model_parallel_size,
                                   pipeline_model_parallel_size, backend)
         return
 
@@ -1183,7 +1185,7 @@ def ensure_model_parallel_initialized(
 
 def model_parallel_is_initialized():
     """Check if tensor and pipeline parallel groups are initialized."""
-    return (_TP is not None and _PP is not None)
+    return (_TP is not None and _SP is not None and _PP is not None)
 
 
 _TP_STATE_PATCHED = False
