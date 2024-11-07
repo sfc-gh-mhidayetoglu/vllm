@@ -209,6 +209,9 @@ class GroupCoordinator:
         print(f'[{global_rank}]: alltoall -> {val}')
         print(f"use pynccl {use_pynccl} use custom allreduce {use_custom_allreduce} use tpu communicator {use_tpu_communicator} use message queue broadcaster {use_message_queue_broadcaster}")'''
 
+        print(group_ranks)
+        print(torch_distributed_backend)
+
         for ranks in group_ranks:
             device_group = torch.distributed.new_group(
                 ranks, backend=torch_distributed_backend)
