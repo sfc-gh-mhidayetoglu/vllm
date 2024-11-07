@@ -971,6 +971,13 @@ def get_tp_group() -> GroupCoordinator:
 # kept for backward compatibility
 get_tensor_model_parallel_group = get_tp_group
 
+_SP: Optional[GroupCoordinator] = None
+def get_sp_group() -> GroupCoordinator:
+    assert _SP is not None, ("sequence model parallel group is not initialized")
+    return _SP
+# kept for backward compatibility
+get_sequence_model_parallel_group = get_sp_group
+
 _PP: Optional[GroupCoordinator] = None
 
 
