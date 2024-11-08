@@ -285,10 +285,14 @@ class RayGPUExecutor(DistributedGPUExecutor):
             for pp_rank in range(self.parallel_config.pipeline_parallel_size):
                 self.pp_tp_workers.append([])
                 for tp_rank in range(
-                        self.parallel_config.tensor_parallel_size):
-                    # PP=2, TP=4
-                    # pp_tp_workers = [[0, 1, 2, 3], [4, 5, 6, 7]]
+                        self.parallel_config.tensor_parallel_size
+                        * self.parallel_config.sequence_parallel_size):
+                    # PP=3, (SP=4, TP=2)
+                    # pp_tp_workers = [[0, 1, 2, 3, 4, 5, 6, 7],
+                    #               [8, 9, 10, 11, 12, 13, 14, 15],
+                    #             [16, 17, 18, 19, 20, 21, 22, 23]]
                     rank = (pp_rank * self.parallel_config.tensor_parallel_size
+                            * self.parallel_config.sequence_parallel_size
                             ) + tp_rank
                     assert len(self.pp_tp_workers[pp_rank]) == tp_rank
                     assert pp_rank < len(self.pp_tp_workers)
