@@ -499,7 +499,7 @@ class GroupCoordinator:
                                               input_size[dim + 1:])
         return output_tensor
 
-    @torch.inference_mode(False)
+    # @torch.inference_mode(False)
     def gather(self,
                input_: torch.Tensor,
                dst: int = 0,
@@ -528,8 +528,8 @@ class GroupCoordinator:
         torch.distributed.gather(input_,
                                  gather_list,
                                  dst=self.ranks[dst],
-                                 # group=self.device_group)
-                                 group=self.cpu_group)
+                                 group=self.device_group)
+                                 # group=self.cpu_group)
         if self.rank_in_group == dst:
             output_tensor = torch.cat(gather_list, dim=dim)
         else:
@@ -657,7 +657,7 @@ class GroupCoordinator:
 
         return obj
 
-    @torch.inference_mode(False)
+    # @torch.inference_mode(False)
     def broadcast_tensor_dict(
         self,
         tensor_dict: Optional[Dict[str, Union[torch.Tensor, Any]]] = None,
@@ -703,8 +703,8 @@ class GroupCoordinator:
                     # use group for GPU tensors
                     handle = torch.distributed.broadcast(tensor,
                                                          src=self.ranks[src],
-                                                         # group=group,
-                                                         group=self.cpu_group,
+                                                         group=group,
+                                                         # group=self.cpu_group,
                                                          async_op=True)
                 async_handles.append(handle)
             for async_handle in async_handles:
@@ -734,8 +734,8 @@ class GroupCoordinator:
                         handle = torch.distributed.broadcast(
                             tensor,
                             src=self.ranks[src],
-                            # group=group,
-                            group=self.cpu_group,
+                            group=group,
+                            # group=self.cpu_group,
                             async_op=True)
                     async_handles.append(handle)
                     tensor_dict[key] = tensor
