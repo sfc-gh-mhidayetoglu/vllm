@@ -517,21 +517,19 @@ class GroupCoordinator:
         if dim < 0:
             # Convert negative dim to positive.
             dim += input_.dim()
-        input_cpu = torch.clone(input_).cpu()
         # Allocate output tensor.
         if self.rank_in_group == dst:
-            gather_list = [torch.empty_like(input_cpu) for _ in range(world_size)]
+            gather_list = [torch.empty_like(input_) for _ in range(world_size)]
         else:
             gather_list = None
         # Gather.
         print("gather is issued")
-        torch.distributed.gather(input_cpu,
+        torch.distributed.gather(input_,
                                  gather_list,
                                  dst=self.ranks[dst],
-                                 group=self.cpu_group)
-                                 #group=self.device_group)
+                                 group=self.device_group)
         if self.rank_in_group == dst:
-            output_tensor = torch.cat(gather_list, dim=dim).cuda()
+            output_tensor = torch.cat(gather_list, dim=dim)
         else:
             output_tensor = None
         return output_tensor
