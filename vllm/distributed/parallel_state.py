@@ -499,7 +499,7 @@ class GroupCoordinator:
                                               input_size[dim + 1:])
         return output_tensor
 
-    # @torch.inference_mode(False)
+    @torch.inference_mode(False)
     def gather(self,
                input_: torch.Tensor,
                dst: int = 0,
@@ -657,7 +657,7 @@ class GroupCoordinator:
 
         return obj
 
-    # @torch.inference_mode(False)
+    @torch.inference_mode(False)
     def broadcast_tensor_dict(
         self,
         tensor_dict: Optional[Dict[str, Union[torch.Tensor, Any]]] = None,
