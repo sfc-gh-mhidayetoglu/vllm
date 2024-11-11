@@ -417,6 +417,10 @@ class GroupCoordinator:
 
         input_ = from_dlpack(cx.toDlpack())'''
 
+        if self.rank == 0:
+            print(f"iter {self.num_allreduce} {input_.numel()} elements\n")
+            self.num_allreduce += 1
+
         torch.cuda.synchronize()
         torch.distributed.barrier(group=self.cpu_group)
         # self.pynccl_comm.all_reduce(input_)
