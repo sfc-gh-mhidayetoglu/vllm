@@ -527,8 +527,7 @@ class GroupCoordinator:
         torch.distributed.gather(input_,
                                  gather_list,
                                  dst=self.ranks[dst],
-                                 group=self.cpu_group)
-                                 # group=self.device_group)
+                                 group=self.device_group)
         if self.rank_in_group == dst:
             output_tensor = torch.cat(gather_list, dim=dim)
         else:
