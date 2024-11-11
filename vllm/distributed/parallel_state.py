@@ -424,7 +424,7 @@ class GroupCoordinator:
         # torch.cuda.synchronize()
         # torch.distributed.barrier(group=self.cpu_group)
         # self.pynccl_comm.all_reduce(input_)
-        # torch.distributed.all_reduce(input_, group=self.device_group)
+        torch.distributed.all_reduce(input_, group=self.device_group)
         # self.comm.all_reduce(input_)
         # torch.cuda.synchronize()
         # torch.distributed.barrier(group=self.cpu_group)
