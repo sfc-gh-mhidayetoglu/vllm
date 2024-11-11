@@ -524,10 +524,10 @@ class GroupCoordinator:
             gather_list = None
         # Gather.
         print("gather is issued")
-        # torch.distributed.gather(input_,
-        #                          gather_list,
-        #                          dst=self.ranks[dst],
-        #                          group=self.device_group)
+        torch.distributed.gather(input_,
+                                 gather_list,
+                                 dst=self.ranks[dst],
+                                 group=self.device_group)
         if self.rank_in_group == dst:
             output_tensor = torch.cat(gather_list, dim=dim)
         else:
@@ -689,25 +689,22 @@ class GroupCoordinator:
                 if tensor.numel() == 0:
                     # Skip broadcasting empty tensors.
                     continue
-                tensor = tensor.cpu()
                 print("broadcast_tensor_dict is issued")
                 if tensor.is_cpu:
                     # use metadata_group for CPU tensors
                     handle = torch.distributed.broadcast(tensor,
                                                          src=self.ranks[src],
-                                                         group=metadata_group) #,
-                                                         # async_op=True)
+                                                         group=metadata_group,
+                                                         async_op=True)
                 else:
                     # use group for GPU tensors
                     handle = torch.distributed.broadcast(tensor,
                                                          src=self.ranks[src],
                                                          group=group,
                                                          async_op=True)
-                tensor = tensor.cuda()
-                # async_handles.append(handle)
+                async_handles.append(handle)
             for async_handle in async_handles:
                 async_handle.wait()
-
         else:
             metadata_list = self.broadcast_object(None, src=src)
             tensor_dict = {}
