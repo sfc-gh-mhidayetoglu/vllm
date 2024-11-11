@@ -702,8 +702,8 @@ class GroupCoordinator:
                     # use group for GPU tensors
                     handle = torch.distributed.broadcast(tensor,
                                                          src=self.ranks[src],
-                                                         # group=group,
-                                                         group=self.cpu_group,
+                                                         group=group,
+                                                         # group=self.cpu_group,
                                                          async_op=True)
                 async_handles.append(handle)
             for async_handle in async_handles:
