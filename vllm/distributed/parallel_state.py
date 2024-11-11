@@ -699,14 +699,13 @@ class GroupCoordinator:
                                                          group=metadata_group,
                                                          async_op=True)
                 else:
-                    pass
                     # use group for GPU tensors
-                    # handle = torch.distributed.broadcast(tensor,
-                    #                                      src=self.ranks[src],
-                    #                                      group=group,
-                                                         # group=self.cpu_group,
-                    #                                      async_op=True)
-                # async_handles.append(handle)
+                    handle = torch.distributed.broadcast(tensor,
+                                                         src=self.ranks[src],
+                                                         # group=group,
+                                                         group=self.cpu_group,
+                                                         async_op=True)
+                async_handles.append(handle)
             for async_handle in async_handles:
                 async_handle.wait()
         else:
@@ -734,7 +733,8 @@ class GroupCoordinator:
                         handle = torch.distributed.broadcast(
                             tensor,
                             src=self.ranks[src],
-                            group=group,
+                            # group=group,
+                            group=self.cpu_group,
                             async_op=True)
                     async_handles.append(handle)
                     tensor_dict[key] = tensor
