@@ -523,6 +523,7 @@ class GroupCoordinator:
         else:
             gather_list = None
         # Gather.
+        print("gather is issued")
         # torch.distributed.gather(input_,
         #                          gather_list,
         #                          dst=self.ranks[dst],
@@ -695,7 +696,7 @@ class GroupCoordinator:
                                                          group=metadata_group,
                                                          async_op=True)
                 else:
-                    pass
+                    print("broadcast_tensor_dict is issued")
                     # use group for GPU tensors
                     # handle = torch.distributed.broadcast(tensor,
                     #                                      src=self.ranks[src],
