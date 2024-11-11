@@ -524,8 +524,7 @@ class GroupCoordinator:
             gather_list = None
         # Gather.
         print("gather is issued")
-        input_ = input_.cpu()
-        torch.distributed.gather(input_,
+        torch.distributed.gather(input_.cpu(),
                                  gather_list,
                                  dst=self.ranks[dst],
                                  group=self.cpu_group)
