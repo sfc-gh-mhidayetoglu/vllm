@@ -657,6 +657,7 @@ class GroupCoordinator:
 
         return obj
 
+    @torch.inference_mode(False)
     def broadcast_tensor_dict(
         self,
         tensor_dict: Optional[Dict[str, Union[torch.Tensor, Any]]] = None,
