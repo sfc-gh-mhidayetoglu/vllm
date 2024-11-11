@@ -391,6 +391,8 @@ class GroupCoordinator:
         # self.file.flush() do not flush!
         '''
 
+        self.file.write(f"{input_.numel()}\n")
+
         ''' import cupy as cp
 
         from mscclpp_op import (
