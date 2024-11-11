@@ -517,7 +517,7 @@ class GroupCoordinator:
         if dim < 0:
             # Convert negative dim to positive.
             dim += input_.dim()
-        input_cpu = input_.cpu()
+        input_cpu = torch.clone(input_).cpu()
         # Allocate output tensor.
         if self.rank_in_group == dst:
             gather_list = [torch.empty_like(input_cpu) for _ in range(world_size)]
