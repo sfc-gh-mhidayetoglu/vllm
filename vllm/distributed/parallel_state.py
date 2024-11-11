@@ -517,16 +517,14 @@ class GroupCoordinator:
         if dim < 0:
             # Convert negative dim to positive.
             dim += input_.dim()
-        test = input_.clone()
         # Allocate output tensor.
         if self.rank_in_group == dst:
-            # gather_list = [torch.empty_like(input_) for _ in range(world_size)]
-            gather_list = [input_.clone() for _ in range(world_size)]
+            gather_list = [torch.empty_like(input_) for _ in range(world_size)]
         else:
             gather_list = None
         # Gather.
         print("gather is issued")
-        torch.distributed.gather(test,
+        torch.distributed.gather(input_,
                                  gather_list,
                                  dst=self.ranks[dst],
                                  group=self.cpu_group)
