@@ -417,11 +417,13 @@ class GroupCoordinator:
 
         input_ = from_dlpack(cx.toDlpack())'''
 
-        torch.distributed.barrier(group=self.device_group)
+        torch.cuda.synchronize()
+        torch.distributed.barrier(group=self.cpu_group)
         # self.pynccl_comm.all_reduce(input_)
         torch.distributed.all_reduce(input_, group=self.device_group)
         # self.comm.all_reduce(input_)
-        torch.distributed.barrier(group=self.device_group)
+        torch.cuda.synchronize()
+        torch.distributed.barrier(group=self.cpu_group)
 
         return input_
 
