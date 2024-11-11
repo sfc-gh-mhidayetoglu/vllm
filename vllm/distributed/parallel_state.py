@@ -499,6 +499,7 @@ class GroupCoordinator:
                                               input_size[dim + 1:])
         return output_tensor
 
+    @torch.inference_mode(False)
     def gather(self,
                input_: torch.Tensor,
                dst: int = 0,
