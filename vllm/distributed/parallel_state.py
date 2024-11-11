@@ -689,19 +689,21 @@ class GroupCoordinator:
                 if tensor.numel() == 0:
                     # Skip broadcasting empty tensors.
                     continue
+                tensor = tensor.cpu()
+                print("broadcast_tensor_dict is issued")
                 if tensor.is_cpu:
                     # use metadata_group for CPU tensors
                     handle = torch.distributed.broadcast(tensor,
                                                          src=self.ranks[src],
-                                                         group=metadata_group,
-                                                         async_op=True)
+                                                         group=metadata_group) #,
+                                                         # async_op=True)
                 else:
-                    print("broadcast_tensor_dict is issued")
                     # use group for GPU tensors
-                    # handle = torch.distributed.broadcast(tensor,
-                    #                                      src=self.ranks[src],
-                    #                                      group=group,
-                    #                                      async_op=True)
+                    handle = torch.distributed.broadcast(tensor,
+                                                         src=self.ranks[src],
+                                                         group=group,
+                                                         async_op=True)
+                tensor = tensor.cuda()
                 # async_handles.append(handle)
             for async_handle in async_handles:
                 async_handle.wait()
