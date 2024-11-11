@@ -419,7 +419,7 @@ class GroupCoordinator:
 
         if self.rank == 0:
             self.num_allreduce += 1
-            print(f"iter {self.num_allreduce} {input_.numel()} elements\n")
+            print(f"iter {self.num_allreduce} {input_.numel()} elements")
 
         torch.cuda.synchronize()
         torch.distributed.barrier(group=self.cpu_group)
