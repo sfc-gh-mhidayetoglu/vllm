@@ -702,8 +702,7 @@ class GroupCoordinator:
                     #                                      src=self.ranks[src],
                     #                                      group=group,
                     #                                      async_op=True)
-                    handle = tensor
-                async_handles.append(handle)
+                # async_handles.append(handle)
             for async_handle in async_handles:
                 async_handle.wait()
 
