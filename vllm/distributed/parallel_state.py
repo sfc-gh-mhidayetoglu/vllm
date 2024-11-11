@@ -391,7 +391,7 @@ class GroupCoordinator:
         # self.file.flush() do not flush!
         '''
 
-        self.file.write(f"{input_.numel()}\n")
+        # self.file.write(f"{input_.numel()}\n")
 
         ''' import cupy as cp
 
@@ -417,9 +417,11 @@ class GroupCoordinator:
 
         input_ = from_dlpack(cx.toDlpack())'''
 
+        torch.distributed.barrier(group=self.device_group)
         # self.pynccl_comm.all_reduce(input_)
         torch.distributed.all_reduce(input_, group=self.device_group)
         # self.comm.all_reduce(input_)
+        torch.distributed.barrier(group=self.device_group)
 
         return input_
 
