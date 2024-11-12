@@ -333,6 +333,10 @@ class GroupCoordinator:
         a new tensor in the same op. So we need to figure out if the op is
         in-place or out-of-place ahead of time.
         """
+
+        if self.rank == 0:
+            print(f"all_reduce: input_.size() = {input_.size()}")
+
         # Bypass the function if we are using only 1 GPU.
         if self.world_size == 1:
             return input_
