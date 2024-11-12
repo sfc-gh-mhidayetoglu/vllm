@@ -337,8 +337,8 @@ class GroupCoordinator:
         """
 
         if self.rank == 0:
-            self.num_allreduce += 1
             print(f"all_reduce {self.num_allreduce}: input_.size() = {input_.size()}")
+            self.num_allreduce += 1
 
         # Bypass the function if we are using only 1 GPU.
         if self.world_size == 1:
