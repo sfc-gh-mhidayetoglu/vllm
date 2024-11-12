@@ -420,6 +420,8 @@ class GroupCoordinator:
         all the ranks.
         NOTE: `dst` is the local rank of the destination rank.
         """
+        if self.rank == 0:
+            print(f"gather: input_.size() = {input_.size()}")
         world_size = self.world_size
         # Bypass the function if we are using only 1 GPU.
         if world_size == 1:
@@ -579,6 +581,8 @@ class GroupCoordinator:
         # Bypass the function if we are using only 1 GPU.
         if (not torch.distributed.is_initialized() or self.world_size == 1):
             return tensor_dict
+        if self.rank == 0:
+            print(f"broadcast_tensor_dict: tensor_dict = {tensor_dict}")
 
         group = self.device_group
         metadata_group = self.cpu_group
