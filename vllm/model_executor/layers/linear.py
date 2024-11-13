@@ -20,6 +20,8 @@ from vllm.model_executor.parameter import (BasevLLMParameter,
                                            RowvLLMParameter)
 from vllm.model_executor.utils import set_weight_attrs
 
+import torch.distributed as dist
+
 logger = init_logger(__name__)
 
 WEIGHT_LOADER_V2_SUPPORTED = [
@@ -283,6 +285,8 @@ class ColumnParallelLinear(LinearBase):
                  prefix: str = ""):
         super().__init__(input_size, output_size, skip_bias_add, params_dtype,
                          quant_config, prefix)
+        if dist.get_rank() == 0:
+            print(f"ColumnParallelLinear: input_size={input_size}, output_size={output_size}, gather_output={gather_output}")
 
         self.gather_output = gather_output
 
