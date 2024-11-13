@@ -325,6 +325,8 @@ class LlamaModel(nn.Module):
         self.make_empty_intermediate_tensors = (
             make_empty_intermediate_tensors_factory(
                 ["hidden_states", "residual"], config.hidden_size))
+        
+        self.numinference = 0
 
     def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.embed_tokens(input_ids)
@@ -338,6 +340,10 @@ class LlamaModel(nn.Module):
         intermediate_tensors: Optional[IntermediateTensors],
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+        if dist.get_rank() == 0:
+            print(f"llama model input_ids {input_ids.shape}, positions {positions.shape}, kv_caches {kv_caches[0].shape}")
+            self.numinference += 1
+            print(f"numinference {self.numinference}")
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
