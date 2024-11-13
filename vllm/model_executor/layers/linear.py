@@ -443,9 +443,6 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
                       loaded_shard_id: Optional[int] = None):
 
 
-        if dist.get_rank() == 0:
-            print(f"MergedColumnParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}, loaded_shard_id={loaded_shard_id}")
-
         # Special case for GGUF
         # initialize GGUF param after we know the quantize type
         is_gguf_weight = getattr(param, "is_gguf_weight", False)
@@ -465,6 +462,9 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
 
             loaded_weight = loaded_weight.narrow(output_dim, start_idx,
                                                  shard_size)
+
+            if dist.get_rank() == 0:
+                print(f"MergedColumnParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}, loaded_shard_id={loaded_shard_id}")
 
             param.shard_id.append(loaded_shard_id)
             param.shard_id_map[loaded_shard_id] = len(param.data_container)
