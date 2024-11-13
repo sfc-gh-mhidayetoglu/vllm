@@ -90,7 +90,7 @@ class LlamaMLP(nn.Module):
 
     def forward(self, x):
         if dist.get_rank() == 0:
-            print("llama MLP")
+            print(f"llama MLP {x.shape}")
         gate_up, _ = self.gate_up_proj(x)
         x = self.act_fn(gate_up)
         x, _ = self.down_proj(x)
@@ -185,7 +185,7 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         if dist.get_rank() == 0:
-            print("llama attention")
+            print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
