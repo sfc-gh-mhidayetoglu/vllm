@@ -243,6 +243,7 @@ class LlamaDecoderLayer(nn.Module):
                                        eps=config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size,
                                                 eps=config.rms_norm_eps)
+        self.layer = 0
 
     def forward(
         self,
@@ -253,7 +254,8 @@ class LlamaDecoderLayer(nn.Module):
         residual: Optional[torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         if dist.get_rank() == 0:
-            print(f"llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
+            print(f"layer {self.layer} llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
+            self.layer += 1
         # Self Attention
         if residual is None:
             residual = hidden_states
