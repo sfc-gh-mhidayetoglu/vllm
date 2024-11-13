@@ -356,6 +356,7 @@ class LlamaModel(nn.Module):
         SP = 4
         N, d = hidden_states.shape
         hidden_states_ulysses = torch.ones((N//SP, d), dtype=hidden_states.dtype, device=hidden_states.device)
+
         if dist.get_rank() == 0:
             print(f"TP {TP}, SP {SP} hidden_states ({N}, {d}) {hidden_states.shape}")
             print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
