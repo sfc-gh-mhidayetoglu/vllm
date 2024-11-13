@@ -236,8 +236,6 @@ class GroupCoordinator:
         if use_message_queue_broadcaster and self.world_size > 1:
             self.mq_broadcaster = MessageQueue.create_from_process_group(
                 self.cpu_group, 1 << 22, 6)
-            
-        self.num_allreduce = 0
 
     @property
     def first_rank(self):
@@ -337,8 +335,7 @@ class GroupCoordinator:
         """
 
         if self.rank == 0:
-            print(f"all_reduce {self.num_allreduce}: input_.size() = {input_.size()}")
-            self.num_allreduce += 1
+            print(f"all_reduce input_.size() = {input_.size()}")
 
         # Bypass the function if we are using only 1 GPU.
         if self.world_size == 1:
