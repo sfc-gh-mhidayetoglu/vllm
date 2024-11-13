@@ -243,7 +243,7 @@ class LlamaDecoderLayer(nn.Module):
                                        eps=config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size,
                                                 eps=config.rms_norm_eps)
-        self.layer = 0
+        self.inference = 0
 
     def forward(
         self,
@@ -254,8 +254,8 @@ class LlamaDecoderLayer(nn.Module):
         residual: Optional[torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         if dist.get_rank() == 0:
-            print(f"layer {self.layer} llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
-            self.layer += 1
+            print(f"inference {self.inference} llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
+            self.inference += 1
         # Self Attention
         if residual is None:
             residual = hidden_states
@@ -325,8 +325,6 @@ class LlamaModel(nn.Module):
         self.make_empty_intermediate_tensors = (
             make_empty_intermediate_tensors_factory(
                 ["hidden_states", "residual"], config.hidden_size))
-        
-        self.numinference = 0
 
     def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.embed_tokens(input_ids)
@@ -341,9 +339,7 @@ class LlamaModel(nn.Module):
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
         if dist.get_rank() == 0:
-            print(f"llama model input_ids {input_ids.shape}, positions {positions.shape}, kv_caches {kv_caches[0].shape}, inputs_embeds {inputs_embeds.shape if inputs_embeds is not None else None}")
-            self.numinference += 1
-            print(f"numinference {self.numinference}")
+            print(f"llama model input_ids {input_ids.shape}, positions {positions.shape}, inputs_embeds {inputs_embeds.shape if inputs_embeds is not None else None}")
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
