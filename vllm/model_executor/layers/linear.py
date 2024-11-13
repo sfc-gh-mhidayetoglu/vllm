@@ -350,8 +350,6 @@ class ColumnParallelLinear(LinearBase):
             start_idx = tp_rank * shard_size
             loaded_weight = loaded_weight.narrow(output_dim, start_idx,
                                                  shard_size)
-            if dist.get_rank() == 0:
-                print(f"shard_size={shard_size}, start_idx={start_idx}, loaded_weight.shape={loaded_weight.shape}")
 
         # Special case for loading scales off disk, which often do not
         # have a shape (such as in the case of AutoFP8).
@@ -443,6 +441,10 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
                       param: Parameter,
                       loaded_weight: torch.Tensor,
                       loaded_shard_id: Optional[int] = None):
+
+
+        if dist.get_rank() == 0:
+            print(f"MergedColumnParallelLinear.weight_loader")
 
         # Special case for GGUF
         # initialize GGUF param after we know the quantize type
