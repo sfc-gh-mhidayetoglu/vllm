@@ -358,7 +358,7 @@ class LlamaModel(nn.Module):
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
             if dist.get_rank() == 0:
-                print(f"*************** layer {i} llama model hidden_states {hidden_states.shape}, residual {residual.shape}, kv_cache {kv_caches[i - self.start_layer].shape}")
+                print(f"*************** layer {i}")
             hidden_states, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
