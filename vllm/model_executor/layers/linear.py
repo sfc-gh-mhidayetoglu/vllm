@@ -463,9 +463,6 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
             loaded_weight = loaded_weight.narrow(output_dim, start_idx,
                                                  shard_size)
 
-            if dist.get_rank() == 0:
-                print(f"MergedColumnParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}, loaded_shard_id={loaded_shard_id}")
-
             param.shard_id.append(loaded_shard_id)
             param.shard_id_map[loaded_shard_id] = len(param.data_container)
             param.data_container.append(loaded_weight)
@@ -511,6 +508,9 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
                     output_dim, shard_offset, shard_size)
                 self.weight_loader(param, loaded_weight_shard, shard_id)
             return
+
+        if dist.get_rank() == 0:
+            print(f"MergedColumnParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}, loaded_shard_id={loaded_shard_id}")
 
         assert loaded_shard_id < len(self.output_sizes)
         tp_rank = get_tensor_model_parallel_rank()
