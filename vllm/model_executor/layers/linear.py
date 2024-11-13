@@ -509,9 +509,6 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
                 self.weight_loader(param, loaded_weight_shard, shard_id)
             return
 
-        if dist.get_rank() == 0:
-            print(f"MergedColumnParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}, loaded_shard_id={loaded_shard_id}")
-
         assert loaded_shard_id < len(self.output_sizes)
         tp_rank = get_tensor_model_parallel_rank()
         tp_size = get_tensor_model_parallel_world_size()
@@ -566,6 +563,8 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
 
         assert param_data.shape == loaded_weight.shape
         param_data.copy_(loaded_weight)
+        if dist.get_rank() == 0:
+            print(f"MergedColumnParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}, loaded_shard_id={loaded_shard_id}")
 
     def _load_fused_module_from_checkpoint(self, param: BasevLLMParameter,
                                            loaded_weight: torch.Tensor):
