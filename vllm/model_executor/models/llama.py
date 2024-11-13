@@ -351,6 +351,16 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
+
+        TP = 2
+        SP = 4
+        N, d = hidden_states.shape
+        hidden_states_ulysses = torch.ones((N, d), device=hidden_states.device)
+        if dist.get_rank() == 0:
+            print(f"TP {TP}, SP {SP} hidden_states ({N}, {d}) {hidden_states.shape}")
+            print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
+        
+
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
             if dist.get_rank() == 0:
