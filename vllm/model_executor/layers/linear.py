@@ -370,6 +370,9 @@ class ColumnParallelLinear(LinearBase):
     def forward(self, input_):
         bias = self.bias if not self.skip_bias_add else None
 
+        if dist.get_rank() == 0:
+            print(f"ColumnParallelLinear.forward: input_.shape={input_.shape}, bias.shape={bias.shape if bias is not None else None}")
+
         # Matrix multiply.
         assert self.quant_method is not None
         output_parallel = self.quant_method.apply(self, input_, bias)
