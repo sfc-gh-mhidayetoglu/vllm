@@ -338,9 +338,9 @@ class LlamaModel(nn.Module):
         intermediate_tensors: Optional[IntermediateTensors],
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
-        if dist.get_rank() == 0:
-            print(f"llama model input_ids {input_ids.shape}, positions {positions.shape}, inputs_embeds {inputs_embeds.shape if inputs_embeds is not None else None}")
         if get_pp_group().is_first_rank:
+            if dist.get_rank() == 0:
+                print(f"***************************** llama model input_ids {input_ids.shape}, positions {positions.shape}, inputs_embeds {inputs_embeds.shape if inputs_embeds is not None else None}")
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
             else:
@@ -354,7 +354,7 @@ class LlamaModel(nn.Module):
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
             if dist.get_rank() == 0:
-                print(f"*************** layer {i}")
+                print(f"layer {i}")
             hidden_states, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
