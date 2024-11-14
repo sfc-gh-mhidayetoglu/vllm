@@ -89,9 +89,9 @@ class LlamaMLP(nn.Module):
         self.act_fn = SiluAndMul()
 
     def forward(self, x):
-        if dist.get_rank() == 0:
-            print(f"llama MLP {x.shape}")
         gate_up, _ = self.gate_up_proj(x)
+        if dist.get_rank() == 0:
+            print(f"llama MLP x: {x.shape} gate_up: {gate_up.shape}")
         x = self.act_fn(gate_up)
         x, _ = self.down_proj(x)
         return x
@@ -367,7 +367,7 @@ class LlamaModel(nn.Module):
             layer = self.layers[i]
             if dist.get_rank() == 0:
                 print(f"layer {i}")
-            hidden_states, residual = layer(positions, hidden_states,
+            hidden_states_ulysses, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
