@@ -427,7 +427,7 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
         tp_size = get_tensor_model_parallel_world_size()
         assert all(output_size % tp_size == 0 for output_size in output_sizes)
         if dist.get_rank() == 0:
-            print(f"MergedColumnParallelLnear: input_size={input_size}, output_sizes={output_sizes}")
+            print(f"MergedColumnParallelLinear: input_size={input_size}, output_sizes={output_sizes}")
         super().__init__(input_size=input_size,
                          output_size=sum(output_sizes),
                          bias=bias,
