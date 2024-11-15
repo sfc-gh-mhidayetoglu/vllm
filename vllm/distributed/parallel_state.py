@@ -1072,7 +1072,7 @@ def ensure_model_parallel_initialized(
         get_world_group().device_group)
     if not model_parallel_is_initialized():
         initialize_model_parallel(tensor_model_parallel_size,
-                                  sequence_model_parallel,
+                                  sequence_model_parallel_size,
                                   pipeline_model_parallel_size, backend)
         return
 
