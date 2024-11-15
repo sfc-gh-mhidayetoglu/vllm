@@ -920,6 +920,7 @@ class EngineArgs:
         )
         parallel_config = ParallelConfig(
             pipeline_parallel_size=self.pipeline_parallel_size,
+            sequence_parallel_size=self.sequence_parallel_size,
             tensor_parallel_size=self.tensor_parallel_size,
             worker_use_ray=self.worker_use_ray,
             max_parallel_loading_workers=self.max_parallel_loading_workers,
