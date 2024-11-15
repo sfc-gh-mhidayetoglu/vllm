@@ -1080,8 +1080,6 @@ def initialize_model_parallel(
                                     backend,
                                     use_custom_allreduce=False,
                                     group_name="pp")
-    exit()
-
 
 def ensure_model_parallel_initialized(
     tensor_model_parallel_size: int,
@@ -1162,7 +1160,10 @@ def destroy_model_parallel():
     if _TP:
         _TP.destroy()
     _TP = None
-
+    global _SP
+    if _SP:
+        _SP.destroy()
+    _SP = None
     global _PP
     if _PP:
         _PP.destroy()
