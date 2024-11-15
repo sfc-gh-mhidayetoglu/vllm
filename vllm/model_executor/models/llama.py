@@ -30,7 +30,7 @@ from transformers import LlamaConfig
 from vllm.attention import Attention, AttentionMetadata
 from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, LoRAConfig
-from vllm.distributed import (get_pp_group, get_tensor_model_parallel_rank,
+from vllm.distributed import (get_tp_group, get_sp_group, get_pp_group, get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size)
 from vllm.model_executor.layers.activation import SiluAndMul
 from vllm.model_executor.layers.layernorm import RMSNorm
@@ -352,14 +352,14 @@ class LlamaModel(nn.Module):
             residual = intermediate_tensors["residual"]
 
 
-        global _SP, _PP, _TP
-        # TP = 2
-        # SP = 4
+        TP = get_tp_group().size
+        SP = get_sp_group().size
+        PP = get_pp_group().size
         N, d = hidden_states.shape
         # hidden_states_ulysses = torch.ones((N//SP, d), dtype=hidden_states.dtype, device=hidden_states.device)
 
         if dist.get_rank() == 0:
-            print(f"TP {_TP}, SP {_SP} hidden_states ({N}, {d}) {hidden_states.shape}")
+            print(f"TP {TP}, SP {SP}, PP {PP} hidden_states ({N}, {d}) {hidden_states.shape}")
             # print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
 
