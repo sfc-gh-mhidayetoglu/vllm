@@ -361,7 +361,9 @@ class LlamaModel(nn.Module):
             print(f"TP {TP}, SP {SP} hidden_states ({N}, {d}) {hidden_states.shape}")
             print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
-        
+
+        torch.cuda.synchronize()
+        dist.barrier() 
         exit()
 
         for i in range(self.start_layer, self.end_layer):
