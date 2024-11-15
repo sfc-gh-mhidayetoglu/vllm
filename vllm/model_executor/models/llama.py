@@ -253,9 +253,9 @@ class LlamaDecoderLayer(nn.Module):
         attn_metadata: AttentionMetadata,
         residual: Optional[torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        if dist.get_rank() == 0:
-            print(f"inference {self.inference} llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
-            self.inference += 1
+        # if dist.get_rank() == 0:
+        #     print(f"inference {self.inference} llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
+        #     self.inference += 1
         # Self Attention
         if residual is None:
             residual = hidden_states
