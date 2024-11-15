@@ -109,6 +109,7 @@ class RayGPUExecutor(DistributedGPUExecutor):
     def _init_workers_ray(self, placement_group: "PlacementGroup",
                           **ray_remote_kwargs):
         if (self.parallel_config.tensor_parallel_size == 1
+                and self.parallel_config.sequence_parallel_size == 1
                 and self.parallel_config.pipeline_parallel_size == 1):
             # For single GPU case, we use a ray worker with constrained memory.
             num_gpus = self.cache_config.gpu_memory_utilization
@@ -302,6 +303,8 @@ class RayGPUExecutor(DistributedGPUExecutor):
         # worker in a TP group. These are the workers that will be
         # broadcasted to.
         self.non_driver_workers: List[RayWorkerWrapper] = []
+
+        assert(False), "This should not be reached."
 
         # Enforce rank order for correct rank to return final output.
         for index, worker in enumerate(self.workers):
