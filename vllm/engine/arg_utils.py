@@ -102,6 +102,7 @@ class EngineArgs:
     distributed_executor_backend: Optional[Union[str,
                                                  Type[ExecutorBase]]] = None
     pipeline_parallel_size: int = 1
+    sequence_parallel_size: int = 1
     tensor_parallel_size: int = 1
     max_parallel_loading_workers: Optional[int] = None
     block_size: int = 16
@@ -341,6 +342,11 @@ class EngineArgs:
                             type=int,
                             default=EngineArgs.pipeline_parallel_size,
                             help='Number of pipeline stages.')
+        parser.add_argument('--sequence-parallel-size',
+                            '-sp',
+                            type=int,
+                            default=EngineArgs.sequence_parallel_size,
+                            help='Number of sequence parallel replicas.')
         parser.add_argument('--tensor-parallel-size',
                             '-tp',
                             type=int,
@@ -920,6 +926,7 @@ class EngineArgs:
         )
         parallel_config = ParallelConfig(
             pipeline_parallel_size=self.pipeline_parallel_size,
+            sequence_parallel_size=self.sequence_parallel_size,
             tensor_parallel_size=self.tensor_parallel_size,
             worker_use_ray=self.worker_use_ray,
             max_parallel_loading_workers=self.max_parallel_loading_workers,
