@@ -1076,6 +1076,10 @@ class RowParallelLinear(LinearBase):
         param.load_row_parallel_weight(loaded_weight=loaded_weight)
 
     def forward(self, input_):
+
+        if dist.get_rank() == 0:
+            print(f"RowParallelLinear.forward: input_.shape={input_.shape}")
+
         if self.input_is_parallel:
             input_parallel = input_
         else:
