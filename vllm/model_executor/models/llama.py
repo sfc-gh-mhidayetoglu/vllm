@@ -339,11 +339,11 @@ class LlamaModel(nn.Module):
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
         if get_pp_group().is_first_rank:
-            if dist.get_rank() == 0:
-                print(f"***************************** llama model input_ids {input_ids.shape}, positions {positions.shape}, inputs_embeds {inputs_embeds.shape if inputs_embeds is not None else None}")
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
             else:
+                if dist.get_rank() == 0:
+                    print(f"***************************** llama model input_ids {input_ids.shape}, positions {positions.shape}, inputs_embeds {inputs_embeds.shape if inputs_embeds is not None else None}")
                 hidden_states = self.get_input_embeddings(input_ids)
             residual = None
         else:
@@ -359,12 +359,14 @@ class LlamaModel(nn.Module):
         N, d = hidden_states.shape
         hidden_states_ulysses = torch.ones((N//SP.world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)
 
+        torch.set_printoptions(profile="full")
         if P.rank_in_group == 0:
             print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states ({N}, {d}) {hidden_states.shape}")
             print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
             print(f"input_ids {input_ids}")
             print(f"positions {positions}")
+        torch.set_printoptions(profile="default")
 
         # for i in range(self.start_layer, self.end_layer):
         for i in range(self.start_layer, 3):
