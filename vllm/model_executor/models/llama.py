@@ -362,6 +362,7 @@ class LlamaModel(nn.Module):
             print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
         
+        exit()
 
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
