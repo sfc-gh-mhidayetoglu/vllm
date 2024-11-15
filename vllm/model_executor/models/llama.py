@@ -352,16 +352,16 @@ class LlamaModel(nn.Module):
             residual = intermediate_tensors["residual"]
 
 
-        TP = get_tp_group().world_size
-        SP = get_sp_group().world_size
-        PP = get_pp_group().world_size
+        TP = get_tp_group()
+        SP = get_sp_group()
+        PP = get_pp_group()
         N, d = hidden_states.shape
         # hidden_states_ulysses = torch.ones((N//SP, d), dtype=hidden_states.dtype, device=hidden_states.device)
 
         if dist.get_rank() == 0:
-            print(f"TP {TP}, SP {SP}, PP {PP} hidden_states ({N}, {d}) {hidden_states.shape}")
+            print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states ({N}, {d}) {hidden_states.shape}")
             # print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
-            print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
+        print(f"myid {dist.get_rank()} TP rank {TP.rank_in_group} SP rank {SP.rank_in_group} PP rank {PP.rank_in_group} start_layer {self.start_layer}, end_layer {self.end_layer}")
 
         # torch.cuda.synchronize()
         # dist.barrier() 
