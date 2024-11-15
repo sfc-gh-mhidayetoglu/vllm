@@ -30,7 +30,7 @@ from transformers import LlamaConfig
 from vllm.attention import Attention, AttentionMetadata
 from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, LoRAConfig
-from vllm.distributed import (get_tp_group, get_sp_group, get_pp_group, get_tensor_model_parallel_rank,
+from vllm.distributed import (get_world_group, get_tp_group, get_sp_group, get_pp_group, get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size)
 from vllm.model_executor.layers.activation import SiluAndMul
 from vllm.model_executor.layers.layernorm import RMSNorm
@@ -351,21 +351,21 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-
+        P = get_world_group()
         TP = get_tp_group()
         SP = get_sp_group()
         PP = get_pp_group()
         N, d = hidden_states.shape
         # hidden_states_ulysses = torch.ones((N//SP, d), dtype=hidden_states.dtype, device=hidden_states.device)
 
-        if dist.get_rank() == 0:
+        if P.rank_in_group == 0:
             print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states ({N}, {d}) {hidden_states.shape}")
-            # print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
-        print(f"myid {dist.get_rank()} TP rank {TP.rank_in_group} SP rank {SP.rank_in_group} PP rank {PP.rank_in_group} start_layer {self.start_layer}, end_layer {self.end_layer}")
+            print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
+            print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
 
-        # torch.cuda.synchronize()
-        # dist.barrier() 
-        # exit()
+        torch.cuda.synchronize()
+        P.barrier()
+        exit()
 
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
