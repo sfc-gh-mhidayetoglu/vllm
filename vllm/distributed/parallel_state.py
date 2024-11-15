@@ -1022,7 +1022,6 @@ def initialize_model_parallel(
 
     if torch.distributed.get_rank() == 0:
         print(f"world_size={world_size}, tensor_model_parallel_size={tensor_model_parallel_size}, sequence_model_parallel_size={sequence_model_parallel_size}, pipeline_model_parallel_size={pipeline_model_parallel_size}")
-    exit()
 
     # Build the tensor model-parallel groups.
     num_tensor_model_parallel_groups: int = (world_size //
@@ -1077,6 +1076,7 @@ def initialize_model_parallel(
                                     backend,
                                     use_custom_allreduce=False,
                                     group_name="pp")
+    exit()
 
 
 def ensure_model_parallel_initialized(
