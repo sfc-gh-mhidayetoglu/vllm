@@ -988,6 +988,8 @@ def initialize_model_parallel(
     Arguments:
         tensor_model_parallel_size: number of GPUs used for tensor model
             parallelism.
+        sequence_model_parallel_size: number of GPUs used for sequence model
+            parallelism.
         pipeline_model_parallel_size: number of GPUs used for pipeline model
             parallelism.
 
