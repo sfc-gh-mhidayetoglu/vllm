@@ -355,8 +355,9 @@ class LlamaModel(nn.Module):
         TP = get_tp_group()
         SP = get_sp_group()
         PP = get_pp_group()
+
         N, d = hidden_states.shape
-        # hidden_states_ulysses = torch.ones((N//SP, d), dtype=hidden_states.dtype, device=hidden_states.device)
+        hidden_states_ulysses = torch.ones((N//SP.world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)
 
         if P.rank_in_group == 0:
             print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states ({N}, {d}) {hidden_states.shape}")
