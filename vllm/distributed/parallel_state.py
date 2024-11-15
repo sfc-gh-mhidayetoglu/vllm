@@ -1043,24 +1043,6 @@ def initialize_model_parallel(
                                     backend,
                                     use_message_queue_broadcaster=True,
                                     group_name="tp")
-    
-    # Build the sequence model-parallel groups.
-    num_sequence_model_parallel_groups: int = (world_size //
-                                               sequence_model_parallel_size)
-    global _SP
-    assert _SP is None, ("sequence model parallel group is already initialized")
-    group_ranks = []
-    for i in range(num_sequence_model_parallel_groups):
-        ranks = list(
-            range(i, world_size, tensor_model_parallel_size))
-        group_ranks.append(ranks)
-    if torch.distributed.get_rank() == 0:
-        print(f"sequence model parallel group ranks: {group_ranks}")
-    _SP = init_model_parallel_group(group_ranks,
-                                    get_world_group().local_rank,
-                                    backend,
-                                    use_custom_allreduce=False,
-                                    group_name="sp")
 
     # Build the pipeline model-parallel groups.
     num_pipeline_model_parallel_groups: int = (world_size //
@@ -1080,6 +1062,25 @@ def initialize_model_parallel(
                                     backend,
                                     use_custom_allreduce=False,
                                     group_name="pp")
+    
+    # Build the sequence model-parallel groups.
+    global _SP
+    assert _SP is None, ("sequence model parallel group is already initialized")
+    group_ranks = []
+    for i in range(pipeline_model_parallel_size):
+        for j in range(tensor_model_parallel_size):
+            ranks = list(
+                range(i * tensor_model_parallel_size * sequence_model_parallel_size + j,
+                      (i + 1) * tensor_model_parallel_size * sequence_model_parallel_size + j,
+                      tensor_model_parallel_size))
+            group_ranks.append(ranks)
+    if torch.distributed.get_rank() == 0:
+        print(f"sequence model parallel group ranks: {group_ranks}")
+    _SP = init_model_parallel_group(group_ranks,
+                                    get_world_group().local_rank,
+                                    backend,
+                                    use_custom_allreduce=False,
+                                    group_name="sp")
 
 def ensure_model_parallel_initialized(
     tensor_model_parallel_size: int,
