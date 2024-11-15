@@ -352,9 +352,9 @@ class LlamaModel(nn.Module):
             residual = intermediate_tensors["residual"]
 
 
-        TP = get_tp_group().size
-        SP = get_sp_group().size
-        PP = get_pp_group().size
+        TP = get_tp_group().world_size
+        SP = get_sp_group().world_size
+        PP = get_pp_group().world_size
         N, d = hidden_states.shape
         # hidden_states_ulysses = torch.ones((N//SP, d), dtype=hidden_states.dtype, device=hidden_states.device)
 
