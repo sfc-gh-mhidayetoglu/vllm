@@ -364,17 +364,18 @@ class LlamaModel(nn.Module):
             print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
 
-        torch.cuda.synchronize()
-        P.barrier()
-        exit()
-
-        for i in range(self.start_layer, self.end_layer):
+        # for i in range(self.start_layer, self.end_layer):
+        for i in range(self.start_layer, 3):
             layer = self.layers[i]
             if dist.get_rank() == 0:
                 print(f"layer {i}")
             hidden_states_ulysses, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
+
+        torch.cuda.synchronize()
+        P.barrier()
+        exit()
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
