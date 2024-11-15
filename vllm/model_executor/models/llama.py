@@ -369,7 +369,7 @@ class LlamaModel(nn.Module):
             layer = self.layers[i]
             if dist.get_rank() == 0:
                 print(f"layer {i}")
-            hidden_states_ulysses, residual = layer(positions, hidden_states,
+            hidden_states_ulysses, residual = layer(positions, hidden_states_ulysses,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
