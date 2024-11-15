@@ -373,9 +373,9 @@ class LlamaModel(nn.Module):
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
-        torch.cuda.synchronize()
-        P.barrier()
-        exit()
+        # torch.cuda.synchronize()
+        # P.barrier()
+        # exit()
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
