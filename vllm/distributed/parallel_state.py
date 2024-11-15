@@ -1104,6 +1104,11 @@ def ensure_model_parallel_initialized(
     ), ("tensor parallel group already initialized, but of unexpected size: "
         f"{get_tensor_model_parallel_world_size()=} vs. "
         f"{tensor_model_parallel_size=}")
+    sp_world_size = get_sp_group().world_size
+    assert (sp_world_size == sequence_model_parallel_size), (
+        "sequence parallel group already initialized, but of unexpected size: "
+        f"{sp_world_size=} vs. "
+        f"{sequence_model_parallel_size=}")
     pp_world_size = get_pp_group().world_size
     assert (pp_world_size == pipeline_model_parallel_size), (
         "pipeline parallel group already initialized, but of unexpected size: "
