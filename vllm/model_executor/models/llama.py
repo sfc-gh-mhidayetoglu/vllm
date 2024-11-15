@@ -93,7 +93,11 @@ class LlamaMLP(nn.Module):
         if dist.get_rank() == 0:
             print(f"llama MLP x: {x.shape} gate_up: {gate_up.shape}")
         x = self.act_fn(gate_up)
+        if dist.get_rank() == 0:
+            print(f"llama MLP x: {x.shape} activation")
         x, _ = self.down_proj(x)
+        if dist.get_rank() == 0:
+            print(f"llama MLP x: {x.shape} down_proj")
         return x
 
 
