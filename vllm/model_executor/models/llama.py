@@ -192,7 +192,11 @@ class LlamaAttention(nn.Module):
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        if dist.get_rank() == 0:
+            print(f"llama attention after qkv_proj q {q.shape}, k {k.shape}, v {v.shape}")
         q, k = self.rotary_emb(positions, q, k)
+        if dist.get_rank() == 0:
+            print(f"llama attention after rotary_emb q {q.shape}, k {k.shape}")
         # all-to-all (SP)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         # all-to-all (SP)
