@@ -197,6 +197,9 @@ class LlamaAttention(nn.Module):
         q, k = self.rotary_emb(positions, q, k)
         if dist.get_rank() == 0:
             print(f"llama attention after rotary_emb q {q.shape}, k {k.shape}")
+        torch.cuda.synchronize()
+        get_world_group().barrier()
+        exit()
         # all-to-all (SP)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         # all-to-all (SP)
@@ -386,7 +389,7 @@ class LlamaModel(nn.Module):
             layer = self.layers[i]
             if dist.get_rank() == 0:
                 print(f"layer {i}")
-            hidden_states_ulysses, residual = layer(positions, hidden_states_ulysses,
+            hidden_states, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
