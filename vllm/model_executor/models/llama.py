@@ -197,18 +197,21 @@ class LlamaAttention(nn.Module):
             print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
             print(f"TP {get_tp_group().world_size}, SP {get_sp_group().world_size}, PP {get_pp_group().world_size}")
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
-        qkv, _ = self.qkv_proj(hidden_states)
+        hidden_states_full = torch.ones((N, d), dtype=hidden_states.dtype, device=hidden_states.device)
+        hidden_states_ulysses = torch.ones((N//get_sp_group().world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)
+        qkv, _ = self.qkv_proj(hidden_states_full)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         if dist.get_rank() == 0:
             print(f"llama attention after qkv_proj q {q.shape}, k {k.shape}, v {v.shape}")
         q, k = self.rotary_emb(positions, q, k)
         if dist.get_rank() == 0:
             print(f"llama attention after rotary_emb q {q.shape}, k {k.shape}")
-        torch.cuda.synchronize()
-        get_world_group().barrier()
-        exit()
+        # torch.cuda.synchronize()
+        # get_world_group().barrier()
+        # exit()
         # all-to-all (SP)
-        attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
+        # attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
+        attn_output = hidden_states_full
         # all-to-all (SP)
         output, _ = self.o_proj(attn_output)
         if dist.get_rank() == 0:
