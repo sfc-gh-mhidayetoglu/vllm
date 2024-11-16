@@ -188,7 +188,12 @@ class LlamaAttention(nn.Module):
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
+        N, d = hidden_states.shape
         if dist.get_rank() == 0:
+            print(f"self.hidden_size {self.hidden_size}, self.total_num_heads {self.total_num_heads}, self.total_num_kv_heads {self.total_num_kv_heads}")
+            print(f"self.num_heads {self.num_heads}, self.head_dim {self.head_dim}, self.scaling {self.scaling}, self.num_kv_heads {self.num_kv_heads}")
+            print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
+            print(f"TP {get_tp_group().world_size}, SP {get_sp_group().world_size}, PP {get_pp_group().world_size}")
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
