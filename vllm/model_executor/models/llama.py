@@ -122,18 +122,18 @@ class LlamaAttention(nn.Module):
         tp_size = get_tp_group().world_size
         sp_size = get_sp_group().world_size
         self.total_num_heads = num_heads
-        assert self.total_num_heads % (tp_size * sp_size) == 0
-        self.num_heads = self.total_num_heads // (tp_size * sp_size)
+        assert self.total_num_heads % tp_size  == 0
+        self.num_heads = self.total_num_heads // tp_size
         self.total_num_kv_heads = num_kv_heads
-        if self.total_num_kv_heads >= (tp_size * sp_size):
+        if self.total_num_kv_heads >= tp_size:
             # Number of KV heads is greater than TP size, so we partition
             # the KV heads across multiple tensor parallel GPUs.
-            assert self.total_num_kv_heads % (tp_size * sp_size) == 0
+            assert self.total_num_kv_heads % tp_size == 0
         else:
             # Number of KV heads is less than TP size, so we replicate
             # the KV heads across multiple tensor parallel GPUs.
-            assert (tp_size * sp_size) % self.total_num_kv_heads == 0
-        self.num_kv_heads = max(1, self.total_num_kv_heads // (tp_size * sp_size))
+            assert tp_size * sp_size % self.total_num_kv_heads == 0
+        self.num_kv_heads = max(1, self.total_num_kv_heads // tp_size)
         # MistralConfig has an optional head_dim introduced by Mistral-Nemo
         self.head_dim = getattr(config, "head_dim",
                                 self.hidden_size // self.total_num_heads)
@@ -189,7 +189,7 @@ class LlamaAttention(nn.Module):
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
-        '''N, d = hidden_states.shape
+        N, d = hidden_states.shape
         if dist.get_rank() == 0:
             print(f"N {N}, d {d}")
             print(f"self.hidden_size {self.hidden_size}, self.total_num_heads {self.total_num_heads}, self.total_num_kv_heads {self.total_num_kv_heads}")
@@ -198,15 +198,15 @@ class LlamaAttention(nn.Module):
             print(f"TP {get_tp_group().world_size}, SP {get_sp_group().world_size}, PP {get_pp_group().world_size}")
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
         hidden_states_full = torch.ones((N, d), dtype=hidden_states.dtype, device=hidden_states.device)
-        hidden_states_ulysses = torch.ones((N//get_sp_group().world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)'''
+        hidden_states_ulysses = torch.ones((N//get_sp_group().world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-        # if dist.get_rank() == 0:
-        #     print(f"llama attention after qkv_proj q {q.shape}, k {k.shape}, v {v.shape}")
+        if dist.get_rank() == 0:
+            print(f"llama attention after qkv_proj q {q.shape}, k {k.shape}, v {v.shape}")
         q, k = self.rotary_emb(positions, q, k)
-        # if dist.get_rank() == 0:
-        #     print(f"llama attention after rotary_emb q {q.shape}, k {k.shape}")
-        # torch.cuda.synchronize()
+        if dist.get_rank() == 0:
+            print(f"llama attention after rotary_emb q {q.shape}, k {k.shape}")
+        #  torch.cuda.synchronize()
         # get_world_group().barrier()
         # exit()
         # all-to-all (SP)
@@ -215,7 +215,7 @@ class LlamaAttention(nn.Module):
         # all-to-all (SP)
         output, _ = self.o_proj(attn_output)
         if dist.get_rank() == 0:
-            print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}, attn_output {attn_output.shape}, output {output.shape}")
+            print(f"llama attn_output {attn_output.shape}, output {output.shape}")
         return output
 
 
