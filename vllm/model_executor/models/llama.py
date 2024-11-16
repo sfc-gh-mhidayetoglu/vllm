@@ -193,7 +193,9 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
+        # all-to-all (SP)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
+        # all-to-all (SP)
         output, _ = self.o_proj(attn_output)
         if dist.get_rank() == 0:
             print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}, attn_output {attn_output.shape}, output {output.shape}")
@@ -363,7 +365,8 @@ class LlamaModel(nn.Module):
         PP = get_pp_group()
 
         N, d = hidden_states.shape
-        hidden_states_ulysses = torch.ones((N//SP.world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)
+        # hidden_states_ulysses = torch.ones((N//SP.world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)
+        hidden_states_ulysses = torch.narrow(hidden_states, 0, N//SP.world_size*SP.local_rank, N//SP.world_size)
 
         torch.set_printoptions(profile="full")
         if P.rank_in_group == 0:
@@ -379,7 +382,7 @@ class LlamaModel(nn.Module):
             layer = self.layers[i]
             if dist.get_rank() == 0:
                 print(f"layer {i}")
-            hidden_states_ulysses, residual = layer(positions, hidden_states,
+            hidden_states_ulysses, residual = layer(positions, hidden_states_ulysses,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
