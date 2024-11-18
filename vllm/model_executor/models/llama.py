@@ -404,6 +404,7 @@ class LlamaModel(nn.Module):
         SP = get_sp_group()
         PP = get_pp_group()
 
+        N, d = hidden_states.shape
         torch.set_printoptions(profile="full")
         if P.rank_in_group == 0:
             print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states ({N}, {d}) {hidden_states.shape}")
