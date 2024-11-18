@@ -197,7 +197,7 @@ class LlamaAttention(nn.Module):
         N_ulysses = N // SP
         if get_sp_group().rank_in_group < N % SP:
             N_ulysses += 1
-        # N = N_ulysses * SP
+        N = N_ulysses * SP
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
 
