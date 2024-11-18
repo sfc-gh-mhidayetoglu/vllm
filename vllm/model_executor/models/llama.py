@@ -208,9 +208,9 @@ class LlamaAttention(nn.Module):
         if dist.get_rank() == 0:
             print(f"ulysses qkv {qkv.shape} q {q.shape}, k {k.shape}, v {v.shape}")
 
-        q_ = torch.ones((N//get_sp_group().world_size, self.head_dim * self.num_heads), dtype=hidden_states.dtype, device=hidden_states.device)
-        k_ = torch.ones((N//get_sp_group().world_size, self.head_dim * self.num_kv_heads), dtype=hidden_states.dtype, device=hidden_states.device)
-        v_ = torch.ones((N//get_sp_group().world_size, self.head_dim * self.num_kv_heads), dtype=hidden_states.dtype, device=hidden_states.device)
+        q_ = torch.ones((N, self.head_dim * self.num_heads), dtype=hidden_states.dtype, device=hidden_states.device)
+        k_ = torch.ones((N, self.head_dim * self.num_kv_heads), dtype=hidden_states.dtype, device=hidden_states.device)
+        v_ = torch.ones((N, self.head_dim * self.num_kv_heads), dtype=hidden_states.dtype, device=hidden_states.device)
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
         if dist.get_rank() == 0:
