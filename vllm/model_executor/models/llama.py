@@ -174,7 +174,7 @@ class LlamaAttention(nn.Module):
             is_neox_style=is_neox_style,
         )
         self.attn = Attention(
-            self.num_heads,
+            self.num_heads // get_sp_group().world_size,
             self.head_dim,
             self.scaling,
             num_kv_heads=self.num_kv_heads,
