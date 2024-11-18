@@ -198,6 +198,7 @@ class LlamaAttention(nn.Module):
         if N % SP:
             N_ulysses += 1
         N = N_ulysses * SP
+        d = d * TP
         hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         # ulysses_num_seq = [N // get_sp_group().world_size] * get_sp_group().world_size
         # for i in range(N % get_sp_group().world_size):
