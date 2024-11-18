@@ -190,17 +190,19 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         N, d = hidden_states.shape
-        ulysses_num_seq = [N // get_sp_group().world_size] * get_sp_group().world_size
-        for i in range(N % get_sp_group().world_size):
-            ulysses_num_seq[i] += 1
-        ulysses_seq_displ = [0] * len(ulysses_num_seq)
-        for i in range(1, len(ulysses_num_seq)):
-            ulysses_seq_displ[i] = ulysses_seq_displ[i - 1] + ulysses_num_seq[i - 1]
-        if dist.get_rank() == 0:
-            print(f"ulysses_num_seq {ulysses_num_seq}")
-            print(f"ulysses_seq_displ {ulysses_seq_displ}")
-
-        N_ulysses = ulysses_num_seq[get_sp_group().rank_in_group]
+        N_ulysses = N // get_sp_group().world_size
+        if N % get_sp_group().world_size:
+            N_ulysses += 1
+        # ulysses_num_seq = [N // get_sp_group().world_size] * get_sp_group().world_size
+        # for i in range(N % get_sp_group().world_size):
+        #     ulysses_num_seq[i] += 1
+        # ulysses_seq_displ = [0] * len(ulysses_num_seq)
+        # for i in range(1, len(ulysses_num_seq)):
+        #     ulysses_seq_displ[i] = ulysses_seq_displ[i - 1] + ulysses_num_seq[i - 1]
+        # if dist.get_rank() == 0:
+        #     print(f"ulysses_num_seq {ulysses_num_seq}")
+        #     print(f"ulysses_seq_displ {ulysses_seq_displ}")
+        # N_ulysses = ulysses_num_seq[get_sp_group().rank_in_group]
         hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
             print(f"N {N}, d {d}")
@@ -225,6 +227,7 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all([k1, k2, k3, k4], [k1_, k2_, k3_, k4_], group=get_sp_group().device_group)
         # dist.all_to_all([v1, v2, v3, v4], [v1_, v2_, v3_, v4_], group=get_sp_group().device_group)
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
+
         # dist.all_to_all([attn_output1, attn_output2, attn_output3, attn_output4], [c1, c2, c3, c4], group=get_sp_group().device_group)
 
         c = torch.empty((N_ulysses, self.head_dim*self.num_heads), dtype=hidden_states.dtype, device=hidden_states.device)
