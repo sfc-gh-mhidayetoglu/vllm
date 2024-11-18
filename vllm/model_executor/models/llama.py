@@ -190,8 +190,10 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         N, d = hidden_states.shape
-        hidden_states_full = torch.ones((N, d), dtype=hidden_states.dtype, device=hidden_states.device)
-        hidden_states_ulysses = torch.ones((N//get_sp_group().world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)
+        N_ulysses = N//get_sp_group().world_size
+        if get_sp_group().rank_in_group < N % get_sp_group().world_size:
+            N_ulysses += 1  
+        hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
             print(f"N {N}, d {d}")
             print(f"self.hidden_size {self.hidden_size}, self.total_num_heads {self.total_num_heads}, self.total_num_kv_heads {self.total_num_kv_heads}")
@@ -199,7 +201,6 @@ class LlamaAttention(nn.Module):
             print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
             print(f"TP {get_tp_group().world_size}, SP {get_sp_group().world_size}, PP {get_pp_group().world_size}")
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
-            print(f"llama attention hidden_states_full {hidden_states_full.shape}, hidden_states_ulysses {hidden_states_ulysses.shape}")
 
         qkv, _ = self.qkv_proj(hidden_states_ulysses)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
@@ -211,12 +212,15 @@ class LlamaAttention(nn.Module):
         q_ = torch.ones((N, self.head_dim*self.num_heads//get_sp_group().world_size), dtype=hidden_states.dtype, device=hidden_states.device)
         k_ = torch.ones((N, self.head_dim*self.num_kv_heads//get_sp_group().world_size), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.ones((N, self.head_dim*self.num_kv_heads//get_sp_group().world_size), dtype=hidden_states.dtype, device=hidden_states.device)
+        # dist.all_to_all([q, k, v], [q_, k_, v_], group=get_sp_group().device_group)
+        dist.all_to_all([q1, q2, q3, q4], [q1_, q2_, q3_, q4_], group=get_sp_group().device_group)
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
         if dist.get_rank() == 0:
             print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"attn_output {attn_output.shape}")
 
+        hidden_states_full = torch.ones((N, d), dtype=hidden_states.dtype, device=hidden_states.device)
         return hidden_states_full
         #  torch.cuda.synchronize()
         # get_world_group().barrier()
