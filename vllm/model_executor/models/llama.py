@@ -198,11 +198,12 @@ class LlamaAttention(nn.Module):
         if N % SP:
             N_ulysses += 1
         N = N_ulysses * SP
-        d = d * TP
+        d = self.num_heads * self.head_dim
+        d_kv = self.num_kv_heads * self.head_dim
 
         hidden_states_ulysses = torch.ones((N//SP, d//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
-            print(f"N {N}, d {d}")
+            print(f"N {N}, d {d} d_kv {d_kv}")
             print(f"TP {TP}, SP {SP}, PP {PP}")
             print(f"self.hidden_size {self.hidden_size}, self.total_num_heads {self.total_num_heads}, self.total_num_kv_heads {self.total_num_kv_heads}")
             print(f"hidden_states {hidden_states.shape}, hidden_states_ulysses {hidden_states_ulysses.shape}")
@@ -215,8 +216,8 @@ class LlamaAttention(nn.Module):
         q, k = self.rotary_emb(positions, q, k)
 
         q_ = torch.ones((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        k_ = torch.ones((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        v_ = torch.ones((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        k_ = torch.ones((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        v_ = torch.ones((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
         # dist.all_to_all_single([q_1, q_2, q_3], [q1, q2, q2], group=get_sp_group().device_group)
         # dist.all_to_all_single([k_1, k_2, k_3], [k1, k2, k2], group=get_sp_group().device_group)
@@ -402,12 +403,6 @@ class LlamaModel(nn.Module):
         TP = get_tp_group()
         SP = get_sp_group()
         PP = get_pp_group()
-
-        N, d = hidden_states.shape
-        N_ulysses = N // SP.world_size
-        if N % SP.world_size:
-            N_ulysses += 1
-        hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
 
         torch.set_printoptions(profile="full")
         if P.rank_in_group == 0:
