@@ -198,6 +198,7 @@ class LlamaAttention(nn.Module):
             ulysses_seq_displ[i] = ulysses_seq_displ[i - 1] + ulysses_num_seq[i - 1]
         if dist.get_rank() == 0:
             print(f"ulysses_num_seq {ulysses_num_seq}")
+            print(f"ulysses_seq_displ {ulysses_seq_displ}")
         N_ulysses = ulysses_num_seq[get_sp_group().rank_in_group]
         hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
