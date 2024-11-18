@@ -216,7 +216,7 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all([q, k, v], [q_, k_, v_], group=get_sp_group().device_group)
 
         N_ranks = list(range(get_sp_group().world_size))
-        dist.all_gather_into_one(N_ranks, N_ranks, group=get_sp_group().cpu_group)
+        dist.all_gather_into_one(N_ranks, torch.tensor(N), group=get_sp_group().cpu_group)
         if dist.get_rank() == 0:
             print(f"N_ranks {N_ranks}")
 
