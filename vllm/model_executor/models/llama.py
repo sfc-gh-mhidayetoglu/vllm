@@ -213,7 +213,7 @@ class LlamaAttention(nn.Module):
         k_ = torch.ones((N, self.head_dim*self.num_kv_heads//get_sp_group().world_size), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.ones((N, self.head_dim*self.num_kv_heads//get_sp_group().world_size), dtype=hidden_states.dtype, device=hidden_states.device)
         # dist.all_to_all([q, k, v], [q_, k_, v_], group=get_sp_group().device_group)
-        dist.all_to_all([q1, q2, q3, q4], [q1_, q2_, q3_, q4_], group=get_sp_group().device_group)
+        # dist.all_to_all([q1, q2, q3, q4], [q1_, q2_, q3_, q4_], group=get_sp_group().device_group)
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
         if dist.get_rank() == 0:
