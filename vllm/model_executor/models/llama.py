@@ -201,7 +201,7 @@ class LlamaAttention(nn.Module):
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
 
-        hidden_states_ulysses = torch.ones((N//SP, d//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        hidden_states_ulysses = torch.ones((N//SP, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
             print(f"N {N}, d {d} d_kv {d_kv}")
             print(f"TP {TP}, SP {SP}, PP {PP}")
