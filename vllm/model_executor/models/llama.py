@@ -224,31 +224,19 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all([q1, q2, q3, q4], [q1_, q2_, q3_, q4_], group=get_sp_group().device_group)
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
+        c = torch.empty((ulysses_num_seq[get_sp_group().rank_in_group], self.head_dim*self.num_heads//get_sp_group().world_size), dtype=hidden_states.dtype, device=hidden_states.device)
+
         if dist.get_rank() == 0:
+            print(f"q {q.shape}, k {k.shape}, v {v.shape}")
             print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"attn_output {attn_output.shape}")
+            print(f"c {c.shape}")
 
-        hidden_states_full = torch.ones((N, d), dtype=hidden_states.dtype, device=hidden_states.device)
-        return hidden_states_full
-        #  torch.cuda.synchronize()
-        # get_world_group().barrier()
-        # exit()
-        # all-to-all (SP)
-        q_ulysses = torch.empty((N, self.head_dim * (self.total_num_heads // (get_tp_group().world_size * get_sp_group().world_size))), dtype=hidden_states.dtype, device=hidden_states.device)
-        k_ulysses = torch.empty((N, self.head_dim * (self.total_num_kv_heads // (get_tp_group().world_size * get_sp_group().world_size))), dtype=hidden_states.dtype, device=hidden_states.device)
-        v_ulysses = torch.empty((N, self.head_dim * (self.total_num_kv_heads // (get_tp_group().world_size * get_sp_group().world_size))), dtype=hidden_states.dtype, device=hidden_states.device)
-        q_ = torch.ones((N, self.head_dim * self.num_heads), dtype=hidden_states.dtype, device=hidden_states.device)
-        k_ = torch.ones((N, self.head_dim * self.num_kv_heads), dtype=hidden_states.dtype, device=hidden_states.device)
-        v_ = torch.ones((N, self.head_dim * self.num_kv_heads), dtype=hidden_states.dtype, device=hidden_states.device)
+        output, _ = self.o_proj(c)
         if dist.get_rank() == 0:
-            print(f"llama attention q_ulysses {q_ulysses.shape}, k_ulysses {k_ulysses.shape}, v_ulysses {v_ulysses.shape}")
-            print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
-            print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
-        # attn_output = hidden_states_full
-        # all-to-all (SP)
-        output, _ = self.o_proj(attn_output)
-        if dist.get_rank() == 0:
-            print(f"llama attn_output {attn_output.shape}, o_proj output {output.shape}")
+            print(f"output {output.shape}")
+
+        output = hidden_states
         return output
 
 
