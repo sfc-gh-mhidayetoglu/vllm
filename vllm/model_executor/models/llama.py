@@ -190,11 +190,15 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         N, d = hidden_states.shape
-        N_ulysses_list = [N // get_sp_group().world_size] * get_sp_group().world_size
+        ulysses_num_seq = [N // get_sp_group().world_size] * get_sp_group().world_size
         for i in range(N % get_sp_group().world_size):
-            N_ulysses_list[i] += 1
-            print(f"N_ulysses_list: {N_ulysses_list}")
-        N_ulysses = N_ulysses_list[get_sp_group().rank_in_group]
+            ulysses_num_seq[i] += 1
+        ulysses_seq_displ = [0] * len(ulysses_num_seq)
+        for i in range(1, len(ulysses_num_seq)):
+            ulysses_seq_displ[i] = ulysses_seq_displ[i - 1] + ulysses_num_seq[i - 1]
+        if dist.get_rank() == 0:
+            print(f"ulysses_num_seq {ulysses_num_seq}")
+        N_ulysses = ulysses_num_seq[get_sp_group().rank_in_group]
         hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
             print(f"N {N}, d {d}")
