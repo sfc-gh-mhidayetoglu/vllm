@@ -204,9 +204,15 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states_ulysses)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
+
         if dist.get_rank() == 0:
-            # print(f"llama attention after qkv_proj qkv {qkv.shape} q {q.shape}, k {k.shape}, v {v.shape}")
-            print(f"llama attention qkv {qkv.shape} q {q.shape}, k {k.shape}, v {v.shape}")
+            print(f"ulysses qkv {qkv.shape} q {q.shape}, k {k.shape}, v {v.shape}")
+
+        attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
+
+        if dist.get_rank() == 0:
+            print(f"ulysses attn_output {attn_output.shape}")
+
         return hidden_states_full
         #  torch.cuda.synchronize()
         # get_world_group().barrier()
@@ -222,7 +228,6 @@ class LlamaAttention(nn.Module):
             print(f"llama attention q_ulysses {q_ulysses.shape}, k_ulysses {k_ulysses.shape}, v_ulysses {v_ulysses.shape}")
             print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
-        attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         # attn_output = hidden_states_full
         # all-to-all (SP)
         output, _ = self.o_proj(attn_output)
