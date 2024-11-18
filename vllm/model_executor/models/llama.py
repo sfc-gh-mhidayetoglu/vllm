@@ -190,6 +190,8 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         N, d = hidden_states.shape
+        hidden_states_full = torch.ones((N, d), dtype=hidden_states.dtype, device=hidden_states.device)
+        hidden_states_ulysses = torch.ones((N//get_sp_group().world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
             print(f"N {N}, d {d}")
             print(f"self.hidden_size {self.hidden_size}, self.total_num_heads {self.total_num_heads}, self.total_num_kv_heads {self.total_num_kv_heads}")
@@ -197,8 +199,8 @@ class LlamaAttention(nn.Module):
             print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
             print(f"TP {get_tp_group().world_size}, SP {get_sp_group().world_size}, PP {get_pp_group().world_size}")
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
-        hidden_states_full = torch.ones((N, d), dtype=hidden_states.dtype, device=hidden_states.device)
-        hidden_states_ulysses = torch.ones((N//get_sp_group().world_size, d), dtype=hidden_states.dtype, device=hidden_states.device)
+            print(f"llama attention hidden_states_full {hidden_states_full.shape}, hidden_states_ulysses {hidden_states_ulysses.shape}")
+
         qkv, _ = self.qkv_proj(hidden_states_ulysses)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         if dist.get_rank() == 0:
