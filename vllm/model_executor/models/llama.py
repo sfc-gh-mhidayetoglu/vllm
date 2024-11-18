@@ -201,11 +201,12 @@ class LlamaAttention(nn.Module):
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
             print(f"llama attention hidden_states_full {hidden_states_full.shape}, hidden_states_ulysses {hidden_states_ulysses.shape}")
 
-        qkv, _ = self.qkv_proj(hidden_states)
-        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        qkv, _ = self.qkv_proj(hidden_states_ulysses)
+        # q_ulysses, k_ulysses, v_ulysses = qkv.split([self.q_size, self.kv_size, self.kv_size] * get_sp_group().world_size, dim=-1)
         if dist.get_rank() == 0:
-            print(f"llama attention after qkv_proj qkv {qkv.shape} q {q.shape}, k {k.shape}, v {v.shape}")
-            print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
+            # print(f"llama attention after qkv_proj qkv {qkv.shape} q {q.shape}, k {k.shape}, v {v.shape}")
+            # print(f"self.q_size {self.q_ulysses_size}, self.kv_size {self.kv_size}")
+            print(f"llama attention qkv {qkv.shape}")
         return hidden_states_full
         q, k = self.rotary_emb(positions, q, k)
         if dist.get_rank() == 0:
