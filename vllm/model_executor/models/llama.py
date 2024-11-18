@@ -226,7 +226,7 @@ class LlamaAttention(nn.Module):
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
         # dist.all_to_all([attn_output1, attn_output2, attn_output3, attn_output4], [c1, c2, c3, c4], group=get_sp_group().device_group)
 
-        c = torch.empty((ulysses_num_seq[get_sp_group().rank_in_group], self.head_dim*self.num_heads//get_tp_group().world_size), dtype=hidden_states.dtype, device=hidden_states.device)
+        c = torch.empty((ulysses_num_seq[get_sp_group().rank_in_group], self.head_dim*self.num_heads), dtype=hidden_states.dtype, device=hidden_states.device)
 
         if dist.get_rank() == 0:
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
@@ -238,7 +238,6 @@ class LlamaAttention(nn.Module):
         if dist.get_rank() == 0:
             print(f"output {output.shape}")
 
-        output = hidden_states
         return output
 
 
@@ -422,7 +421,7 @@ class LlamaModel(nn.Module):
             layer = self.layers[i]
             if dist.get_rank() == 0:
                 print(f"layer {i}")
-            hidden_states, residual = layer(positions, hidden_states,
+            hidden_states_sequence, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
