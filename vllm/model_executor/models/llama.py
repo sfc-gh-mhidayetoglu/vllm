@@ -193,11 +193,12 @@ class LlamaAttention(nn.Module):
         SP = get_sp_group().world_size
         TP = get_tp_group().world_size
         PP = get_pp_group().world_size
-        N = N * SP
-        d = d * TP
-        # N_ulysses = N // get_
-        # if N % get_sp_group().world_size:
-        #    N_ulysses += 1
+
+        N_ulysses = N // SP
+        if N % SP:
+            N_ulysses += 1
+        N = N_ulysses * SP
+        hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         # ulysses_num_seq = [N // get_sp_group().world_size] * get_sp_group().world_size
         # for i in range(N % get_sp_group().world_size):
         #     ulysses_num_seq[i] += 1
@@ -217,7 +218,7 @@ class LlamaAttention(nn.Module):
             print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
 
-        qkv, _ = self.qkv_proj(hidden_states)
+        qkv, _ = self.qkv_proj(hidden_states_ulysses)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
 
@@ -225,14 +226,14 @@ class LlamaAttention(nn.Module):
         k_ = torch.ones((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.ones((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
-        # dist.all_to_all_single([q, k, v], [q_, k_, v_], group=get_sp_group().device_group)
-        # dist.all_to_all([q1, q2, q3, q4], [q1_, q2_, q3_, q4_], group=get_sp_group().device_group)
-        # dist.all_to_all([k1, k2, k3, k4], [k1_, k2_, k3_, k4_], group=get_sp_group().device_group)
-        # dist.all_to_all([v1, v2, v3, v4], [v1_, v2_, v3_, v4_], group=get_sp_group().device_group)
+        # dist.all_to_all_single([q_1, q_2, q_3], [q1, q2, q2], group=get_sp_group().device_group)
+        # dist.all_to_all_single([k_1, k_2, k_3], [k1, k2, k2], group=get_sp_group().device_group)
+        # dist.all_to_all_single([v_1, v_2, v_3], [v1, v2, v2], group=get_sp_group().device_group)
+
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
         c = torch.empty((SP, N//SP, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        dist.all_to_all_single(attn_output, c, group=get_sp_group().device_group)
+        dist.all_to_all_single(c, attn_output, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape((N//SP, d//TP))
 
         if dist.get_rank() == 0:
@@ -430,9 +431,9 @@ class LlamaModel(nn.Module):
             layer = self.layers[i]
             if dist.get_rank() == 0:
                 print(f"layer {i}")
-            hidden_states_ulysses, residual = layer(positions, hidden_states_ulysses,
-                                              kv_caches[i - self.start_layer],
-                                              attn_metadata, residual)
+            hidden_states, residual = layer(positions, hidden_states,
+                                            kv_caches[i - self.start_layer],
+                                            attn_metadata, residual)
 
         # torch.cuda.synchronize()
         # P.barrier()
