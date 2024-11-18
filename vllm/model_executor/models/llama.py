@@ -120,10 +120,10 @@ class LlamaAttention(nn.Module):
         super().__init__()
         self.hidden_size = hidden_size
         tp_size = get_tp_group().world_size
-        sp_size = get_sp_group().world_size
+        # sp_size = get_sp_group().world_size
         self.total_num_heads = num_heads
-        assert self.total_num_heads % tp_size  == 0
-        self.num_heads = self.total_num_heads // tp_size
+        assert self.total_num_heads % tp_size == 0
+        self.num_heads = self.num_heads // tp_size
         self.total_num_kv_heads = num_kv_heads
         if self.total_num_kv_heads >= tp_size:
             # Number of KV heads is greater than TP size, so we partition
@@ -202,15 +202,12 @@ class LlamaAttention(nn.Module):
             print(f"llama attention hidden_states_full {hidden_states_full.shape}, hidden_states_ulysses {hidden_states_ulysses.shape}")
 
         qkv, _ = self.qkv_proj(hidden_states_ulysses)
-        # q_ulysses, k_ulysses, v_ulysses = qkv.split([self.q_size, self.kv_size, self.kv_size] * get_sp_group().world_size, dim=-1)
-        if dist.get_rank() == 0:
-            # print(f"llama attention after qkv_proj qkv {qkv.shape} q {q.shape}, k {k.shape}, v {v.shape}")
-            # print(f"self.q_size {self.q_ulysses_size}, self.kv_size {self.kv_size}")
-            print(f"llama attention qkv {qkv.shape}")
-        return hidden_states_full
+        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         if dist.get_rank() == 0:
-            print(f"llama attention after rotary_emb q {q.shape}, k {k.shape}")
+            # print(f"llama attention after qkv_proj qkv {qkv.shape} q {q.shape}, k {k.shape}, v {v.shape}")
+            print(f"llama attention qkv {qkv.shape} q {q.shape}, k {k.shape}, v {v.shape}")
+        return hidden_states_full
         #  torch.cuda.synchronize()
         # get_world_group().barrier()
         # exit()
