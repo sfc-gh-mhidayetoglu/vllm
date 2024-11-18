@@ -190,10 +190,11 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         N, d = hidden_states.shape
-
-        N_ulysses = N//get_sp_group().world_size
-        if get_sp_group().rank_in_group < N % get_sp_group().world_size:
-            N_ulysses += 1  
+        N_ulysses_list = [N // get_sp_group().world_size] * get_sp_group().world_size
+        for i in range(N % get_sp_group().world_size):
+            N_ulysses_list[i] += 1
+            print(f"N_ulysses_list: {N_ulysses_list}")
+        N_ulysses = N_ulysses_list[get_sp_group().rank_in_group]
         hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
             print(f"N {N}, d {d}")
@@ -214,11 +215,6 @@ class LlamaAttention(nn.Module):
         k_ = torch.ones((N, self.head_dim*self.num_kv_heads//get_sp_group().world_size), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.ones((N, self.head_dim*self.num_kv_heads//get_sp_group().world_size), dtype=hidden_states.dtype, device=hidden_states.device)
         # dist.all_to_all([q, k, v], [q_, k_, v_], group=get_sp_group().device_group)
-
-        N_ranks = list(range(get_sp_group().world_size))
-        dist.all_gather_into_one(N_ranks, torch.tensor(N), group=get_sp_group().cpu_group)
-        if dist.get_rank() == 0:
-            print(f"N_ranks {N_ranks}")
 
         # dist.all_to_all([q1, q2, q3, q4], [q1_, q2_, q3_, q4_], group=get_sp_group().device_group)
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
