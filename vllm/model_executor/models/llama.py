@@ -195,13 +195,13 @@ class LlamaAttention(nn.Module):
 
         N, d = hidden_states.shape
         N_ulysses = N // SP
-        if N % SP:
+        if get_sp_group().rank_in_group < N % SP:
             N_ulysses += 1
-        N = N_ulysses * SP
+        # N = N_ulysses * SP
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
 
-        hidden_states_ulysses = torch.ones((N//SP, d), dtype=hidden_states.dtype, device=hidden_states.device)
+        hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
             print(f"N {N}, d {d} d_kv {d_kv}")
             print(f"TP {TP}, SP {SP}, PP {PP}")
@@ -225,9 +225,9 @@ class LlamaAttention(nn.Module):
 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
-        c = torch.empty((SP, N//SP, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        dist.all_to_all_single(c, attn_output, group=get_sp_group().device_group)
-        c = torch.transpose(c, 0, 1).reshape((N//SP, d//TP))
+        c = torch.empty((SP, N_ulysses, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        # dist.all_to_all_single(c, attn_output, group=get_sp_group().device_group)
+        c = torch.transpose(c, 0, 1).reshape((N_ulysses, d//TP))
 
         if dist.get_rank() == 0:
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
