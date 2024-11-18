@@ -201,7 +201,7 @@ class LlamaAttention(nn.Module):
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
             print(f"llama attention hidden_states_full {hidden_states_full.shape}, hidden_states_ulysses {hidden_states_ulysses.shape}")
 
-        qkv, _ = self.qkv_proj(hidden_states_ulysses)
+        qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         if dist.get_rank() == 0:
             print(f"llama attention after qkv_proj q {q.shape}, k {k.shape}, v {v.shape}")
@@ -220,7 +220,7 @@ class LlamaAttention(nn.Module):
         # all-to-all (SP)
         output, _ = self.o_proj(attn_output)
         if dist.get_rank() == 0:
-            print(f"llama attn_output {attn_output.shape}, output {output.shape}")
+            print(f"llama attn_output {attn_output.shape}, o_proj output {output.shape}")
         return output
 
 
