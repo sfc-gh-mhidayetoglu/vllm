@@ -189,11 +189,11 @@ class LlamaAttention(nn.Module):
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
-        N, d = hidden_states.shape
         SP = get_sp_group().world_size
         TP = get_tp_group().world_size
         PP = get_pp_group().world_size
 
+        N, d = hidden_states.shape
         N_ulysses = N // SP
         if N % SP:
             N_ulysses += 1
@@ -201,21 +201,11 @@ class LlamaAttention(nn.Module):
         d = d * TP
 
         hidden_states_ulysses = torch.ones((N//SP, d//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        # ulysses_num_seq = [N // get_sp_group().world_size] * get_sp_group().world_size
-        # for i in range(N % get_sp_group().world_size):
-        #     ulysses_num_seq[i] += 1
-        # ulysses_seq_displ = [0] * len(ulysses_num_seq)
-        # for i in range(1, len(ulysses_num_seq)):
-        #     ulysses_seq_displ[i] = ulysses_seq_displ[i - 1] + ulysses_num_seq[i - 1]
-        # if dist.get_rank() == 0:
-        #     print(f"ulysses_num_seq {ulysses_num_seq}")
-        #     print(f"ulysses_seq_displ {ulysses_seq_displ}")
-        # N_ulysses = ulysses_num_seq[get_sp_group().rank_in_group]
-        # hidden_states_ulysses = torch.ones((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
             print(f"N {N}, d {d}")
             print(f"TP {TP}, SP {SP}, PP {PP}")
             print(f"self.hidden_size {self.hidden_size}, self.total_num_heads {self.total_num_heads}, self.total_num_kv_heads {self.total_num_kv_heads}")
+            print(f"hidden_states {hidden_states.shape}, hidden_states_ulysses {hidden_states_ulysses.shape}")
             print(f"self.num_heads {self.num_heads}, self.head_dim {self.head_dim}, self.scaling {self.scaling}, self.num_kv_heads {self.num_kv_heads}")
             print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
