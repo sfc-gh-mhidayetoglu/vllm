@@ -195,7 +195,8 @@ class LlamaAttention(nn.Module):
 
         N, d = hidden_states.shape
         N_ulysses = N // SP
-        if get_sp_group().rank_in_group < N % SP:
+        # if get_sp_group().rank_in_group < N % SP:
+        if N % SP:
             N_ulysses += 1
         N = N_ulysses * SP
         d = self.total_num_heads * self.head_dim
