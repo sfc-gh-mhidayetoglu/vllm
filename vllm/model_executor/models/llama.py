@@ -215,7 +215,10 @@ class LlamaAttention(nn.Module):
         q_ = torch.empty((N, self.head_dim * (self.total_num_heads // (get_tp_group().world_size * get_sp_group().world_size))), dtype=hidden_states.dtype, device=hidden_states.device)
         k_ = torch.empty((N, self.head_dim * (self.total_num_kv_heads // (get_tp_group().world_size * get_sp_group().world_size))), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.empty((N, self.head_dim * (self.total_num_kv_heads // (get_tp_group().world_size * get_sp_group().world_size))), dtype=hidden_states.dtype, device=hidden_states.device)
-        attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
+        if dist.get_rank() == 0:
+            print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
+            print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
+        attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         # attn_output = hidden_states_full
         # all-to-all (SP)
         output, _ = self.o_proj(attn_output)
