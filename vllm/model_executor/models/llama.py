@@ -229,13 +229,17 @@ class LlamaAttention(nn.Module):
         if dist.get_rank() == 0:
             print(f"qkv {qkv.shape} N_displ {N_displ}")
 
-        q_cat = torch.cat([q[:,i*d//TP//SP:(i+1)*d//TP//SP] for i in range(SP)], dim=1)
+        q_cat = torch.cat([q[:,i*d//TP//SP:(i+1)*d//TP//SP] for i in range(SP)])
+        k_cat = torch.cat([k[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)])
+        v_cat = torch.cat([v[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)])
+
         if dist.get_rank() == 0:
-            print(f"q_cat {q_cat.shape}")
-            print(f"is contigous {q_cat.is_contiguous()}")
-        q_sendlist = [q[:,i*d//TP//SP:(i+1)*d//TP//SP] for i in range(SP)]
-        k_sendlist = [k[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)]
-        v_sendlist = [v[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)]
+            print(f"q_cat {q_cat.shape} is contigous {q_cat.is_contiguous()}")
+            print(f"k_cat {k_cat.shape} is contigous {k_cat.is_contiguous()}")
+            print(f"v_cat {v_cat.shape} is contigous {v_cat.is_contiguous()}")
+        q_sendlist = torch.chunk(q_cat, SP)
+        k_sendlist = torch.chunk(k_cat, SP)
+        v_sendlist = torch.chunk(v_cat, SP)
 
         q_recvlist = [q_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
         k_recvlist = [k_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
@@ -248,7 +252,7 @@ class LlamaAttention(nn.Module):
                 print(f"q_sendlist[{i}] shape: {q_slice.shape}")
             for i, q_slice in enumerate(q_recvlist):
                 print(f"q_recvlist[{i}] shape: {q_slice.shape}")
-        # print(f"q_sendlist {q_sendlist}")
+        print(f"q_sendlist {q_sendlist}")
         # print(f"q_recvlist {q_recvlist}")
 
         # dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
