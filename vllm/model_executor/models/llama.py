@@ -246,13 +246,11 @@ class LlamaAttention(nn.Module):
         # print(f"q_sendlist {q_sendlist}")
         # print(f"q_recvlist {q_recvlist}")
 
-        dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
+        # dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
         # dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
         # dist.all_to_all(v_recvlist, v_sendlist, group=get_sp_group().device_group)
 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
-
-        return hidden_states
 
         c_ = torch.transpose(attn_output, 0, 1).contiguous()
         if dist.get_rank() == 0:
