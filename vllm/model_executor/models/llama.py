@@ -223,8 +223,12 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all_single([k_1, k_2, k_3], [k1, k2, k2], group=get_sp_group().device_group)
         # dist.all_to_all_single([v_1, v_2, v_3], [v1, v2, v2], group=get_sp_group().device_group)
 
+        N_ranks = [N//SP] * SP
+        N_ranks[:N % SP] += 1
+
         if get_sp_group().rank == 0:
             print(f"attn_metadata {attn_metadata}")
+            print("N_ranks", N_ranks)
 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
