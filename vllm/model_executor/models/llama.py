@@ -195,8 +195,7 @@ class LlamaAttention(nn.Module):
 
         N, d = hidden_states.shape
         N_ulysses = N // SP
-        # if get_sp_group().rank_in_group < N % SP:
-        if N % SP:
+        if get_sp_group().rank_in_group < N % SP:
             N_ulysses += 1
         # N = N_ulysses * SP
         d = self.total_num_heads * self.head_dim
@@ -223,6 +222,9 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all_single([q_1, q_2, q_3], [q1, q2, q2], group=get_sp_group().device_group)
         # dist.all_to_all_single([k_1, k_2, k_3], [k1, k2, k2], group=get_sp_group().device_group)
         # dist.all_to_all_single([v_1, v_2, v_3], [v1, v2, v2], group=get_sp_group().device_group)
+
+        if get_sp_group().rank == 0:
+            print(f"attn_metadata {attn_metadata}")
 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
