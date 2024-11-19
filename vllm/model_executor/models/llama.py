@@ -259,7 +259,7 @@ class LlamaAttention(nn.Module):
         # print(f"q_sendlist {q_sendlist}")
         # print(f"q_recvlist {q_recvlist}")
 
-        dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
+        # dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
         # dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
         # dist.all_to_all(v_recvlist, v_sendlist, group=get_sp_group().device_group)
 
