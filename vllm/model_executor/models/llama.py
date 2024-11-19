@@ -258,14 +258,15 @@ class LlamaAttention(nn.Module):
 
         # torch.cuda.synchronize()
         # dist.barrier()
-        sendbuf_TP = torch.ones((TP, 5), dtype=torch.float32, device=hidden_states.device)
-        recvbuf_TP = torch.empty_like(sendbuf_TP)
+        # sendbuf_TP = torch.ones((TP, 5), dtype=torch.float32, device=hidden_states.device)
+        # recvbuf_TP = torch.empty_like(sendbuf_TP)
         # dist.all_to_all_single(recvbuf_TP, sendbuf_TP, group=group_TP)
         # dist.all_reduce(q, group=group_TP)
         # dist.all_reduce(q, group_SP)
         # get_tp_group().all_reduce(q)
         # dist.all_reduce(q, group=get_tp_group().device_group)
-        dist.all_to_all_single(recvbuf_TP, sendbuf_TP, group=get_tp_group().device_group)
+        # dist.all_to_all_single(recvbuf_TP, sendbuf_TP, group=get_tp_group().device_group)
+        dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
 
         # torch.cuda.synchronize()
         # dist.barrier()
