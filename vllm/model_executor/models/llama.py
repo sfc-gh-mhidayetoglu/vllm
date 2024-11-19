@@ -229,6 +229,10 @@ class LlamaAttention(nn.Module):
         if dist.get_rank() == 0:
             print(f"qkv {qkv.shape} N_displ {N_displ}")
 
+        q_cat = torch.cat([q[:,i*d//TP//SP:(i+1)*d//TP//SP] for i in range(SP)], dim=0)
+        if dist.get_rank() == 0:
+            print(f"q_cat {q_cat.shape}")
+            print(f"is contigous {q_cat.is_contiguous()}")
         q_sendlist = [q[:,i*d//TP//SP:(i+1)*d//TP//SP] for i in range(SP)]
         k_sendlist = [k[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)]
         v_sendlist = [v[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)]
@@ -238,11 +242,12 @@ class LlamaAttention(nn.Module):
         v_recvlist = [v_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
 
 
-        print(f"myid {dist.get_rank()}, TP id {get_tp_group().rank_in_group}, SP id {get_sp_group().rank_in_group}")
-        for i, q_slice in enumerate(q_sendlist):
-            print(f"q_sendlist[{i}] shape: {q_slice.shape}")
-        for i, q_slice in enumerate(q_recvlist):
-            print(f"q_recvlist[{i}] shape: {q_slice.shape}")
+        if dist.get_rank() == 0:
+            print(f"myid {dist.get_rank()}, TP id {get_tp_group().rank_in_group}, SP id {get_sp_group().rank_in_group}")
+            for i, q_slice in enumerate(q_sendlist):
+                print(f"q_sendlist[{i}] shape: {q_slice.shape}")
+            for i, q_slice in enumerate(q_recvlist):
+                print(f"q_recvlist[{i}] shape: {q_slice.shape}")
         # print(f"q_sendlist {q_sendlist}")
         # print(f"q_recvlist {q_recvlist}")
 
