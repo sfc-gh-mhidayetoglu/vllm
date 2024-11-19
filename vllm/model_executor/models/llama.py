@@ -248,9 +248,11 @@ class LlamaAttention(nn.Module):
         ranks_SP = [i * TP + dist.get_rank() % TP for i in range(SP)]
 
         print(f"my rank {dist.get_rank()} TP ranks: {ranks_TP} SP ranks: {ranks_SP}")
-        # print(f"my rank {dist.get_rank()} SP ranks: {ranks_SP}")
-        # group_TP = dist.new_group(ranks_TP, backend="nccl", use_local_synchronization=True)
-        # group_SP = dist.new_group(ranks_SP, backend="nccl", use_local_synchronization=True)
+        group_TP = dist.new_group(ranks_TP, backend="nccl", use_local_synchronization=True)
+        group_SP = dist.new_group(ranks_SP, backend="nccl", use_local_synchronization=True)
+
+        if dist.get_rank() == 0:
+            print(f"groups are created")
 
         if dist.get_rank() == 0:
             print(f"end of attention")
