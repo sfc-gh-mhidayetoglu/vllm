@@ -245,6 +245,9 @@ class LlamaAttention(nn.Module):
         k_recvlist = [k_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
         v_recvlist = [v_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
 
+        if dist.get_rank() == 0:
+            print(f"type of q_sendlist: {type(q_sendlist)}")
+            print(f"type of q_recvlist: {type(q_recvlist)}")
 
         if dist.get_rank() == 0:
             print(f"myid {dist.get_rank()}, TP id {get_tp_group().rank_in_group}, SP id {get_sp_group().rank_in_group}")
@@ -252,6 +255,7 @@ class LlamaAttention(nn.Module):
                 print(f"q_sendlist[{i}] shape: {q_slice.shape}")
             for i, q_slice in enumerate(q_recvlist):
                 print(f"q_recvlist[{i}] shape: {q_slice.shape}")
+
         # print(f"q_sendlist {q_sendlist}")
         # print(f"q_recvlist {q_recvlist}")
 
