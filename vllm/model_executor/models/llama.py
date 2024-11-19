@@ -244,15 +244,15 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
 
         # initialize group communicator
-        ranks_TP = [dist.get_rank()//TP * TP + i for i in range(TP)]
-        ranks_SP = [i * TP + dist.get_rank() % TP for i in range(SP)]
+        # ranks_TP = [dist.get_rank()//TP * TP + i for i in range(TP)]
+        # ranks_SP = [i * TP + dist.get_rank() % TP for i in range(SP)]
 
-        print(f"my rank {dist.get_rank()} TP ranks: {ranks_TP} SP ranks: {ranks_SP}")
-        group_TP = dist.new_group(ranks_TP, backend="nccl", use_local_synchronization=True)
-        group_SP = dist.new_group(ranks_SP, backend="nccl", use_local_synchronization=True)
+        # print(f"my rank {dist.get_rank()} TP ranks: {ranks_TP} SP ranks: {ranks_SP}")
+        # group_TP = dist.new_group(ranks_TP, backend="nccl", use_local_synchronization=True)
+        # group_SP = dist.new_group(ranks_SP, backend="nccl", use_local_synchronization=True)
 
-        if dist.get_rank() == 0:
-            print(f"groups are created")
+        # if dist.get_rank() == 0:
+        #     print(f"groups are created")
 
         # torch.cuda.synchronize()
         # dist.barrier()
