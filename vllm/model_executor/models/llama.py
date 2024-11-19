@@ -226,21 +226,20 @@ class LlamaAttention(nn.Module):
         k_ = torch.ones((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.ones((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
-
         if dist.get_rank() == 0:
-            print(f"N_displ {N_displ}")
+            print(f"qkv {qkv.shape} N_displ {N_displ}")
 
-        q_sendlist = [q[:,i*d//TP//SP : (i+1)*d//TP//SP] for i in range(SP)]
-        k_sendlist = [k[:,i*d_kv//TP//SP : (i+1)*d_kv//TP//SP] for i in range(SP)]
-        v_sendlist = [v[:,i*d_kv//TP//SP : (i+1)*d_kv//TP//SP] for i in range(SP)]
+        q_sendlist = [q[:,i*d//TP//SP:(i+1)*d//TP//SP] for i in range(SP)]
+        k_sendlist = [k[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)]
+        v_sendlist = [v[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)]
 
         q_recvlist = [q_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
         k_recvlist = [k_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
         v_recvlist = [v_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
 
-        dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
-        dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
-        dist.all_to_all(v_recvlist, v_sendlist, group=get_sp_group().device_group)
+        # dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
+        # dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
+        # dist.all_to_all(v_recvlist, v_sendlist, group=get_sp_group().device_group)
 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
