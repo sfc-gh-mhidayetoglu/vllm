@@ -238,7 +238,7 @@ class LlamaAttention(nn.Module):
         v_recvlist = [v_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
 
         dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
-        # dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
+        dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
         # dist.all_to_all(v_recvlist, v_sendlist, group=get_sp_group().device_group)
 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
