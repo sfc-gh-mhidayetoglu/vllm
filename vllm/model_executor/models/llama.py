@@ -254,6 +254,8 @@ class LlamaAttention(nn.Module):
         # if dist.get_rank() == 0:
         #     print(f"groups are created")
 
+        print(f"myid {dist.get_rank()}, TP id {get_tp_group().rank_in_group}, SP id {get_sp_group().rank_in_group} TP_ranks {get_tp_group().ranks}, SP_ranks {get_sp_group().ranks}")
+
         # torch.cuda.synchronize()
         # dist.barrier()
         sendbuf_TP = torch.ones((TP, 5), dtype=torch.float32, device=hidden_states.device)
