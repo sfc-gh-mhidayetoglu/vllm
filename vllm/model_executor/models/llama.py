@@ -224,19 +224,23 @@ class LlamaAttention(nn.Module):
         q, k = self.rotary_emb(positions, q, k)
 
         # receive buffers
-        q = torch.transpose(q.reshape((N_ulysses, SP, d//SP//TP)), 0, 1)
-        k = torch.transpose(k.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1)
-        v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1)
+        q = torch.transpose(q.reshape((N_ulysses, SP, d//SP//TP)), 0, 1).contiguous()
+        k = torch.transpose(k.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
+        v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
+
+        q_ = torch.empty((N_ulysses * SP, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        k_ = torch.empty((N_ulysses * SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        v_ = torch.empty((N_ulysses * SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
         if dist.get_rank() == 0:
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
             print(f"is contigous q {q.is_contiguous()}, k {k.is_contiguous()}, v {v.is_contiguous()}")
             print(f"qkv {qkv.shape}")
 
-        q_ = torch.ones((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        k_ = torch.ones((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        v_ = torch.ones((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-
+        q_ = torch.narrow(q_, 0, N)
+        k_ = torch.narrow(k_, 0, N)
+        v_ = torch.narrow(v_, 0, N)
+        
         '''if dist.get_rank() == 0:
             print(f"qkv {qkv.shape} N_displ {N_displ}")
 
