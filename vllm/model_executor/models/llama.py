@@ -202,7 +202,7 @@ class LlamaAttention(nn.Module):
                 N_temp += 1
             N_displ[i+1] = N_displ[i] + N_temp
 
-        N_ulysses = N_displ[get_sp_group().rank+1] - N_displ[get_sp_group().rank]
+        N_ulysses = N_displ[get_sp_group().rank_in_group+1] - N_displ[get_sp_group().rank_in_group]
         # N = N_ulysses * SP
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
