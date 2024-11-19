@@ -230,6 +230,7 @@ class LlamaAttention(nn.Module):
 
         if dist.get_rank() == 0:
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
+            print(f"is contigous q {q.is_contiguous()}, k {k.is_contiguous()}, v {v.is_contiguous()}")
             print(f"qkv {qkv.shape}")
 
         q_ = torch.ones((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
