@@ -245,7 +245,7 @@ class LlamaAttention(nn.Module):
 
         print(f"myid {dist.get_rank()}, TP id {get_tp_group().rank_in_group}, SP id {get_sp_group().rank_in_group}")
 
-        # dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
+        dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
         # dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
         # dist.all_to_all(v_recvlist, v_sendlist, group=get_sp_group().device_group)
 
