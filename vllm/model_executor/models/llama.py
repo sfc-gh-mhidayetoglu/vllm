@@ -229,7 +229,7 @@ class LlamaAttention(nn.Module):
         if dist.get_rank() == 0:
             print(f"qkv {qkv.shape} N_displ {N_displ}")
 
-        q_cat = torch.cat([q[:,i*d//TP//SP:(i+1)*d//TP//SP] for i in range(SP)], dim=0)
+        q_cat = torch.cat([q[:,i*d//TP//SP:(i+1)*d//TP//SP] for i in range(SP)], dim=1)
         if dist.get_rank() == 0:
             print(f"q_cat {q_cat.shape}")
             print(f"is contigous {q_cat.is_contiguous()}")
