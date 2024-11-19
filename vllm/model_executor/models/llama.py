@@ -310,7 +310,7 @@ class LlamaAttention(nn.Module):
         if dist.get_rank() == 0:
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
             print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
-            print(f"attn_output {attn_output.shape}")
+            # print(f"attn_output {attn_output.shape}")
             print(f"c {c.shape}")
 
         output, _ = self.o_proj(c)
