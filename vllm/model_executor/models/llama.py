@@ -246,7 +246,7 @@ class LlamaAttention(nn.Module):
         # initialize group communicator
         ranks_TP = [i for i in range(dist.get_world_size()) if i // TP == dist.get_rank() // TP]
         ranks_SP = [i for i in range(dist.get_world_size()) if i // SP == dist.get_rank() // SP]
-        if dist.get_rank() == root_rank:
+        if dist.get_rank() == 0:
             print("TP ranks: " + str(ranks_TP))
             print("SP ranks: " + str(ranks_SP))
         group_TP = dist.new_group(ranks_TP, backend="nccl", use_local_synchronization=True)
