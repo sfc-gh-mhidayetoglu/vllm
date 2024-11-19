@@ -254,6 +254,11 @@ class LlamaAttention(nn.Module):
         if dist.get_rank() == 0:
             print(f"groups are created")
 
+        dist.all_to_all_single(q_, q, group=group_SP)
+
+        if dist.get_rank() == 0:
+            print(f"communication completed")
+
         if dist.get_rank() == 0:
             print(f"end of attention")
 
