@@ -224,7 +224,8 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all_single([v_1, v_2, v_3], [v1, v2, v2], group=get_sp_group().device_group)
 
         N_ranks = [N//SP] * SP
-        N_ranks[:N % SP] += 1
+        for i in range(N % SP):
+            N_ranks[i] += 1
 
         if get_sp_group().rank == 0:
             print(f"attn_metadata {attn_metadata}")
