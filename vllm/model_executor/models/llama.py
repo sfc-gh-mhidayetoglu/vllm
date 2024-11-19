@@ -237,9 +237,9 @@ class LlamaAttention(nn.Module):
             print(f"q_cat {q_cat.shape} is contigous {q_cat.is_contiguous()}")
             print(f"k_cat {k_cat.shape} is contigous {k_cat.is_contiguous()}")
             print(f"v_cat {v_cat.shape} is contigous {v_cat.is_contiguous()}")
-        q_sendlist = torch.chunk(q_cat, SP)
-        k_sendlist = torch.chunk(k_cat, SP)
-        v_sendlist = torch.chunk(v_cat, SP)
+        q_sendlist = [q_cat[i*N_ulysses:(i+1)*N_ulysses] for i in range(SP)]
+        k_sendlist = [k_cat[i*N_ulysses:(i+1)*N_ulysses] for i in range(SP)]
+        v_sendlist = [v_cat[i*N_ulysses:(i+1)*N_ulysses] for i in range(SP)]
 
         q_recvlist = [q_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
         k_recvlist = [k_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
