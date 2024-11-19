@@ -229,9 +229,9 @@ class LlamaAttention(nn.Module):
         v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
 
         # receive buffers
-        q_ = torch.empty((N_ulysses * SP, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        k_ = torch.empty((N_ulysses * SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        v_ = torch.empty((N_ulysses * SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        q_ = torch.empty((SP, N_ulysses, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        k_ = torch.empty((SP, N_ulysses, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        v_ = torch.empty((SP, N_ulysses, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
         if dist.get_rank() == 0:
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
@@ -240,13 +240,13 @@ class LlamaAttention(nn.Module):
             print(f"qkv {qkv.shape}")
         
         dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
-        dist.all_to_all_single(k_, k, group=get_sp_group().device_group)
-        dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
+        # dist.all_to_all_single(k_, k, group=get_sp_group().device_group)
+        # dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
 
         # narrow the tensors
-        q_ = torch.narrow(q_, 0, 0, N)
-        k_ = torch.narrow(k_, 0, 0, N)
-        v_ = torch.narrow(v_, 0, 0, N)
+        q_ = torch.narrow(q_.reshape(N_ulysses * SP, d//SP//TP), 0, 0, N)
+        k_ = torch.narrow(k_.reshape(N_ulysses * SP, d_kv//SP//TP), 0, 0, N)
+        v_ = torch.narrow(v_.reshape(N_ulysses * SP, d_kv//SP//TP), 0, 0, N)
         
         '''if dist.get_rank() == 0:
             print(f"qkv {qkv.shape} N_displ {N_displ}")
