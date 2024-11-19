@@ -245,7 +245,7 @@ class LlamaAttention(nn.Module):
 
         # initialize group communicator
         ranks_TP = [i for i in range(dist.get_world_size()) if i // TP == dist.get_rank() // TP]
-        ranks_SP = [i for i in range(dist.get_world_size()) if i % SP == dist.get_rank() % SP]
+        ranks_SP = [[i * TP + j for j in range(TP)] for i in range(SP)]
         if dist.get_rank() == 0:
             print("TP ranks: " + str(ranks_TP))
             print("SP ranks: " + str(ranks_SP))
