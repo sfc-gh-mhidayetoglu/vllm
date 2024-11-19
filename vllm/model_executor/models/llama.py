@@ -239,9 +239,20 @@ class LlamaAttention(nn.Module):
             print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"qkv {qkv.shape}")
         
-        dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
+        # dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
         # dist.all_to_all_single(k_, k, group=get_sp_group().device_group)
         # dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
+
+        # initialize group communicator
+        ranks_TP = [i for i in range(dist.get_world_size()) if i // TP == dist.get_rank() // TP]
+        ranks_SP = [i for i in range(dist.get_world_size()) if i // SP == dist.get_rank() // SP]
+        if dist.get_rank() == root_rank:
+            print("TP ranks: " + str(ranks_TP))
+            print("SP ranks: " + str(ranks_SP))
+        group_TP = dist.new_group(ranks_TP, backend="nccl", use_local_synchronization=True)
+        group_SP = dist.new_group(ranks_SP, backend="nccl", use_local_synchronization=True)
+
+        dist.all_to_all_single(q_, q, group=group_SP)
 
         # narrow the tensors
         q_ = torch.narrow(q_.reshape(N_ulysses * SP, d//SP//TP), 0, 0, N)
