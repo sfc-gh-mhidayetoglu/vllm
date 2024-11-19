@@ -236,6 +236,7 @@ class LlamaAttention(nn.Module):
         if dist.get_rank() == 0:
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
             print(f"is contigous q {q.is_contiguous()}, k {k.is_contiguous()}, v {v.is_contiguous()}")
+            print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"qkv {qkv.shape}")
         
         dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
