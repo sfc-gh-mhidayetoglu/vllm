@@ -252,7 +252,7 @@ class LlamaAttention(nn.Module):
                 print(f"q_sendlist[{i}] shape: {q_slice.shape}")
             for i, q_slice in enumerate(q_recvlist):
                 print(f"q_recvlist[{i}] shape: {q_slice.shape}")
-        print(f"q_sendlist {q_sendlist}")
+        # print(f"q_sendlist {q_sendlist}")
         # print(f"q_recvlist {q_recvlist}")
 
         # dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
