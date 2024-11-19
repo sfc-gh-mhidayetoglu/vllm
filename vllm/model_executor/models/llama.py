@@ -244,7 +244,7 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
 
         # initialize group communicator
-        ranks_TP = [i for i in range(dist.get_world_size()) if i // TP == dist.get_rank() // TP]
+        ranks_TP = [dist.get_rank()//TP * TP + i for i in range(TP)]
         ranks_SP = [i * TP + dist.get_rank() % TP for i in range(SP)]
 
         print(f"my rank {dist.get_rank()} TP ranks: {ranks_TP} SP ranks: {ranks_SP}")
