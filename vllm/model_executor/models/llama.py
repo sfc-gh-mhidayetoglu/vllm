@@ -194,9 +194,15 @@ class LlamaAttention(nn.Module):
         PP = get_pp_group().world_size
 
         N, d = hidden_states.shape
-        N_ulysses = N // SP
-        if get_sp_group().rank_in_group < N % SP:
-            N_ulysses += 1
+
+        N_displ = [0] * (SP+1)
+        for i in range(SP):
+            N_temp = N // SP
+            if i < N % SP:
+                N_temp += 1
+            N_displ[i+1] = N_displ[i] + N_temp
+
+        N_ulysses = N_displ[get_sp_group().rank+1] - N_displ[get_sp_group().rank]
         # N = N_ulysses * SP
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
@@ -215,21 +221,26 @@ class LlamaAttention(nn.Module):
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
 
+        # receive buffers
         q_ = torch.ones((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         k_ = torch.ones((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.ones((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
-        # dist.all_to_all_single([q_1, q_2, q_3], [q1, q2, q2], group=get_sp_group().device_group)
-        # dist.all_to_all_single([k_1, k_2, k_3], [k1, k2, k2], group=get_sp_group().device_group)
-        # dist.all_to_all_single([v_1, v_2, v_3], [v1, v2, v2], group=get_sp_group().device_group)
 
-        N_ranks = [N//SP] * SP
-        for i in range(N % SP):
-            N_ranks[i] += 1
+        if dist.get_rank() == 0:
+            print(f"N_displ {N_displ}")
 
-        if get_sp_group().rank == 0:
-            print(f"attn_metadata {attn_metadata}")
-            print("N_ranks", N_ranks)
+        q_sendlist = [q[:,i*d//TP//SP : (i+1)*d//TP//SP] for i in range(SP)]
+        k_sendlist = [k[:,i*d_kv//TP//SP : (i+1)*d_kv//TP//SP] for i in range(SP)]
+        v_sendlist = [v[:,i*d_kv//TP//SP : (i+1)*d_kv//TP//SP] for i in range(SP)]
+
+        q_recvlist = [q_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
+        k_recvlist = [k_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
+        v_recvlist = [v_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
+
+        dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
+        dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
+        dist.all_to_all(v_recvlist, v_sendlist, group=get_sp_group().device_group)
 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
