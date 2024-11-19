@@ -252,6 +252,9 @@ class LlamaAttention(nn.Module):
         # group_TP = dist.new_group(ranks_TP, backend="nccl", use_local_synchronization=True)
         # group_SP = dist.new_group(ranks_SP, backend="nccl", use_local_synchronization=True)
 
+        if dist.get_rank() == 0:
+            print(f"end of attention")
+
         return hidden_states
 
         dist.all_to_all_single(q_, q, group=group_SP)
