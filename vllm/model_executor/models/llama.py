@@ -233,6 +233,12 @@ class LlamaAttention(nn.Module):
 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
+        c_ = torch.transpose(attn_output, 0, 1).contiguous()
+        if dist.get_rank() == 0:
+            print(f"attn_output {attn_output.shape}")
+            print(f"c_ {c_.shape}")
+
+    
         c = torch.empty((SP, N_ulysses, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         # dist.all_to_all_single(c, attn_output, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape((N_ulysses, d//TP))
