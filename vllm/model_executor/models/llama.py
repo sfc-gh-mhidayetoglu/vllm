@@ -237,6 +237,10 @@ class LlamaAttention(nn.Module):
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
             print(f"is contigous q {q.is_contiguous()}, k {k.is_contiguous()}, v {v.is_contiguous()}")
             print(f"qkv {qkv.shape}")
+        
+        dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
+        dist.all_to_all_single(k_, k, group=get_sp_group().device_group)
+        dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
 
         # narrow the tensors
         q_ = torch.narrow(q_, 0, 0, N)
