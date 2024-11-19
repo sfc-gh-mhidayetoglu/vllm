@@ -246,8 +246,8 @@ class LlamaAttention(nn.Module):
         # initialize group communicator
         ranks_TP = [i for i in range(dist.get_world_size()) if i // TP == dist.get_rank() // TP]
         ranks_SP = [i * TP + dist.get_rank() % TP for i in range(SP)]
-        print(f"my rank {dist.get_rank()} TP ranks: {ranks_TP}")
-        print(f"my rank {dist.get_rank()} SP ranks: {ranks_SP}")
+        # print(f"my rank {dist.get_rank()} TP ranks: {ranks_TP}")
+        # print(f"my rank {dist.get_rank()} SP ranks: {ranks_SP}")
         group_TP = dist.new_group(ranks_TP, backend="nccl", use_local_synchronization=True)
         group_SP = dist.new_group(ranks_SP, backend="nccl", use_local_synchronization=True)
 
@@ -295,12 +295,12 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
         # dist.all_to_all(v_recvlist, v_sendlist, group=get_sp_group().device_group)'''
 
-        attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
+        # attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
-        c_ = torch.transpose(attn_output, 0, 1).contiguous()
-        if dist.get_rank() == 0:
-            print(f"attn_output {attn_output.shape}")
-            print(f"c_ {c_.shape}")
+        # c_ = torch.transpose(attn_output, 0, 1).contiguous()
+        # if dist.get_rank() == 0:
+        #     print(f"attn_output {attn_output.shape}")
+        #     print(f"c_ {c_.shape}")
 
     
         c = torch.empty((SP, N_ulysses, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
