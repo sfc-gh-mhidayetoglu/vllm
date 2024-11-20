@@ -547,6 +547,11 @@ class LlamaModel(nn.Module):
         hidden_states, _ = self.norm(hidden_states, residual)
         if dist.get_rank() == 0:
             print(f"end of the norm **********************")
+
+        torch.cuda.synchronize()
+        get_world_group().barrier()
+        exit()
+
         return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
