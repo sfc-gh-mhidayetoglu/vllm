@@ -386,7 +386,15 @@ class LlamaModel(nn.Module):
         intermediate_tensors: Optional[IntermediateTensors],
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
-        
+
+
+        torch.cuda.synchronize()
+        get_world_group().barrier()
+        if dist.get_rank() == 0:
+            print("start inference *********************")
+        torch.cuda.synchronize()
+        get_world_group().barrier()
+
         assert inputs_embeds is None
         N = len(input_ids)
         SP = get_sp_group().world_size
