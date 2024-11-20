@@ -220,6 +220,7 @@ class LlamaAttention(nn.Module):
         k = torch.transpose(k.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1)
         v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1)
         qkv = torch.cat([q, k, v], dim=-1)
+        qkv_ = torch.empty((N, (d + 2*d_kv)//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
         # receive buffers
         q_ = torch.empty((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
@@ -230,6 +231,7 @@ class LlamaAttention(nn.Module):
             print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
             print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
             print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
+            print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
 
         dist.all_to_all_single(q_, q, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         dist.all_to_all_single(k_, k, output_split_sizes=N_ranks, group=get_sp_group().device_group)
