@@ -190,24 +190,18 @@ class LlamaAttention(nn.Module):
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
+        
+        # variables for Ulysses attention
         SP = get_sp_group().world_size
         TP = get_tp_group().world_size
-
         N = sum(N_ranks) 
         N_ulysses = N_ranks[get_sp_group().rank_in_group]
         assert N_ulysses == hidden_states.shape[0]
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
         assert hidden_states.shape[1] == d
-        '''if dist.get_rank() == 0:
-            print(f"N {N}, d {d} d_kv {d_kv} N_ranks {N_ranks} N {N}, N_ulysses {N_ulysses}")
-            print(f"PP {PP}, SP {SP}, TP {TP}")
-            print(f"self.hidden_size {self.hidden_size}, self.total_num_heads {self.total_num_heads}, self.total_num_kv_heads {self.total_num_kv_heads}")
-            print(f"hidden_states {hidden_states.shape}")
-            print(f"self.num_heads {self.num_heads}, self.head_dim {self.head_dim}, self.scaling {self.scaling}, self.num_kv_heads {self.num_kv_heads}")
-            print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
-            print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")'''
 
+        # qkv projection
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
@@ -227,13 +221,16 @@ class LlamaAttention(nn.Module):
             print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
             print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
             print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
-        
+
+        # attention 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
+        # communication
         c = torch.empty((SP, N_ulysses, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         dist.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape((N_ulysses, d//TP))
 
+        # output projection
         output, _ = self.o_proj(c)
 
         return output
