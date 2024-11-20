@@ -243,7 +243,7 @@ class LlamaAttention(nn.Module):
         dist.all_to_all_single(k_, k, group=get_sp_group().device_group)
         dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
         
-        attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
+        attn_output = self.attn(q_[:N], k_[:N], v_[:N], kv_cache, attn_metadata)
 
         if dist.get_rank() == 0:
             print(f"attn_output {attn_output.shape}")
