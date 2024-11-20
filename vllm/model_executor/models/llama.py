@@ -203,14 +203,14 @@ class LlamaAttention(nn.Module):
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
         hidden_states_ulysses = torch.zeros((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
-        if dist.get_rank() == 0:
+        ''' if dist.get_rank() == 0:
             print(f"N {N}, d {d} d_kv {d_kv} N_ranks {N_ranks}")
             print(f"TP {TP}, SP {SP}, PP {PP}")
             print(f"self.hidden_size {self.hidden_size}, self.total_num_heads {self.total_num_heads}, self.total_num_kv_heads {self.total_num_kv_heads}")
             print(f"hidden_states {hidden_states.shape}, hidden_states_ulysses {hidden_states_ulysses.shape}")
             print(f"self.num_heads {self.num_heads}, self.head_dim {self.head_dim}, self.scaling {self.scaling}, self.num_kv_heads {self.num_kv_heads}")
             print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
-            print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
+            print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")'''
 
         qkv, _ = self.qkv_proj(hidden_states_ulysses)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
@@ -226,32 +226,17 @@ class LlamaAttention(nn.Module):
         k_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
-        if dist.get_rank() == 0:
-            print(f"q {q.shape}, k {k.shape}, v {v.shape}")
-            print(f"is contigous q {q.is_contiguous()}, k {k.is_contiguous()}, v {v.is_contiguous()}")
-            print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
-            print(f"qkv {qkv.shape}")
-
         dist.all_to_all_single(q_, q, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         dist.all_to_all_single(k_, k, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         dist.all_to_all_single(v_, v, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
-        if dist.get_rank() == 0:
-            print(f"attn_output {attn_output.shape}")
-
         c = torch.empty((SP, N_ulysses, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         dist.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape((N_ulysses, d//TP))
 
-        if dist.get_rank() == 0:
-            print(f"c {c.shape} is contigous {c.is_contiguous()}")
-
         output, _ = self.o_proj(c)
-
-        if dist.get_rank() == 0:
-            print(f"output {output.shape}")
 
         return output
 
