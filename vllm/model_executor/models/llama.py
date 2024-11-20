@@ -216,16 +216,16 @@ class LlamaAttention(nn.Module):
             print(f"original q {q.shape}, k {k.shape}, v {v.shape}")
 
         # send buffers
-        q = torch.transpose(q.reshape((N_ulysses, SP, d//SP//TP)), 0, 1).contiguous()
-        k = torch.transpose(k.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
-        v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
+        q = torch.transpose(q.reshape((N_ulysses, SP, d//SP//TP)), 0, 1)
+        k = torch.transpose(k.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1)
+        v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1)
+        qkv = torch.cat([q, k, v], dim=-1)
 
         # receive buffers
         q_ = torch.empty((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         k_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
-        qkv = torch.cat([q, k, v], dim=-1)
         if dist.get_rank() == 0:
             print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
             print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
