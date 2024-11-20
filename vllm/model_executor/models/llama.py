@@ -296,14 +296,6 @@ class LlamaDecoderLayer(nn.Module):
         residual: Optional[torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
-        # Self Attention
-        if residual is None:
-            residual = hidden_states
-            hidden_states = self.input_layernorm(hidden_states)
-        else:
-            hidden_states, residual = self.input_layernorm(
-                hidden_states, residual)
-    
         N, d = hidden_states.shape
         SP = get_sp_group().world_size
         N_ranks = [N//SP] * SP
@@ -311,10 +303,18 @@ class LlamaDecoderLayer(nn.Module):
             if i < N % SP:
                 N_ranks[i] += 1
         if dist.get_rank() == 0:
-            print(f"llama decoder layer hidden_states {hidden_states.shape}, residual {residual.shape}")
+            print(f"llama decoder layer hidden_states {hidden_states.shape}, residual {residual.shape if residual is not None else None}")
             print(f"llama decoder layer N {N}, d {d} N_ranks {N_ranks}")
         N_ulysses = N_ranks[get_sp_group().rank_in_group]
         hidden_states = torch.zeros((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
+
+        # Self Attention
+        if residual is None:
+            residual = hidden_states
+            hidden_states = self.input_layernorm(hidden_states)
+        else:
+            hidden_states, residual = self.input_layernorm(
+                hidden_states, residual)
 
         hidden_states = self.self_attn(N=N,
                                        positions=positions,
@@ -421,6 +421,8 @@ class LlamaModel(nn.Module):
             print(f"input_ids {input_ids}")
             print(f"positions {positions}")
         torch.set_printoptions(profile="default")
+        if dist.get_rank() == 0:
+            print(f"residual {residual.shape if residual is not None else None}")
 
         # for i in range(self.start_layer, self.end_layer):
         for i in range(self.start_layer, 3):
