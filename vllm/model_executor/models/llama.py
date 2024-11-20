@@ -402,6 +402,12 @@ class LlamaModel(nn.Module):
         if dist.get_rank() == 0:
             print(f"narrowed input_ids {input_ids.shape}")
 
+        torch.cuda.synchronize()
+        get_world_group().barrier()
+        if dist.get_rank() == 0:
+            print("test before get_input_embeddings")
+        torch.cuda.synchronize()
+        get_world_group().barrier()
 
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
@@ -416,10 +422,8 @@ class LlamaModel(nn.Module):
 
         torch.cuda.synchronize()
         get_world_group().barrier()
-
         if dist.get_rank() == 0:
-            print("test")
-
+            print("test after get_input_embeddings")
         torch.cuda.synchronize()
         get_world_group().barrier()
 
