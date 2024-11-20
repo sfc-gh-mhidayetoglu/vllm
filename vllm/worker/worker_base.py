@@ -238,7 +238,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             return None
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"myid {torch.distributed.get_rank()} before broadcast_data in _get_worker_input_from_broadcast", flush=True)
+        print(f"myid {torch.distributed.get_rank()} after broadcast_data in _get_worker_input_from_broadcast", flush=True)
         torch.cuda.synchronize()
         torch.distributed.barrier()
 
