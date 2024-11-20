@@ -391,7 +391,7 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         get_world_group().barrier()
         if dist.get_rank() == 0:
-            print("start inference *********************")
+            print("start inference *********************", flush=True)
         torch.cuda.synchronize()
         get_world_group().barrier()
 
@@ -408,7 +408,7 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         get_world_group().barrier()
         if dist.get_rank() == 0:
-            print("test before get_input_embeddings")
+            print("test before get_input_embeddings", flush=True)
         torch.cuda.synchronize()
         get_world_group().barrier()
 
@@ -431,7 +431,7 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         get_world_group().barrier()
         if dist.get_rank() == 0:
-            print("test after get_input_embeddings")
+            print("test after get_input_embeddings", flush=True)
         torch.cuda.synchronize()
         get_world_group().barrier()
 
