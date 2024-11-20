@@ -413,7 +413,7 @@ class LlamaModel(nn.Module):
         # torch.set_printoptions(profile="full")
         if dist.get_rank() == 0:
             print(f"P {P} TP {TP}, SP {SP}, PP {PP}")
-            print(f"positions {positions.shape} hidden_states {hidden_states.shape} residual {residual.shape}") # if residual is not None else None}")
+            print(f"positions {positions.shape} hidden_states {hidden_states.shape} residual {residual.shape if residual is not None else None}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
         # torch.set_printoptions(profile="default")
 
@@ -445,9 +445,9 @@ class LlamaModel(nn.Module):
         if dist.get_rank() == 0:
             print(f"after all_gather ******************** hidden_states {hidden_states.shape}")
 
-        torch.cuda.synchronize()
-        get_world_group().barrier()
-        exit()
+        # torch.cuda.synchronize()
+        # get_world_group().barrier()
+        # exit()
 
         return hidden_states
 
