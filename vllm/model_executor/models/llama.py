@@ -222,7 +222,9 @@ class LlamaAttention(nn.Module):
         k_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
+        qkv = torch.cat([q, k, v], dim=-1)
         if dist.get_rank() == 0:
+            print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
             print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
             print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
 
