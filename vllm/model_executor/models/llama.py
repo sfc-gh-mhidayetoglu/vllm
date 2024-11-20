@@ -219,7 +219,7 @@ class LlamaAttention(nn.Module):
         q = q.reshape((N_ulysses, SP, d//SP//TP))
         k = k.reshape((N_ulysses, SP, d_kv//SP//TP))
         v = v.reshape((N_ulysses, SP, d_kv//SP//TP))
-        qkv = torch.cat([q, k, v], dim=-1).transpose(0, 1).contiguous()
+        qkv = torch.cat([q, k, v], dim=-1).transpose(0, 1)
         qkv_ = torch.empty((N, (d + 2*d_kv)//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
         dist.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
