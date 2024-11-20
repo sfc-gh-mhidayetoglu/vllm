@@ -254,7 +254,7 @@ class LlamaAttention(nn.Module):
         # if dist.get_rank() == 0:
         #     print(f"groups are created")
 
-        print(f"myid {dist.get_rank()}, TP id {get_tp_group().rank_in_group}, SP id {get_sp_group().rank_in_group}, PP id {get_pp_group().rank_in_group} TP_ranks {get_tp_group().ranks}, SP_ranks {get_sp_group().ranks}, PP_ranks {get_pp_group().ranks}")
+        # print(f"myid {dist.get_rank()}, TP id {get_tp_group().rank_in_group}, SP id {get_sp_group().rank_in_group}, PP id {get_pp_group().rank_in_group} TP_ranks {get_tp_group().ranks}, SP_ranks {get_sp_group().ranks}, PP_ranks {get_pp_group().ranks}")
 
         # torch.cuda.synchronize()
         # dist.barrier()
