@@ -212,17 +212,14 @@ class LlamaAttention(nn.Module):
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
 
-        if dist.get_rank() == 0:
-            print(f"original q {q.shape}, k {k.shape}, v {v.shape}")
-
-        # send buffers
-        q = q.reshape((N_ulysses, SP, d//SP//TP))
-        k = k.reshape((N_ulysses, SP, d_kv//SP//TP))
-        v = v.reshape((N_ulysses, SP, d_kv//SP//TP))
-        qkv = torch.cat([q, k, v], dim=-1).transpose(0, 1)
-        qkv_ = torch.empty((N, (d + 2*d_kv)//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-
+        # pack send buffer
+        qkv = torch.cat([q.view((N_ulysses, SP, d//SP//TP)),
+                         k.view((N_ulysses, SP, d_kv//SP//TP)),
+                         v.view((N_ulysses, SP, d_kv//SP//TP))], dim=-1).transpose(0, 1)
+        qkv_ = torch.empty((N, (d+2*d_kv)//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        # communication
         dist.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
+        # unpack receive buffer
         q_, k_, v_ = qkv_.split([d//SP//TP, d_kv//SP//TP, d_kv//SP//TP], dim=-1)
 
         if dist.get_rank() == 0:
