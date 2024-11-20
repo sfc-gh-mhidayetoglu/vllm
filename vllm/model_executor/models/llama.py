@@ -224,9 +224,9 @@ class LlamaAttention(nn.Module):
         q, k = self.rotary_emb(positions, q, k)
 
         # send buffers
-        q = torch.transpose(q.reshape((N_ulysses, SP, d//SP//TP)), 0, 1).reshape(N_ulysses*SP, d//SP//TP).contiguous()
-        k = torch.transpose(k.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).reshape(N_ulysses*SP, d_kv//SP//TP).contiguous()
-        v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).reshape(N_ulysses*SP, d_kv//SP//TP).contiguous()
+        q = torch.transpose(q.reshape((N_ulysses, SP, d//SP//TP)), 0, 1).contiguous()
+        k = torch.transpose(k.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
+        v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
 
         # receive buffers
         # q_ = torch.empty((N_ulysses*SP, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
