@@ -32,14 +32,14 @@ def broadcast_tensor_dict(tensor_dict: Optional[Dict[Any, Union[torch.Tensor,
 
     torch.cuda.synchronize()
     torch.distributed.barrier()
-    if torch.distributed.get_rank() == src:
+    if torch.distributed.get_rank() == 0:
         print(f"before broadcast_tensor_dict {tensor_dict}") 
     torch.cuda.synchronize()
     torch.distributed.barrier()
     output = get_tp_group().broadcast_tensor_dict(tensor_dict, src)
     torch.cuda.synchronize()
     torch.distributed.barrier()
-    if torch.distributed.get_rank() == src:
+    if torch.distributed.get_rank() == 0:
         print(f"after broadcast_tensor_dict {tensor_dict}") 
     torch.cuda.synchronize()
     torch.distributed.barrier()
