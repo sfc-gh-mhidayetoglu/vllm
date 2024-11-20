@@ -209,7 +209,7 @@ class LlamaAttention(nn.Module):
         # pack send buffer
         qkv = torch.cat([q.view((N_ulysses, SP, d//SP//TP)),
                          k.view((N_ulysses, SP, d_kv//SP//TP)),
-                         v.view((N_ulysses, SP, d_kv//SP//TP))], dim=-1).transpose(0, 1)
+                         v.view((N_ulysses, SP, d_kv//SP//TP))], dim=-1).transpose(0, 1).contiguous()
         qkv_ = torch.empty((N, (d+2*d_kv)//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         # communication
         dist.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
