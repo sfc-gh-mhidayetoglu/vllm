@@ -225,7 +225,6 @@ class LlamaAttention(nn.Module):
         if dist.get_rank() == 0:
             print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
             print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
-            print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
 
         dist.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
@@ -234,9 +233,13 @@ class LlamaAttention(nn.Module):
         # dist.all_to_all_single(v_, v, output_split_sizes=N_ranks, group=get_sp_group().device_group)
 
         # receive buffers
+        q_, k_, v_ = qkv_.split([d//SP//TP, d_kv//SP//TP, d_kv//SP//TP], dim=-1)
         q_ = torch.empty((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         k_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        
+        if dist.get_rank() == 0:
+            print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
         
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
