@@ -296,6 +296,8 @@ class LlamaDecoderLayer(nn.Module):
         attn_metadata: AttentionMetadata,
         residual: Optional[torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        torch.cuda.synchronize()
+        dist.barrier()
         if dist.get_rank() == 0:
             print(f"llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, N_ranks {N_ranks}, kv_cache {kv_cache.shape} residual {residual.shape if residual is not None else None}")
         # Self Attention
@@ -305,6 +307,10 @@ class LlamaDecoderLayer(nn.Module):
         else:
             hidden_states, residual = self.input_layernorm(
                 hidden_states, residual)
+        torch.cuda.synchronize()
+        dist.barrier()
+        if dist.get_rank() == 0:
+            print(f"llama decoder layer input_layernorm hidden_states {hidden_states.shape}, residual {residual.shape}")
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
                                        N_ranks=N_ranks,
