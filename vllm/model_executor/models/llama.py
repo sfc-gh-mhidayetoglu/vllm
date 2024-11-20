@@ -541,8 +541,12 @@ class LlamaModel(nn.Module):
                 "hidden_states": hidden_states,
                 "residual": residual
             })
-
+        
+        if dist.get_rank() == 0:
+            print(f"end of the inference loop ********************")
         hidden_states, _ = self.norm(hidden_states, residual)
+        if dist.get_rank() == 0:
+            print(f"end of the norm **********************")
         return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
