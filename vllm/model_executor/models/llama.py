@@ -243,9 +243,10 @@ class LlamaAttention(nn.Module):
             print(f"qkv {qkv.shape}")
 
         input_split = [N_displ[i+1] - N_displ[i] for i in range(SP)]
-        dist.all_to_all_single(q_, q, input_split=input_split, group=get_sp_group().device_group)
-        dist.all_to_all_single(k_, k, input_split=input_split, group=get_sp_group().device_group)
-        dist.all_to_all_single(v_, v, input_split=input_split, group=get_sp_group().device_group)
+        output_split = [N_ulysses] * SP
+        dist.all_to_all_single(q_, q, input_split_sizes=input_split, group=get_sp_group().device_group)
+        dist.all_to_all_single(k_, k, input_split_sizes=input_split, group=get_sp_group().device_group)
+        dist.all_to_all_single(v_, v, input_split_sizes=input_split, group=get_sp_group().device_group)
         
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
