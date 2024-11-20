@@ -417,8 +417,7 @@ class LlamaModel(nn.Module):
         if P.rank_in_group == 0:
             print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states {hidden_states.shape} residual {residual.shape if residual is not None else None}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
-            print(f"input_ids {input_ids}")
-            print(f"positions {positions}")
+            print(f"input_ids {input_ids.shape}, positions {positions.shape}")
         # torch.set_printoptions(profile="default")
 
         # for i in range(self.start_layer, self.end_layer):
