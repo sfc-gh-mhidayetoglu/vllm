@@ -413,7 +413,7 @@ class LlamaModel(nn.Module):
         # torch.set_printoptions(profile="full")
         if dist.get_rank() == 0:
             print(f"P {P} TP {TP}, SP {SP}, PP {PP}")
-            print(f"positions {positions.shape} hidden_states {hidden_states.shape} residual {residual.shape if residual is not None else None}")
+            print(f"positions {positions.shape} hidden_states {hidden_states.shape} residual {residual.shape}") # if residual is not None else None}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
         # torch.set_printoptions(profile="default")
 
@@ -435,8 +435,9 @@ class LlamaModel(nn.Module):
         hidden_states, _ = self.norm(hidden_states, residual)
 
         if dist.get_rank() == 0:
-            print(f"end of the inference loop ******************** hidden_states {hidden_states.shape}")
+            print(f"end of the sequence-parallel loop ******************** hidden_states {hidden_states.shape}")
 
+        # all-gather sequences
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         dist.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
         hidden_states = torch.cat(hidden_states_list)
