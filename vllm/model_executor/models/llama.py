@@ -229,9 +229,6 @@ class LlamaAttention(nn.Module):
         v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
 
         # receive buffers
-        # q_ = torch.empty((N_ulysses*SP, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        # k_ = torch.empty((N_ulysses*SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        # v_ = torch.empty((N_ulysses*SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         q_ = torch.empty((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         k_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
@@ -242,12 +239,11 @@ class LlamaAttention(nn.Module):
             print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"qkv {qkv.shape}")
 
-        input_split = None #[N_ulysses] * SP
         output_split = [N_displ[i+1] - N_displ[i] for i in range(SP)]
         # print(f"my rank {dist.get_rank()}, input_split {input_split}, output_split {output_split}")
-        dist.all_to_all_single(q_, q, output_split_sizes=output_split, input_split_sizes=input_split, group=get_sp_group().device_group)
-        dist.all_to_all_single(k_, k, output_split_sizes=output_split, input_split_sizes=input_split, group=get_sp_group().device_group)
-        dist.all_to_all_single(v_, v, output_split_sizes=output_split, input_split_sizes=input_split, group=get_sp_group().device_group)
+        dist.all_to_all_single(q_, q, output_split_sizes=output_split, group=get_sp_group().device_group)
+        dist.all_to_all_single(k_, k, output_split_sizes=output_split, group=get_sp_group().device_group)
+        dist.all_to_all_single(v_, v, output_split_sizes=output_split, group=get_sp_group().device_group)
         
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
@@ -265,12 +261,10 @@ class LlamaAttention(nn.Module):
         c = torch.transpose(c, 0, 1).reshape((N_ulysses, d//TP))
 
         if dist.get_rank() == 0:
-            print(f"q {q.shape}, k {k.shape}, v {v.shape}")
-            print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
-            # print(f"attn_output {attn_output.shape}")
             print(f"c {c.shape}")
 
         output, _ = self.o_proj(c)
+        
         if dist.get_rank() == 0:
             print(f"output {output.shape}")
 
