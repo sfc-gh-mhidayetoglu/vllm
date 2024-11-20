@@ -195,17 +195,17 @@ class LlamaAttention(nn.Module):
 
         N, d = hidden_states.shape
 
-        # N_displ = [0] * (SP+1)
-        # for i in range(SP):
-        #     N_temp = N // SP
-        #     if i < N % SP:
-        #         N_temp += 1
-        #     N_displ[i+1] = N_displ[i] + N_temp
+        N_displ = [0] * (SP+1)
+        for i in range(SP):
+            N_temp = N // SP
+            if i < N % SP:
+                N_temp += 1
+            N_displ[i+1] = N_displ[i] + N_temp
 
-        # N_ulysses = N_displ[get_sp_group().rank_in_group+1] - N_displ[get_sp_group().rank_in_group]
+        N_ulysses = N_displ[get_sp_group().rank_in_group+1] - N_displ[get_sp_group().rank_in_group]
         # N = N_ulysses * SP
 
-        N_ulysses = (N + SP - 1) // SP
+        # N_ulysses = (N + SP - 1) // SP
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
 
@@ -229,9 +229,12 @@ class LlamaAttention(nn.Module):
         v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
 
         # receive buffers
-        q_ = torch.empty((N_ulysses*SP, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        k_ = torch.empty((N_ulysses*SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        v_ = torch.empty((N_ulysses*SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        # q_ = torch.empty((N_ulysses*SP, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        # k_ = torch.empty((N_ulysses*SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        # v_ = torch.empty((N_ulysses*SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        q_ = torch.empty((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        k_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        v_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
         if dist.get_rank() == 0:
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
@@ -239,11 +242,12 @@ class LlamaAttention(nn.Module):
             print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"qkv {qkv.shape}")
 
-        dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
-        dist.all_to_all_single(k_, k, group=get_sp_group().device_group)
-        dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
+        input_split = [N_displ[i+1] - N_displ[i] for i in range(SP)]
+        dist.all_to_all_single(q_, q, input_split=input_split, group=get_sp_group().device_group)
+        dist.all_to_all_single(k_, k, input_split=input_split, group=get_sp_group().device_group)
+        dist.all_to_all_single(v_, v, input_split=input_split, group=get_sp_group().device_group)
         
-        attn_output = self.attn(q_[:N], k_[:N], v_[:N], kv_cache, attn_metadata)
+        attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
         if dist.get_rank() == 0:
             print(f"attn_output {attn_output.shape}")
