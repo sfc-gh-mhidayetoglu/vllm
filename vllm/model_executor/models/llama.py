@@ -242,9 +242,9 @@ class LlamaAttention(nn.Module):
             print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"qkv {qkv.shape}")
 
+        input_split = None #[N_ulysses] * SP
         output_split = [N_displ[i+1] - N_displ[i] for i in range(SP)]
-        input_split = [N_ulysses] * SP
-        print(f"my rank {dist.get_rank()}, input_split {input_split}, output_split {output_split}")
+        # print(f"my rank {dist.get_rank()}, input_split {input_split}, output_split {output_split}")
         dist.all_to_all_single(q_, q, output_split_sizes=output_split, input_split_sizes=input_split, group=get_sp_group().device_group)
         dist.all_to_all_single(k_, k, output_split_sizes=output_split, input_split_sizes=input_split, group=get_sp_group().device_group)
         dist.all_to_all_single(v_, v, output_split_sizes=output_split, input_split_sizes=input_split, group=get_sp_group().device_group)
