@@ -234,9 +234,9 @@ class LlamaAttention(nn.Module):
 
         # receive buffers
         q_, k_, v_ = qkv_.split([d//SP//TP, d_kv//SP//TP, d_kv//SP//TP], dim=-1)
-        q_ = torch.empty((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        k_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        v_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        # q_ = torch.empty((N, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        # k_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        # v_ = torch.empty((N, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         
         if dist.get_rank() == 0:
             print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
