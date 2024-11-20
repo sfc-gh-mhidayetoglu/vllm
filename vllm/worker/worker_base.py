@@ -324,7 +324,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                 orig_model_execute_time = intermediate_tensors.tensors.get(
                     "model_execute_time", torch.tensor(0)).item()
 
-        if torch.distributed.get_rank() = 0:
+        if torch.distributed.get_rank() == 0:
             print(f"model start test ************ type of model_input {type(model_input)} type of worker_input {type(worker_input)} type of intermediate_tensors {type(intermediate_tensors)}")
 
         output = self.model_runner.execute_model(
