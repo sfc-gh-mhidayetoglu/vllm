@@ -384,15 +384,16 @@ class LlamaModel(nn.Module):
     ) -> Union[torch.Tensor, IntermediateTensors]:
         
         assert inputs_embeds is None
-        N, d = input_ids.shape
+        N = len(input_ids)
         SP = get_sp_group().world_size
-        SP_rank = get_sp_group().rank_in_group
-        N_ranks = [(N+SP-1)//SP] * SP
-        N_ranks[-1] -= sum(N_ranks) - N
+        N_ranks = [N//SP]*SP
+        for i in range(N % SP):
+            N_ranks[i] += 1
         if dist.get_rank() == 0:
             print(f"input_ids {input_ids.shape}, positions {positions.shape}")
-            print(f"N {N}, d {d} N_ranks {N_ranks}")
+            print(f"N {N}, N_ranks {N_ranks}")
 
+        SP_rank = get_sp_group().rank_in_group
         input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
         if dist.get_rank() == 0:
             print(f"narrowed input_ids {input_ids.shape}")
