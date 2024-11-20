@@ -313,8 +313,6 @@ class LlamaDecoderLayer(nn.Module):
         # Fully Connected
         hidden_states, residual = self.post_attention_layernorm(
             hidden_states, residual)
-        if dist.get_rank() == 0:
-            print(f"llama decoder layer hidden_states {hidden_states.shape}, residual {residual.shape}")
         hidden_states = self.mlp(hidden_states)
         return hidden_states, residual
 
@@ -411,12 +409,10 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        P = get_world_group()
-        TP = get_tp_group()
-        SP = get_sp_group()
-        PP = get_pp_group()
+        P = get_world_group().world_size
+        TP = get_tp_group().world_size
+        PP = get_pp_group().world_size
 
-        N, d = hidden_states.shape
         # torch.set_printoptions(profile="full")
         if P.rank_in_group == 0:
             print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states {hidden_states.shape} residual {residual.shape if residual is not None else None}")
@@ -434,21 +430,16 @@ class LlamaModel(nn.Module):
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
-        # torch.cuda.synchronize()
-        # P.barrier()
-        # exit()
-
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
                 "hidden_states": hidden_states,
                 "residual": residual
             })
         
+        hidden_states, _ = self.norm(hidden_states, residual)
+
         if dist.get_rank() == 0:
             print(f"end of the inference loop ********************")
-        hidden_states, _ = self.norm(hidden_states, residual)
-        if dist.get_rank() == 0:
-            print(f"end of the norm **********************")
 
         torch.cuda.synchronize()
         get_world_group().barrier()
