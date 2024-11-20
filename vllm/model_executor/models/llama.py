@@ -184,25 +184,20 @@ class LlamaAttention(nn.Module):
 
     def forward(
         self,
+        N: int,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
+        N_ranks: List[int],
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         SP = get_sp_group().world_size
         TP = get_tp_group().world_size
-        PP = get_pp_group().world_size
-
-        N, d = hidden_states.shape
-        N_ranks = [N//SP] * SP
-        for i in range(SP):
-            if i < N % SP:
-                N_ranks[i] += 1
-
-        N_ulysses = N_ranks[get_sp_group().rank_in_group]
-        d = self.total_num_heads * self.head_dim
+        
+        N_ulysses, d = hidden_states.shape
+        # d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
-        hidden_states_ulysses = torch.zeros((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
+        # hidden_states_ulysses = torch.zeros((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         ''' if dist.get_rank() == 0:
             print(f"N {N}, d {d} d_kv {d_kv} N_ranks {N_ranks}")
             print(f"TP {TP}, SP {SP}, PP {PP}")
@@ -212,7 +207,7 @@ class LlamaAttention(nn.Module):
             print(f"self.q_size {self.q_size}, self.kv_size {self.kv_size}")
             print(f"llama attention positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")'''
 
-        qkv, _ = self.qkv_proj(hidden_states_ulysses)
+        qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
 
@@ -300,9 +295,16 @@ class LlamaDecoderLayer(nn.Module):
         attn_metadata: AttentionMetadata,
         residual: Optional[torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        # if dist.get_rank() == 0:
-        #     print(f"inference {self.inference} llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, kv_cache {kv_cache.shape}")
-        #     self.inference += 1
+        N, d = hidden_states.shape
+        SP = get_sp_group().world_size
+        N_ranks = [N//SP] * SP
+        for i in range(SP):
+            if i < N % SP:
+                N_ranks[i] += 1
+        if dist.get_rank() == 0:
+            print(f"llama decoder layer N {N}, d {d} N_ranks {N_ranks}")
+        N_ulysses = N_ranks[get_sp_group().rank_in_group]
+        hidden_states = torch.zeros((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         # Self Attention
         if residual is None:
             residual = hidden_states
@@ -310,14 +312,18 @@ class LlamaDecoderLayer(nn.Module):
         else:
             hidden_states, residual = self.input_layernorm(
                 hidden_states, residual)
-        hidden_states = self.self_attn(positions=positions,
+        hidden_states = self.self_attn(N=N,
+                                       positions=positions,
                                        hidden_states=hidden_states,
+                                       N_ranks=N_ranks,
                                        kv_cache=kv_cache,
                                        attn_metadata=attn_metadata)
 
         # Fully Connected
         hidden_states, residual = self.post_attention_layernorm(
             hidden_states, residual)
+        if dist.get_rank() == 0:
+            print(f"llama decoder layer hidden_states {hidden_states.shape}, residual {residual.shape}")
         hidden_states = self.mlp(hidden_states)
         return hidden_states, residual
 
