@@ -229,9 +229,9 @@ class LlamaAttention(nn.Module):
         v = torch.transpose(v.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
 
         # receive buffers
-        q_ = torch.empty((SP, N_ulysses, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        k_ = torch.empty((SP, N_ulysses, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        v_ = torch.empty((SP, N_ulysses, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        q_ = torch.empty((N_ulysses*SP, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        k_ = torch.empty((N_ulysses*SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
+        v_ = torch.empty((N_ulysses*SP, d_kv//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
 
         if dist.get_rank() == 0:
             print(f"q {q.shape}, k {k.shape}, v {v.shape}")
@@ -243,94 +243,10 @@ class LlamaAttention(nn.Module):
         dist.all_to_all_single(k_, k, group=get_sp_group().device_group)
         dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
         
-        # dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
-        # dist.all_to_all_single(k_, k, group=get_sp_group().device_group)
-        # dist.all_to_all_single(v_, v, group=get_sp_group().device_group)
-
-        # initialize group communicator
-        # ranks_TP = [dist.get_rank()//TP * TP + i for i in range(TP)]
-        # ranks_SP = [i * TP + dist.get_rank() % TP for i in range(SP)]
-
-        # print(f"my rank {dist.get_rank()} TP ranks: {ranks_TP} SP ranks: {ranks_SP}")
-        # group_TP = dist.new_group(ranks_TP, backend="nccl", use_local_synchronization=True)
-        # group_SP = dist.new_group(ranks_SP, backend="nccl", use_local_synchronization=True)
-
-        # if dist.get_rank() == 0:
-        #     print(f"groups are created")
-
-        # print(f"myid {dist.get_rank()}, TP id {get_tp_group().rank_in_group}, SP id {get_sp_group().rank_in_group}, PP id {get_pp_group().rank_in_group} TP_ranks {get_tp_group().ranks}, SP_ranks {get_sp_group().ranks}, PP_ranks {get_pp_group().ranks}")
-
-        # torch.cuda.synchronize()
-        # dist.barrier()
-        # sendbuf_TP = torch.ones((TP, 5), dtype=hidden_states.dtype, device=hidden_states.device)
-        # recvbuf_TP = torch.empty_like(sendbuf_TP)
-        # sendbuf_SP = torch.ones((SP, 5), dtype=hidden_states.dtype, device=hidden_states.device)
-        # recvbuf_SP = torch.empty_like(sendbuf_SP)
-        # dist.all_to_all_single(recvbuf_TP, sendbuf_TP, group=group_TP)
-        # dist.all_reduce(q, group=group_TP)
-        # dist.all_reduce(q, group_SP)
-        # get_tp_group().all_reduce(q)
-        # dist.all_reduce(q, group=get_tp_group().device_group)
-        # dist.all_to_all_single(recvbuf_TP, sendbuf_TP, group=get_tp_group().device_group)
-        # dist.all_to_all_single(recvbuf_SP, sendbuf_SP, group=get_sp_group().device_group)
-        # dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
-
-        # torch.cuda.synchronize()
-        # dist.barrier()
+        attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
         if dist.get_rank() == 0:
-            print(f"communication completed")
-
-        if dist.get_rank() == 0:
-            print(f"end of attention")
-
-        return hidden_states
-
-        dist.all_to_all_single(q_, q, group=group_SP)
-
-        # narrow the tensors
-        q_ = torch.narrow(q_.reshape(N_ulysses * SP, d//SP//TP), 0, 0, N)
-        k_ = torch.narrow(k_.reshape(N_ulysses * SP, d_kv//SP//TP), 0, 0, N)
-        v_ = torch.narrow(v_.reshape(N_ulysses * SP, d_kv//SP//TP), 0, 0, N)
-        
-        '''if dist.get_rank() == 0:
-            print(f"qkv {qkv.shape} N_displ {N_displ}")
-
-        q_cat = torch.cat([q[:,i*d//TP//SP:(i+1)*d//TP//SP] for i in range(SP)])
-        k_cat = torch.cat([k[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)])
-        v_cat = torch.cat([v[:,i*d_kv//TP//SP:(i+1)*d_kv//TP//SP] for i in range(SP)])
-
-        if dist.get_rank() == 0:
-            print(f"q_cat {q_cat.shape} is contigous {q_cat.is_contiguous()}")
-            print(f"k_cat {k_cat.shape} is contigous {k_cat.is_contiguous()}")
-            print(f"v_cat {v_cat.shape} is contigous {v_cat.is_contiguous()}")
-        q_sendlist = [q_cat[i*N_ulysses:(i+1)*N_ulysses] for i in range(SP)]
-        k_sendlist = [k_cat[i*N_ulysses:(i+1)*N_ulysses] for i in range(SP)]
-        v_sendlist = [v_cat[i*N_ulysses:(i+1)*N_ulysses] for i in range(SP)]
-
-        q_recvlist = [q_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
-        k_recvlist = [k_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
-        v_recvlist = [v_[N_displ[i]:N_displ[i+1]] for i in range(SP)]
-
-        if dist.get_rank() == 0:
-            print(f"type of q_sendlist: {type(q_sendlist)}")
-            print(f"type of q_recvlist: {type(q_recvlist)}")
-
-        if dist.get_rank() == 0:
-            print(f"myid {dist.get_rank()}, TP id {get_tp_group().rank_in_group}, SP id {get_sp_group().rank_in_group}")
-            for i, q_slice in enumerate(q_sendlist):
-                print(f"q_sendlist[{i}] shape: {q_slice.shape}")
-            for i, q_slice in enumerate(q_recvlist):
-                print(f"q_recvlist[{i}] shape: {q_slice.shape}")
-
-        # print(f"q_sendlist {q_sendlist}")
-        # print(f"q_recvlist {q_recvlist}")
-
-        dist.all_to_all(q_recvlist, q_sendlist, group=get_sp_group().device_group)
-        # dist.all_to_all(k_recvlist, k_sendlist, group=get_sp_group().device_group)
-        # dist.all_to_all(v_recvlist, v_sendlist, group=get_sp_group().device_group)'''
-
-        # attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
+            print(f"attn_output {attn_output.shape}")
 
         # c_ = torch.transpose(attn_output, 0, 1).contiguous()
         # if dist.get_rank() == 0:
