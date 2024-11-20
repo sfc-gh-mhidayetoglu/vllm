@@ -194,24 +194,17 @@ class LlamaAttention(nn.Module):
         PP = get_pp_group().world_size
 
         N, d = hidden_states.shape
-
-        N_displ = [0] * (SP+1)
+        N_ranks = [N//SP] * SP
         for i in range(SP):
-            N_temp = N // SP
             if i < N % SP:
-                N_temp += 1
-            N_displ[i+1] = N_displ[i] + N_temp
+                N_ranks[i] += 1
 
-        N_ulysses = N_displ[get_sp_group().rank_in_group+1] - N_displ[get_sp_group().rank_in_group]
-        # N = N_ulysses * SP
-
-        # N_ulysses = (N + SP - 1) // SP
+        N_ulysses = N_ranks[get_sp_group().rank_in_group]
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
-
         hidden_states_ulysses = torch.zeros((N_ulysses, d), dtype=hidden_states.dtype, device=hidden_states.device)
         if dist.get_rank() == 0:
-            print(f"N {N}, d {d} d_kv {d_kv}")
+            print(f"N {N}, d {d} d_kv {d_kv} N_ranks {N_ranks}")
             print(f"TP {TP}, SP {SP}, PP {PP}")
             print(f"self.hidden_size {self.hidden_size}, self.total_num_heads {self.total_num_heads}, self.total_num_kv_heads {self.total_num_kv_heads}")
             print(f"hidden_states {hidden_states.shape}, hidden_states_ulysses {hidden_states_ulysses.shape}")
@@ -239,32 +232,24 @@ class LlamaAttention(nn.Module):
             print(f"q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
             print(f"qkv {qkv.shape}")
 
-        output_split = [N_displ[i+1] - N_displ[i] for i in range(SP)]
-        # print(f"my rank {dist.get_rank()}, input_split {input_split}, output_split {output_split}")
-        dist.all_to_all_single(q_, q, output_split_sizes=output_split, group=get_sp_group().device_group)
-        dist.all_to_all_single(k_, k, output_split_sizes=output_split, group=get_sp_group().device_group)
-        dist.all_to_all_single(v_, v, output_split_sizes=output_split, group=get_sp_group().device_group)
+        dist.all_to_all_single(q_, q, output_split_sizes=N_ranks, group=get_sp_group().device_group)
+        dist.all_to_all_single(k_, k, output_split_sizes=N_ranks, group=get_sp_group().device_group)
+        dist.all_to_all_single(v_, v, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
         if dist.get_rank() == 0:
             print(f"attn_output {attn_output.shape}")
 
-        # c_ = torch.transpose(attn_output, 0, 1).contiguous()
-        # if dist.get_rank() == 0:
-        #     print(f"attn_output {attn_output.shape}")
-        #     print(f"c_ {c_.shape}")
-
-    
         c = torch.empty((SP, N_ulysses, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        # dist.all_to_all_single(c, attn_output, group=get_sp_group().device_group)
+        dist.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape((N_ulysses, d//TP))
 
         if dist.get_rank() == 0:
-            print(f"c {c.shape}")
+            print(f"c {c.shape} is contigous {c.is_contiguous()}")
 
         output, _ = self.o_proj(c)
-        
+
         if dist.get_rank() == 0:
             print(f"output {output.shape}")
 
