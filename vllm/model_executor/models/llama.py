@@ -216,11 +216,11 @@ class LlamaAttention(nn.Module):
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([d//SP//TP, d_kv//SP//TP, d_kv//SP//TP], dim=-1)
 
-        if dist.get_rank() == 0:
-            print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
-            print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
-            print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
-            print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
+        ''' if dist.get_rank() == 0:
+                print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
+                print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
+                print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
+                print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}") '''
 
         # attention 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
@@ -435,7 +435,7 @@ class LlamaModel(nn.Module):
         hidden_states, _ = self.norm(hidden_states, residual)
 
         if dist.get_rank() == 0:
-            print(f"end of the inference loop ********************")
+            print(f"end of the inference loop ******************** hidden_states {hidden_states.shape}")
 
         torch.cuda.synchronize()
         get_world_group().barrier()
