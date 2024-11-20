@@ -413,6 +413,10 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
+        torch.cuda.synchronize()
+        get_world_group().barrier()
+
+
         P = get_world_group().world_size
         TP = get_tp_group().world_size
         PP = get_pp_group().world_size
