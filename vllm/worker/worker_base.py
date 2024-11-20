@@ -300,6 +300,12 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         sequences are provided."""
         start_time = time.perf_counter()
 
+        if torch.dist.get_rank() == 0:
+            print(f"execute_model_req {execute_model_req}", flush=True)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+
+
         inputs = self.prepare_input(execute_model_req)
         if inputs is None:
             return None
