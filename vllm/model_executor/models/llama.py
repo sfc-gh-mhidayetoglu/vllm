@@ -397,17 +397,17 @@ class LlamaModel(nn.Module):
             print(f"input_ids {input_ids.shape}, positions {positions.shape}")
             print(f"N {N}, N_ranks {N_ranks}")
 
-        SP_rank = get_sp_group().rank_in_group
-        input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
-        if dist.get_rank() == 0:
-            print(f"narrowed input_ids {input_ids.shape}")
-
         torch.cuda.synchronize()
         get_world_group().barrier()
         if dist.get_rank() == 0:
             print("test before get_input_embeddings")
         torch.cuda.synchronize()
         get_world_group().barrier()
+
+        SP_rank = get_sp_group().rank_in_group
+        input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
+        if dist.get_rank() == 0:
+            print(f"narrowed input_ids {input_ids.shape}")
 
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
