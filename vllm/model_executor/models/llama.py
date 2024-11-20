@@ -267,8 +267,8 @@ class LlamaAttention(nn.Module):
         # dist.all_reduce(q, group_SP)
         # get_tp_group().all_reduce(q)
         # dist.all_reduce(q, group=get_tp_group().device_group)
-        dist.all_to_all_single(recvbuf_TP, sendbuf_TP, group=get_tp_group().device_group)
-        # dist.all_to_all_single(recvbuf_SP, sendbuf_SP, group=get_sp_group().device_group)
+        # dist.all_to_all_single(recvbuf_TP, sendbuf_TP, group=get_tp_group().device_group)
+        dist.all_to_all_single(recvbuf_SP, sendbuf_SP, group=get_sp_group().device_group)
         # dist.all_to_all_single(q_, q, group=get_sp_group().device_group)
 
         # torch.cuda.synchronize()
