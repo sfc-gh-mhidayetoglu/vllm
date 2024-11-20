@@ -212,6 +212,9 @@ class LlamaAttention(nn.Module):
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
 
+        if dist.get_rank() == 0:
+            print(f"original q {q.shape}, k {k.shape}, v {v.shape}")
+
         # send buffers
         q = torch.transpose(q.reshape((N_ulysses, SP, d//SP//TP)), 0, 1).contiguous()
         k = torch.transpose(k.reshape((N_ulysses, SP, d_kv//SP//TP)), 0, 1).contiguous()
@@ -224,8 +227,8 @@ class LlamaAttention(nn.Module):
 
         qkv = torch.cat([q, k, v], dim=-1)
         if dist.get_rank() == 0:
-            print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
             print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
+            print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
             print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
 
         dist.all_to_all_single(q_, q, output_split_sizes=N_ranks, group=get_sp_group().device_group)
