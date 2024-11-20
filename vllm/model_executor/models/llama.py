@@ -417,16 +417,13 @@ class LlamaModel(nn.Module):
         PP = get_pp_group()
 
         N, d = hidden_states.shape
-        torch.set_printoptions(profile="full")
+        # torch.set_printoptions(profile="full")
         if P.rank_in_group == 0:
-            print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states ({N}, {d}) {hidden_states.shape}")
-            # print(f"hidden_states_ulysses (N/SP, d) {hidden_states_ulysses.shape}")
+            print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states {hidden_states.shape} residual {residual.shape if residual is not None else None}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
             print(f"input_ids {input_ids}")
             print(f"positions {positions}")
-        torch.set_printoptions(profile="default")
-        if dist.get_rank() == 0:
-            print(f"residual {residual.shape if residual is not None else None}")
+        # torch.set_printoptions(profile="default")
 
         # for i in range(self.start_layer, self.end_layer):
         for i in range(self.start_layer, 3):
