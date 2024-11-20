@@ -437,6 +437,12 @@ class LlamaModel(nn.Module):
         if dist.get_rank() == 0:
             print(f"end of the inference loop ******************** hidden_states {hidden_states.shape}")
 
+        hidden_states_cat = torch.empty((N, self.config.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
+        dist.all_gather_into_tensor(hidden_states_cat, hidden_states, group=get_sp_group().device_group)
+
+        if dist.get_rank() == 0:
+            print(f"after all_gather ******************** hidden_states {hidden_states.shape}")
+
         torch.cuda.synchronize()
         get_world_group().barrier()
         exit()
