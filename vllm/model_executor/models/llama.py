@@ -402,6 +402,9 @@ class LlamaModel(nn.Module):
         if dist.get_rank() == 0:
             print(f"narrowed input_ids {input_ids.shape}")
 
+        torch.cuda.synchronize()
+        get_world_group().barrier()
+
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
