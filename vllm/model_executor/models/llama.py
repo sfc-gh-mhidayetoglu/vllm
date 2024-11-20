@@ -400,8 +400,6 @@ class LlamaModel(nn.Module):
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
             else:
-                if dist.get_rank() == 0:
-                    print(f"***************************** llama model input_ids {input_ids.shape}, positions {positions.shape}, inputs_embeds {inputs_embeds.shape if inputs_embeds is not None else None}")
                 hidden_states = self.get_input_embeddings(input_ids)
             residual = None
         else:
@@ -412,12 +410,11 @@ class LlamaModel(nn.Module):
         P = get_world_group().world_size
         TP = get_tp_group().world_size
         PP = get_pp_group().world_size
-
         # torch.set_printoptions(profile="full")
         if P.rank_in_group == 0:
-            print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size} hidden_states {hidden_states.shape} residual {residual.shape if residual is not None else None}")
+            print(f"TP {TP.world_size}, SP {SP.world_size}, PP {PP.world_size}")
+            print(f"positions {positions.shape} hidden_states {hidden_states.shape} residual {residual.shape if residual is not None else None}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
-            print(f"input_ids {input_ids.shape}, positions {positions.shape}")
         # torch.set_printoptions(profile="default")
 
         # for i in range(self.start_layer, self.end_layer):
