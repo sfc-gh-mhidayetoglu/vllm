@@ -228,19 +228,9 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         """ Get the worker input from the broadcasted tensor dict. """
         assert self.do_metadata_broadcast
         assert not self.is_driver_worker
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        print(f"myid {torch.distributed.get_rank()} before broadcast_data in _get_worker_input_from_broadcast", flush=True)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
         broadcast_data = broadcast_tensor_dict(src=0)
         if not broadcast_data:
             return None
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        print(f"myid {torch.distributed.get_rank()} after broadcast_data in _get_worker_input_from_broadcast", flush=True)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
 
         worker_input = WorkerInput.from_broadcasted_tensor_dict(broadcast_data)
         model_input = (
