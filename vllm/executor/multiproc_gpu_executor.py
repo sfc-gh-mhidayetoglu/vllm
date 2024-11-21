@@ -267,6 +267,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
         print(f"before gather ******************************************", flush=True)
         results = await asyncio.gather(*tasks)
         print(f"after gather ****************************************** results type: {type(results)}", flush=True)
+        print(f"results: {results}", flush=True)
 
         # Only the last PP stage has the final results.
         return results[-1]
