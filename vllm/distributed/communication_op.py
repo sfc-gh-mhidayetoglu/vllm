@@ -23,7 +23,11 @@ def tensor_model_parallel_gather(input_: torch.Tensor,
     """Gather the input tensor across model parallel group."""
     if torch.distributed.get_rank() == 0:
         print(f"afdfdasfasdfadsfdsgsdfgsdfghsdfghsadlkfjads;flgkja'sdlkfjasd.fjklas.djfha;.skdjhfas ;lk", flush=True)
-    return get_tp_group().gather(input_, dst, dim)
+    output = get_tp_group().gather(input_, dst, dim)
+    if torch.distributed.get_rank() == 0:
+        print(f";lkjasdf;glkjas;dfjh;asodihfj'aopsdf'apwehirg'aoiehg", flush=True)
+
+    return output # get_tp_group().gather(input_, dst, dim)
 
 
 def broadcast_tensor_dict(tensor_dict: Optional[Dict[Any, Union[torch.Tensor,
