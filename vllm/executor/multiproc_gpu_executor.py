@@ -250,13 +250,9 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                                         self.pp_locks[pp_rank],
                                         "execute_model", execute_model_req)))
 
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"before gather")
+        print(f"before gather ******************************************")
         results = await asyncio.gather(*tasks)
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"after gather")
+        print(f"after gather ******************************************")
 
         # Only the last PP stage has the final results.
         return results[-1]
