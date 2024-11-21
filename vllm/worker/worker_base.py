@@ -372,6 +372,11 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                 o.model_execute_time = (orig_model_execute_time +
                                         model_execute_time)
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print("exit")
+        exit()
         # output is List[SamplerOutput]
         return output
 
