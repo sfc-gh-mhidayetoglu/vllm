@@ -179,6 +179,7 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
             raise NotImplementedError(
                 "max_concurrent_workers is not supported yet.")
 
+        print("test ****************************************************************************************")
         if async_run_tensor_parallel_workers_only:
             # Run only non-driver workers and just return futures.
             return [
