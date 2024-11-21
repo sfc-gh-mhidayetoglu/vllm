@@ -263,11 +263,17 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                                         self.pp_locks[pp_rank],
                                         "execute_model", execute_model_req)))
 
-        print(f"is torch distributed initialized: {torch.distributed.is_initialized()}", flush=True)
-        print(f"before gather ******************************************", flush=True)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"is torch distributed initialized: {torch.distributed.is_initialized()}", flush=True)
+            print(f"before gather ******************************************", flush=True)
         results = await asyncio.gather(*tasks)
-        print(f"after gather ****************************************** results type: {type(results)}", flush=True)
-        print(f"results: {results}", flush=True)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"after gather ****************************************** results type: {type(results)}", flush=True)
+            print(f"results: {results}", flush=True)
 
         # Only the last PP stage has the final results.
         return results[-1]
