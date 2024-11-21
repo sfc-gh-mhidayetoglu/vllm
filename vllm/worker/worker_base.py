@@ -293,9 +293,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         else:
             print(f"myid {torch.distributed.get_rank()} prepare_input worker")
             # return self._get_worker_input_from_broadcast()
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        exit()
 
     def execute_model(
         self,
