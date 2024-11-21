@@ -582,7 +582,7 @@ class GroupCoordinator:
         if (not torch.distributed.is_initialized() or self.world_size == 1):
             return tensor_dict
         if self.rank == 0:
-            print("broadcast_tensor_dict")
+            print(f"broadcast_tensor_dict src {src} group {self.ranks}")
 
         group = self.device_group
         metadata_group = self.cpu_group
