@@ -291,7 +291,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             print(f"myid {torch.distributed.get_rank()} prepare_input driver")
             # return self._get_driver_input_and_broadcast(execute_model_req)
         else:
-            print(f"myid {torch.distributed.get_rank()} prepare_input driver")
+            print(f"myid {torch.distributed.get_rank()} prepare_input worker")
             # return self._get_worker_input_from_broadcast()
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -306,7 +306,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         start_time = time.perf_counter()
 
         if torch.distributed.get_rank() == 0:
-            print(f"execute_model_req {execute_model_req}", flush=True)
+            print(f"execute_model_req {type(execute_model_req)}", flush=True)
         torch.cuda.synchronize()
         torch.distributed.barrier()
 
@@ -314,6 +314,11 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         inputs = self.prepare_input(execute_model_req)
         if inputs is None:
             return None
+
+        if torch.distributed.get_rank() == 0:
+            print(f"inputs {type(inputs)}", flush=True)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
 
         model_input, worker_input, kwargs = inputs
         num_steps = worker_input.num_steps
