@@ -404,18 +404,12 @@ class LlamaModel(nn.Module):
         if dist.get_rank() == 0:
             print(f"input_ids {input_ids.shape}, positions {positions.shape}")
             print(f"N {N}, N_ranks {N_ranks}")
-
-        torch.cuda.synchronize()
-        get_world_group().barrier()
-        if dist.get_rank() == 0:
-            print("test before get_input_embeddings", flush=True)
-        torch.cuda.synchronize()
-        get_world_group().barrier()
-
         SP_rank = get_sp_group().rank_in_group
         input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
+        positions = torch.narrow(positions, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
         if dist.get_rank() == 0:
             print(f"narrowed input_ids {input_ids.shape}")
+            print(f"narrowed positions {positions.shape}")
 
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
@@ -430,11 +424,6 @@ class LlamaModel(nn.Module):
 
         torch.cuda.synchronize()
         get_world_group().barrier()
-        if dist.get_rank() == 0:
-            print("test after get_input_embeddings", flush=True)
-        torch.cuda.synchronize()
-        get_world_group().barrier()
-
 
         P = get_world_group().world_size
         TP = get_tp_group().world_size
@@ -463,21 +452,15 @@ class LlamaModel(nn.Module):
         
         hidden_states, _ = self.norm(hidden_states, residual)
 
-        if dist.get_rank() == 0:
-            print(f"end of the sequence-parallel loop ******************** hidden_states {hidden_states.shape}")
-
-
         # all-gather sequences
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         dist.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
         hidden_states = torch.cat(hidden_states_list)
 
-        if dist.get_rank() == 0:
-            print(f"after all_gather ******************** hidden_states {hidden_states.shape}")
-
         torch.cuda.synchronize()
         get_world_group().barrier()
-        # exit()
+        if dist.get_rank() == 0:
+            print(f"end of inference *************************** hidden_states {hidden_states.shape}")
 
         return hidden_states
 
