@@ -179,14 +179,25 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
             raise NotImplementedError(
                 "max_concurrent_workers is not supported yet.")
 
-        print("test **************************************************************************************** torch.distributed.is_initialized(): ", torch.distributed.is_initialized())
+        if torch.dist.is_initialized():
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+            if torch.distributed.get_rank() == 0:
+                print(f"test **************************************************************************************** async_run_tensor_parallel_workers_only {async_run_tensor_parallel_workers_only}")
+
         if async_run_tensor_parallel_workers_only:
             # Run only non-driver workers and just return futures.
             return [
                 worker.execute_method(method, *args, **kwargs)
                 for worker in self.non_driver_workers
             ]
-        print("test 2 $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ torch.distributed.is_initialized(): ", torch.distributed.is_initialized())
+        
+        if torch.dist.is_initialized():
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+            if torch.distributed.get_rank() == 0:
+                print("test 2 $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+
 
         # Start all remote workers first.
         worker_outputs = [
