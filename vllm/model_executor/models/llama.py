@@ -473,6 +473,8 @@ class LlamaModel(nn.Module):
         # dist.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
         # hidden_states = torch.cat(hidden_states_list)
 
+        hidden_states_temp = torch.empty((N, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -484,7 +486,7 @@ class LlamaModel(nn.Module):
         if dist.get_rank() == 0:
             print(f"end of inference *************************** hidden_states {hidden_states.shape}", flush=True)
 
-        return hidden_states
+        return hidden_states_temp
 
     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
         stacked_params_mapping = [
