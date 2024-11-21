@@ -371,9 +371,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             for o in output:
                 o.model_execute_time = (orig_model_execute_time +
                                         model_execute_time)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        exit()
 
         # output is List[SamplerOutput]
         return output
