@@ -473,10 +473,16 @@ class LlamaModel(nn.Module):
         dist.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
         hidden_states = torch.cat(hidden_states_list)
 
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print("test 4", flush=True)
+
         torch.cuda.synchronize()
         get_world_group().barrier()
         if dist.get_rank() == 0:
-            print(f"end of inference *************************** hidden_states {hidden_states.shape}")
+            print(f"end of inference *************************** hidden_states {hidden_states.shape}", flush=True)
 
         return hidden_states
 
