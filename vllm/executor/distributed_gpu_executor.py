@@ -72,6 +72,8 @@ class DistributedGPUExecutor(GPUExecutor):
         self,
         execute_model_req: ExecuteModelRequest,
     ) -> List[SamplerOutput]:
+        
+        print("test ****************************************************************************************")
         if self.parallel_worker_tasks is None:
             self.parallel_worker_tasks = self._run_workers(
                 "start_worker_execution_loop",

@@ -564,7 +564,6 @@ class RayGPUExecutorAsync(RayGPUExecutor, DistributedGPUExecutorAsync):
                                         self.pp_locks[pp_rank],
                                         "execute_model", execute_model_req)))
 
-        print(("ray gpu executor test (*_*)"))
         results = await asyncio.gather(*tasks)
 
         # Only the last PP stage has the final results.
