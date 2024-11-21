@@ -234,7 +234,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             # which uses a different asyncio loop.
             self.pp_locks = [
                 asyncio.Lock()
-                for _ in range(self.parallel_config.pipeline_parallel_size)
+                for _ in range(self.parallel_config.pipeline_parallel_size * self.paralllel_config.sequence_parallel_size)
             ]
 
         tasks = [
