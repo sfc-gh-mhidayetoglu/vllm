@@ -199,12 +199,16 @@ class LlamaAttention(nn.Module):
         assert N_ulysses == hidden_states.shape[0]
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
-        assert hidden_states.shape[1] == d
+        assert d == hidden_states.shape[1]
 
         # qkv projection
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
+
+        if dist.get_rank() == 0:
+            print(f"qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
+            print(f"q {q.shape}, k {k.shape}, v {v.shape}")
 
         # pack send buffer
         qkv = torch.cat([q.view((N_ulysses, SP, d//SP//TP)),
@@ -216,11 +220,11 @@ class LlamaAttention(nn.Module):
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([d//SP//TP, d_kv//SP//TP, d_kv//SP//TP], dim=-1)
 
-        ''' if dist.get_rank() == 0:
+        if dist.get_rank() == 0:
                 print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
                 print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
                 print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
-                print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}") '''
+                print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
 
         # attention 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
