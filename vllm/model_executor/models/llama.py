@@ -461,7 +461,6 @@ class LlamaModel(nn.Module):
         get_world_group().barrier()
         if dist.get_rank() == 0:
             print(f"end of inference *************************** hidden_states {hidden_states.shape}")
-        exit()
 
         return hidden_states
 
