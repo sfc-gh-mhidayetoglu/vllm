@@ -251,7 +251,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             ]
 
         torch.cuda.synchronize()
-        torch.distributed.barrier()
+        # torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"before async tasks")
             print(f"self.pp_locks: {self.pp_locks}")
@@ -270,13 +270,13 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                                         "execute_model", execute_model_req)))
 
         torch.cuda.synchronize()
-        torch.distributed.barrier()
+        # torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"is torch distributed initialized: {torch.distributed.is_initialized()}", flush=True)
             print(f"before gather ******************************************", flush=True)
         results = await asyncio.gather(*tasks)
         torch.cuda.synchronize()
-        torch.distributed.barrier()
+        # torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"after gather ****************************************** results type: {type(results)}", flush=True)
             print(f"results: {results}", flush=True)
