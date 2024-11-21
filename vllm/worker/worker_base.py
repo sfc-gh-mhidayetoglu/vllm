@@ -352,7 +352,8 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"model end test ************ type of output {type(output)}")
-        exit()
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
 
         model_execute_time = time.perf_counter() - start_time
         if not get_pp_group().is_last_rank:
@@ -370,6 +371,9 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             for o in output:
                 o.model_execute_time = (orig_model_execute_time +
                                         model_execute_time)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        exit()
 
         # output is List[SamplerOutput]
         return output
