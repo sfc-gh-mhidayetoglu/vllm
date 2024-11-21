@@ -448,6 +448,11 @@ class LlamaModel(nn.Module):
             hidden_states, residual = layer(positions, hidden_states, N_ranks,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
+            
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print("test 2", flush=True)
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
