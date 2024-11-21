@@ -96,12 +96,10 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
                 self.workers.append(worker)
                 if rank % tensor_parallel_size == 0:
                 # if rank % tensor_parallel_size == 0:
-                    if torch.distributed.get_rank() == 0:
-                        print(f"rank: {rank}: tp_driver_worker")
+                    print(f"rank: {rank}: tp_driver_worker")
                     self.tp_driver_workers.append(worker)
                 else:
-                    if torch.distributed.get_rank() == 0:
-                        print(f"rank: {rank}: non_driver_worker")
+                    print(f"rank: {rank}: non_driver_worker")
                     self.non_driver_workers.append(worker)
 
             self.worker_monitor = WorkerMonitor(self.workers, result_handler)
