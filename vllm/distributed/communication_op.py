@@ -21,6 +21,7 @@ def tensor_model_parallel_gather(input_: torch.Tensor,
                                  dst: int = 0,
                                  dim: int = -1) -> Optional[torch.Tensor]:
     """Gather the input tensor across model parallel group."""
+    print(f"afdfdasfasdfadsfdsgsdfgsdfghsdfghsadlkfjads;flgkja'sdlkfjasd.fjklas.djfha;.skdjhfas ;lk", flush=True)
     return get_tp_group().gather(input_, dst, dim)
 
 
