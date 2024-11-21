@@ -349,7 +349,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         )
 
         torch.cuda.synchronize()
-        torch.distirbuted.barrier()
+        torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"model end test ************ type of output {type(output)}")
         exit()
