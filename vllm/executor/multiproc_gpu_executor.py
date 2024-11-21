@@ -192,7 +192,7 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
                 for worker in self.non_driver_workers
             ]
         
-        if torch.dist.is_initialized():
+        if torch.distributed.is_initialized():
             torch.cuda.synchronize()
             torch.distributed.barrier()
             if torch.distributed.get_rank() == 0:
