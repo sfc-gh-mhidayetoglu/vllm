@@ -335,12 +335,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                 orig_model_execute_time = intermediate_tensors.tensors.get(
                     "model_execute_time", torch.tensor(0)).item()
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        print(f"before model start", flush=True)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        exit()
 
         if torch.distributed.get_rank() == 0:
             print(f"model start test ************ type of model_input {type(model_input)} type of worker_input {type(worker_input)} type of intermediate_tensors {type(intermediate_tensors)}")
@@ -354,8 +348,11 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             **kwargs,
         )
 
+        torch.cuda.synchronize()
+        torch.distirbuted.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"model end test ************ type of output {type(output)}")
+        exit()
 
         model_execute_time = time.perf_counter() - start_time
         if not get_pp_group().is_last_rank:
