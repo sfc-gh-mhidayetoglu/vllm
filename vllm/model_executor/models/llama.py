@@ -484,7 +484,7 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         get_world_group().barrier()
         if dist.get_rank() == 0:
-            print(f"end of inference *************************** hidden_states {hidden_states.shape}", flush=True)
+            print(f"end of inference *************************** hidden_states {hidden_states_temp.shape}", flush=True)
 
         return hidden_states_temp
 
