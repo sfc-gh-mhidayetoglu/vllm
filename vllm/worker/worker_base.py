@@ -320,11 +320,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
 
         self.execute_worker(worker_input)
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"after execute_worker", flush=True)
-        exit()
         # If there is no input, we don't need to execute the model.
         if worker_input.num_seq_groups == 0:
             return []
@@ -345,6 +340,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         print(f"before model start", flush=True)
         torch.cuda.synchronize()
         torch.distributed.barrier()
+        exit()
 
         if torch.distributed.get_rank() == 0:
             print(f"model start test ************ type of model_input {type(model_input)} type of worker_input {type(worker_input)} type of intermediate_tensors {type(intermediate_tensors)}")
