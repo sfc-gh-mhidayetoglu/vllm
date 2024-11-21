@@ -21,6 +21,8 @@ def tensor_model_parallel_gather(input_: torch.Tensor,
                                  dst: int = 0,
                                  dim: int = -1) -> Optional[torch.Tensor]:
     """Gather the input tensor across model parallel group."""
+    torch.cuda.synchronize()
+    torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
         print(f"afdfdasfasdfadsfdsgsdfgsdfghsdfghsadlkfjads;flgkja'sdlkfjasd.fjklas.djfha;.skdjhfas ;lk", flush=True)
     output = get_tp_group().gather(input_, dst, dim)
