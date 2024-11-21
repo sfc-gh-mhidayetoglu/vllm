@@ -250,7 +250,6 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                                         self.pp_locks[pp_rank],
                                         "execute_model", execute_model_req)))
             
-        exit()
         results = await asyncio.gather(*tasks)
 
         # Only the last PP stage has the final results.
