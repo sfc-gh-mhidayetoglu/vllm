@@ -289,10 +289,10 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                     broadcast_tensor_dict({}, src=0)
                 return None
             print(f"myid {torch.distributed.get_rank()} prepare_input driver")
-            # return self._get_driver_input_and_broadcast(execute_model_req)
+            return self._get_driver_input_and_broadcast(execute_model_req)
         else:
             print(f"myid {torch.distributed.get_rank()} prepare_input worker")
-            # return self._get_worker_input_from_broadcast()
+            return self._get_worker_input_from_broadcast()
 
     def execute_model(
         self,
@@ -316,6 +316,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             print(f"inputs {type(inputs)}", flush=True)
         torch.cuda.synchronize()
         torch.distributed.barrier()
+        exit()
 
         model_input, worker_input, kwargs = inputs
         num_steps = worker_input.num_steps
