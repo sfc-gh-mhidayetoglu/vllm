@@ -179,7 +179,7 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
             raise NotImplementedError(
                 "max_concurrent_workers is not supported yet.")
 
-        if torch.dist.is_initialized():
+        if torch.distributed.is_initialized():
             torch.cuda.synchronize()
             torch.distributed.barrier()
             if torch.distributed.get_rank() == 0:
