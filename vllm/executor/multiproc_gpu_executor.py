@@ -269,7 +269,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                                         self.pp_locks[pp_rank],
                                         "execute_model", execute_model_req)))
 
-        # torch.cuda.synchronize()
+        torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"is torch distributed initialized: {torch.distributed.is_initialized()}", flush=True)
@@ -289,4 +289,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             worker.execute_method_async("start_worker_execution_loop")
             for worker in self.non_driver_workers
         ]
-        return await asyncio.gather(*coros)
+        results = await asyncio.gather(*coros)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        return await results
