@@ -55,8 +55,6 @@ from .interfaces import SupportsLoRA, SupportsPP
 from .utils import (AutoWeightsLoader, PPMissingLayer, is_pp_missing_parameter,
                     make_empty_intermediate_tensors_factory, make_layers)
 
-import torch.distributed as dist
-
 class LlamaMLP(nn.Module):
 
     def __init__(
@@ -217,11 +215,11 @@ class LlamaAttention(nn.Module):
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([self.q_size//SP, self.kv_size//SP, self.kv_size//SP], dim=-1)
 
-        if dist.get_rank() == 0:
-                print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
-                print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
-                print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
-                print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
+        # if torch.distributed.get_rank() == 0:
+        #         print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
+        #         print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
+        #         print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
+        #         print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
 
         # positional embeddings
         q_, k_ = self.rotary_emb(positions, q_, k_)
@@ -472,7 +470,7 @@ class LlamaModel(nn.Module):
         # all-gather sequences
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         if dist.get_rank() == 0:
-            print(f"all_gather hidden_states_list {hidden_states_list} hidden states {hidden_states}", flush=True)
+            print(f"all_gather N_ranks {N_ranks} hidden_states_list {hidden_states_list} hidden states {hidden_states.size}", flush=True)
         dist.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
         hidden_states = torch.cat(hidden_states_list)
 
