@@ -207,8 +207,6 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states)
 
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-        # positional embeddings
-        q, k = self.rotary_emb(positions, q, k)
 
         # pack send buffer
         qkv = torch.cat([q.view((N_ulysses, SP, d//SP//TP)),
@@ -225,6 +223,9 @@ class LlamaAttention(nn.Module):
                 print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
                 print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
                 print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
+
+        # positional embeddings
+        q_, k_ = self.rotary_emb(positions, q_, k_)
 
         # attention 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
