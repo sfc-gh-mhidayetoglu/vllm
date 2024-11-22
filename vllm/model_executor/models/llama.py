@@ -211,7 +211,6 @@ class LlamaAttention(nn.Module):
         qkv = torch.cat([q.view((N_ulysses, SP, self.q_size//SP)),
                          k.view((N_ulysses, SP, self.kv_size//SP)),
                          v.view((N_ulysses, SP, self.kv_size//SP))], dim=-1).transpose(0, 1).contiguous()
-        # receive buffer
         qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=hidden_states.dtype, device=hidden_states.device)
         # communication
         torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
@@ -465,18 +464,17 @@ class LlamaModel(nn.Module):
         
         hidden_states, _ = self.norm(hidden_states, residual)
 
-                    
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print("test 3", flush=True)
 
         # all-gather sequences
-        # hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
-        # dist.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
-        # hidden_states = torch.cat(hidden_states_list)
+        hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
+        dist.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+        hidden_states = torch.cat(hidden_states_list)
 
-        hidden_states_temp = torch.empty((N, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        # hidden_states_temp = torch.empty((N, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
 
 
         torch.cuda.synchronize()
@@ -487,9 +485,9 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         get_world_group().barrier()
         if dist.get_rank() == 0:
-            print(f"end of inference *************************** hidden_states {hidden_states_temp.shape}", flush=True)
+            print(f"end of inference *************************** hidden_states {hidden_states.shape}", flush=True)
 
-        return hidden_states_temp
+        return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
         stacked_params_mapping = [
