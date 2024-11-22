@@ -991,7 +991,7 @@ class RowParallelLinear(LinearBase):
                  quant_config: Optional[QuantizationConfig] = None,
                  prefix: str = ""):
         if dist.get_rank() == 0:
-            print(f"RowParallelLinear: input_size={input_size}, output_size={output_size}, bias={bias}, input_is_parallel={input_is_parallel}, skip_bias_add={skip_bias_add}, params_dtype={params_dtype}, reduce_results={reduce_results}")
+            print(f"RowParallelLinear: input_size={input_size}, output_size={output_size}")
             # print(f"RowParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}")
         super().__init__(input_size, output_size, skip_bias_add, params_dtype,
                          quant_config, prefix)

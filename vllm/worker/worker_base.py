@@ -376,7 +376,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print("exit")
+            print("model is executed")
         # exit()
 
         # output is List[SamplerOutput]

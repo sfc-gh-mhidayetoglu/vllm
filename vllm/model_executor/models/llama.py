@@ -397,7 +397,7 @@ class LlamaModel(nn.Module):
 
         torch.cuda.synchronize()
         get_world_group().barrier()
-        if dist.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             print("start inference *********************", flush=True)
         torch.cuda.synchronize()
         get_world_group().barrier()
@@ -408,12 +408,12 @@ class LlamaModel(nn.Module):
         N_ranks = [N//SP]*SP
         for i in range(N % SP):
             N_ranks[i] += 1
-        if dist.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             print(f"input_ids {input_ids.shape}, positions {positions.shape}")
             print(f"N {N}, N_ranks {N_ranks}")
         SP_rank = get_sp_group().rank_in_group
         input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
-        if dist.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             print(f"narrowed input_ids {input_ids.shape}")
 
         if get_pp_group().is_first_rank:
@@ -434,7 +434,7 @@ class LlamaModel(nn.Module):
         TP = get_tp_group().world_size
         PP = get_pp_group().world_size
         # torch.set_printoptions(profile="full")
-        if dist.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             print(f"P {P} TP {TP}, SP {SP}, PP {PP}")
             print(f"positions {positions.shape} hidden_states {hidden_states.shape} residual {residual.shape if residual is not None else None}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
@@ -443,7 +443,7 @@ class LlamaModel(nn.Module):
         # for i in range(self.start_layer, self.end_layer):
         for i in range(self.start_layer, 3):
             layer = self.layers[i]
-            if dist.get_rank() == 0:
+            if torch.distributed.get_rank() == 0:
                 print(f"layer {i}")
             hidden_states, residual = layer(positions, hidden_states, N_ranks,
                                             kv_caches[i - self.start_layer],
@@ -469,9 +469,9 @@ class LlamaModel(nn.Module):
 
         # all-gather sequences
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
-        if dist.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             print(f"all_gather N_ranks {N_ranks} hidden_states_list {hidden_states_list} hidden states {hidden_states.size}", flush=True)
-        dist.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+        torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
         hidden_states = torch.cat(hidden_states_list)
 
         # hidden_states_temp = torch.empty((N, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
@@ -484,7 +484,7 @@ class LlamaModel(nn.Module):
 
         torch.cuda.synchronize()
         get_world_group().barrier()
-        if dist.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             print(f"end of inference *************************** hidden_states {hidden_states.shape}", flush=True)
 
         return hidden_states
