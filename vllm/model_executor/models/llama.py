@@ -200,15 +200,15 @@ class LlamaAttention(nn.Module):
         d = self.total_num_heads * self.head_dim
         d_kv = self.total_num_kv_heads * self.head_dim
         assert d == hidden_states.shape[1]
+        assert d//TP == self.q_size
+        assert d_kv//TP == self.kv_size
 
         # qkv projection
         qkv, _ = self.qkv_proj(hidden_states)
-        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-        q, k = self.rotary_emb(positions, q, k)
 
-        if dist.get_rank() == 0:
-            print(f"qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
-            print(f"q {q.shape}, k {k.shape}, v {v.shape}")
+        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        # positional embeddings
+        q, k = self.rotary_emb(positions, q, k)
 
         # pack send buffer
         qkv = torch.cat([q.view((N_ulysses, SP, d//SP//TP)),
@@ -216,7 +216,7 @@ class LlamaAttention(nn.Module):
                          v.view((N_ulysses, SP, d_kv//SP//TP))], dim=-1).transpose(0, 1).contiguous()
         qkv_ = torch.empty((N, (d+2*d_kv)//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
         # communication
-        dist.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
+        torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([d//SP//TP, d_kv//SP//TP, d_kv//SP//TP], dim=-1)
 
@@ -231,7 +231,7 @@ class LlamaAttention(nn.Module):
 
         # communication
         c = torch.empty((SP, N_ulysses, d//SP//TP), dtype=hidden_states.dtype, device=hidden_states.device)
-        dist.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
+        torch.distributed.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape((N_ulysses, d//TP))
 
         # output projection
