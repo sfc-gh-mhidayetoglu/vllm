@@ -88,13 +88,13 @@ class LlamaMLP(nn.Module):
 
     def forward(self, x):
         gate_up, _ = self.gate_up_proj(x)
-        if dist.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             print(f"llama MLP x: {x.shape} gate_up: {gate_up.shape}")
         x = self.act_fn(gate_up)
-        if dist.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             print(f"llama MLP x: {x.shape} activation")
         x, _ = self.down_proj(x)
-        if dist.get_rank() == 0:
+        if torch.distributed.get_rank() == 0:
             print(f"llama MLP x: {x.shape} down_proj")
         return x
 
