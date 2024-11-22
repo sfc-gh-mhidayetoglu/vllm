@@ -250,8 +250,8 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                 for _ in range(self.parallel_config.pipeline_parallel_size * self.parallel_config.sequence_parallel_size)
             ]
 
-        # torch.cuda.synchronize()
-        torch.distributed.barrier()
+        torch.cuda.synchronize()
+        # torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"before async tasks")
             print(f"self.pp_locks: {self.pp_locks}")
