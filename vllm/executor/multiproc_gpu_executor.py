@@ -276,7 +276,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             print(f"before gather ******************************************", flush=True)
         results = await asyncio.gather(*tasks)
         torch.cuda.synchronize()
-        # torch.distributed.barrier()
+        torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"after gather ****************************************** results type: {type(results)}", flush=True)
             print(f"results: {results}", flush=True)
@@ -290,4 +290,6 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             for worker in self.non_driver_workers
         ]
         results = await asyncio.gather(*coros)
+        torch.cuda.synchronize()
+        torch.distirbuted.barrier()
         return results
