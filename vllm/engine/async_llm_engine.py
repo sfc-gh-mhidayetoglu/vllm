@@ -647,6 +647,7 @@ class AsyncLLMEngine(EngineClient):
         else:
             from vllm.executor.gpu_executor import GPUExecutorAsync
             executor_class = GPUExecutorAsync
+        exit()
         return executor_class
 
     @classmethod
