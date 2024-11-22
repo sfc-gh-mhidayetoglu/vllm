@@ -289,6 +289,8 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             worker.execute_method_async("start_worker_execution_loop")
             for worker in self.non_driver_workers
         ]
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
         results = await asyncio.gather(*coros)
         torch.cuda.synchronize()
         torch.distributed.barrier()
