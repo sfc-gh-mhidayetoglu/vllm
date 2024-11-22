@@ -283,6 +283,8 @@ class ColumnParallelLinear(LinearBase):
                  quant_config: Optional[QuantizationConfig] = None,
                  output_sizes: Optional[List[int]] = None,
                  prefix: str = ""):
+        if torch.distributed.get_rank() == 0:
+            print(f"ColumnParallelLinear: input_size={input_size}, output_size={output_size}")
         super().__init__(input_size, output_size, skip_bias_add, params_dtype,
                          quant_config, prefix)
 
