@@ -237,7 +237,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
         self,
         execute_model_req: Optional[ExecuteModelRequest] = None
     ) -> List[SamplerOutput]:
-        print(f"driver_execute_model_async")
+        print(f"driver_execute_model_async", flush=True)
         if not self.tp_driver_workers:
             return await self.driver_exec_model(execute_model_req)
 
@@ -284,7 +284,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
         return results[-1]
 
     async def _start_worker_execution_loop(self):
-        print("start_worker_execution_loop")
+        print("start_worker_execution_loop", flush=True)
         torch.cuda.synchronize()
         # torch.distirbuted.barrier()
         coros = [
