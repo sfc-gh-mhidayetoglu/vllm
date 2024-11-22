@@ -557,7 +557,7 @@ class LLMEngine:
         else:
             from vllm.executor.gpu_executor import GPUExecutor
             executor_class = GPUExecutor
-        exit()
+        logger.info("Using LLMEngine executor class: %s", executor_class)
         return executor_class
 
     @classmethod
