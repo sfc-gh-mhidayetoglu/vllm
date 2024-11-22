@@ -247,7 +247,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             # which uses a different asyncio loop.
             self.pp_locks = [
                 asyncio.Lock()
-                for _ in range(self.parallel_config.pipeline_parallel_size * self.parallel_config.sequence_parallel_size)
+                for _ in range(self.parallel_config.pipeline_parallel_size)
             ]
 
         torch.cuda.synchronize()
@@ -263,11 +263,12 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
         ]
         for pp_rank, driver_worker in enumerate(self.tp_driver_workers,
                                                 start=1):
-            tasks.append(
-                asyncio.create_task(
-                    _run_task_with_lock(driver_worker.execute_method_async,
-                                        self.pp_locks[pp_rank],
-                                        "execute_model", execute_model_req)))
+            if pp_rank % self.parallel_config.sequence_parallel_size == 0:
+                tasks.append(
+                    asyncio.create_task(
+                        _run_task_with_lock(driver_worker.execute_method_async,
+                                            self.pp_locks[pp_rank//self.parallel_config.sequence_parallel_size],
+                                            "execute_model", execute_model_req)))
 
         if torch.distributed.get_rank() == 0:
             print(f"is torch distributed initialized: {torch.distributed.is_initialized()}", flush=True)
