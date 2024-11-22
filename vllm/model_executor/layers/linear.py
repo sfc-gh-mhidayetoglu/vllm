@@ -1061,8 +1061,6 @@ class RowParallelLinear(LinearBase):
 
         assert param_data.shape == loaded_weight.shape
         param_data.copy_(loaded_weight)
-        if dist.get_rank() == 0:
-            print(f"RowParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}")
 
     def weight_loader_v2(self, param: BasevLLMParameter,
                          loaded_weight: torch.Tensor):
@@ -1074,6 +1072,8 @@ class RowParallelLinear(LinearBase):
             loaded_weight = loaded_weight.reshape(1)
 
         param.load_row_parallel_weight(loaded_weight=loaded_weight)
+        if dist.get_rank() == 0:
+            print(f"RowParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}")
 
     def forward(self, input_):
 
