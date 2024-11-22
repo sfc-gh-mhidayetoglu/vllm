@@ -94,7 +94,7 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
                             distributed_init_method=distributed_init_method,
                         )))
                 self.workers.append(worker)
-                if rank % (tensor_parallel_size * sequence_parallel_size) == 0:
+                if rank % tensor_parallel_size == 0:
                 # if rank % tensor_parallel_size == 0:
                     print(f"rank: {rank}: tp_driver_worker")
                     self.tp_driver_workers.append(worker)
@@ -247,7 +247,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             # which uses a different asyncio loop.
             self.pp_locks = [
                 asyncio.Lock()
-                for _ in range(self.parallel_config.pipeline_parallel_size) # * self.parallel_config.sequence_parallel_size)
+                for _ in range(self.parallel_config.pipeline_parallel_size * self.parallel_config.sequence_parallel_size)
             ]
 
         torch.cuda.synchronize()
@@ -272,6 +272,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
         if torch.distributed.get_rank() == 0:
             print(f"is torch distributed initialized: {torch.distributed.is_initialized()}", flush=True)
             print(f"before gather ******************************************", flush=True)
+        return None
         results = await asyncio.gather(*tasks)
         torch.cuda.synchronize()
         # torch.distributed.barrier()
@@ -289,5 +290,6 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             worker.execute_method_async("start_worker_execution_loop")
             for worker in self.non_driver_workers
         ]
+        return None
         results =  await asyncio.gather(*coros)
         return results
