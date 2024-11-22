@@ -250,7 +250,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                 for _ in range(self.parallel_config.pipeline_parallel_size * self.parallel_config.sequence_parallel_size)
             ]
 
-        torch.cuda.synchronize()
+        # torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"before async tasks")
@@ -284,7 +284,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
 
     async def _start_worker_execution_loop(self):
         torch.cuda.synchronize()
-        torch.distirbuted.barrier()
+        # torch.distirbuted.barrier()
         coros = [
             worker.execute_method_async("start_worker_execution_loop")
             for worker in self.non_driver_workers
