@@ -216,7 +216,7 @@ class LlamaAttention(nn.Module):
         # communication
         torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         # unpack receive buffer
-        q_, k_, v_ = qkv_.split([d//SP//TP, d_kv//SP//TP, d_kv//SP//TP], dim=-1)
+        q_, k_, v_ = qkv_.split([self.kv_size//SP, d_kv//SP//TP, d_kv//SP//TP], dim=-1)
 
         if dist.get_rank() == 0:
                 print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
@@ -416,10 +416,8 @@ class LlamaModel(nn.Module):
             print(f"N {N}, N_ranks {N_ranks}")
         SP_rank = get_sp_group().rank_in_group
         input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
-        positions = torch.narrow(positions, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
         if dist.get_rank() == 0:
             print(f"narrowed input_ids {input_ids.shape}")
-            print(f"narrowed positions {positions.shape}")
 
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
