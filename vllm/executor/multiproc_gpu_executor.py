@@ -83,7 +83,7 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
             self.worker_monitor = None
         else:
             result_handler = ResultHandler()
-            for rank in range(1, world_size//sequence_parallel_size):
+            for rank in range(1, world_size):
                 worker = ProcessWorkerWrapper(
                     result_handler,
                     partial(
