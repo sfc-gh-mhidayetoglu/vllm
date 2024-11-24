@@ -248,7 +248,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             # which uses a different asyncio loop.
             self.pp_locks = [
                 asyncio.Lock()
-                for _ in range(self.parallel_config.pipeline_parallel_size]
+                for _ in range(self.parallel_config.pipeline_parallel_size)
             ]
 
         print(f"myid {torch.distributed.get_rank()} driver_execute_model_async pp_locks length {len(self.pp_locks)}", flush=True)
