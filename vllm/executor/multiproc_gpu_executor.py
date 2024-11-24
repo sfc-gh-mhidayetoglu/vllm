@@ -267,17 +267,17 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                                     execute_model_req))
         ]
         print(f"tp_driver_workers: {self.tp_driver_workers}", flush=True)
-        for sp_rank in range(0, self.parallel_config.sequence_parallel_size):
-            print(f"sp_rank: {sp_rank}", flush=True)
-            for pp_rank, driver_worker in enumerate(self.tp_driver_workers[sp_rank],
-                                                    start=1):
-                print(f"sp_rank: {sp_rank} pp_rank: {pp_rank}", flush=True)
-                print(f"driver_worker: {driver_worker}", flush=True)
-                tasks.append(
-                    asyncio.create_task(
-                        _run_task_with_lock(driver_worker.execute_method_async,
-                                            self.pp_locks[pp_rank//sp_rank],
-                                            "execute_model", execute_model_req)))
+        # for sp_rank in range(0, self.parallel_config.sequence_parallel_size):
+        #     print(f"sp_rank: {sp_rank}", flush=True)
+        for pp_rank, driver_worker in enumerate(self.tp_driver_workers,
+                                                start=1):
+            # print(f"sp_rank: {sp_rank} pp_rank: {pp_rank}", flush=True)
+            print(f"driver_worker: {driver_worker}", flush=True)
+            tasks.append(
+                asyncio.create_task(
+                    _run_task_with_lock(driver_worker.execute_method_async,
+                                        self.pp_locks[pp_rank],
+                                        "execute_model", execute_model_req)))
 
         if torch.distributed.get_rank() == 0:
             print(f"is torch distributed initialized: {torch.distributed.is_initialized()}", flush=True)
