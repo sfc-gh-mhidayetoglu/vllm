@@ -73,11 +73,11 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
         # This is the list of workers that are rank 0 of each TP group EXCEPT
         # global rank 0. These are the workers that will broadcast to the
         # rest of the workers.
-        self.tp_driver_workers: List[ProcessWorkerWrapper] = [[] in range (sequence_parallel_size)]
+        self.tp_driver_workers: List[List[ProcessWorkerWrapper]] = [[] for _ in range(sequence_parallel_size)]
         # This is the list of workers that are not drivers and not the first
         # worker in a TP group. These are the workers that will be
         # broadcasted to.
-        self.non_driver_workers: List[ProcessWorkerWrapper] = [[] in range(sequence_parallel_size)]
+        self.non_driver_workers: List[List[ProcessWorkerWrapper]] = [[] for _ in range(sequence_parallel_size)]
 
         if world_size == 1:
             self.worker_monitor = None
