@@ -83,7 +83,7 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
             self.worker_monitor = None
         else:
             result_handler = ResultHandler()
-            for rank in range(1, world_size):
+            for rank in range(1, world_size//sequence_parallel_size):
                 worker = ProcessWorkerWrapper(
                     result_handler,
                     partial(
@@ -237,7 +237,6 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
         self,
         execute_model_req: Optional[ExecuteModelRequest] = None
     ) -> List[SamplerOutput]:
-        print(f"driver_execute_model_async", flush=True)
         if not self.tp_driver_workers:
             return await self.driver_exec_model(execute_model_req)
 
@@ -251,6 +250,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                 for _ in range(self.parallel_config.pipeline_parallel_size*self.parallel_config.sequence_parallel_size)
             ]
 
+        print(f"myid {torch.distributed.get_rank()} driver_execute_model_async pp_locks length {len(self.pp_locks)}", flush=True)
         torch.cuda.synchronize()
         # torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
