@@ -265,6 +265,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
         ]
         print(f"tp_driver_workers: {self.tp_driver_workers}", flush=True)
         for sp_rank in range(0, self.parallel_config.sequence_parallel_size):
+            print(f"sp_rank: {sp_rank}", flush=True)
             for pp_rank, driver_worker in enumerate(self.tp_driver_workers[sp_rank],
                                                     start=1):
                 print(f"sp_rank: {sp_rank} pp_rank: {pp_rank}", flush=True)
