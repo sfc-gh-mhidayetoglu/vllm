@@ -248,7 +248,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
             # which uses a different asyncio loop.
             self.pp_locks = [
                 asyncio.Lock()
-                for _ in range(self.parallel_config.pipeline_parallel_size)
+                for _ in range(self.parallel_config.pipeline_parallel_size]
             ]
 
         print(f"myid {torch.distributed.get_rank()} driver_execute_model_async pp_locks length {len(self.pp_locks)}", flush=True)
@@ -263,14 +263,14 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                 _run_task_with_lock(self.driver_exec_model, self.pp_locks[0],
                                     execute_model_req))
         ]
-        # for sp_rank in range(self.parallel_config.sequence_parallel_size):
-        for pp_rank, driver_worker in enumerate(self.tp_driver_workers,
-                                                start=1):
-            tasks.append(
-                asyncio.create_task(
-                    _run_task_with_lock(driver_worker.execute_method_async,
-                                        self.pp_locks[pp_rank],
-                                        "execute_model", execute_model_req)))
+        for sp_rank in range(self.parallel_config.sequence_parallel_size):
+            for pp_rank, driver_worker in enumerate(self.tp_driver_workers[sp_rank],
+                                                    start=1):
+                tasks.append(
+                    asyncio.create_task(
+                        _run_task_with_lock(driver_worker.execute_method_async,
+                                            self.pp_locks[pp_rank],
+                                            "execute_model", execute_model_req)))
 
         if torch.distributed.get_rank() == 0:
             print(f"is torch distributed initialized: {torch.distributed.is_initialized()}", flush=True)
