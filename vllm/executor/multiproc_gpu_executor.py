@@ -73,11 +73,11 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
         # This is the list of workers that are rank 0 of each TP group EXCEPT
         # global rank 0. These are the workers that will broadcast to the
         # rest of the workers.
-        self.tp_driver_workers: List[ProcessWorkerWrapper] = []
+        self.tp_driver_workers: List[ProcessWorkerWrapper] = [[] in range (sequence_parallel_size)]
         # This is the list of workers that are not drivers and not the first
         # worker in a TP group. These are the workers that will be
         # broadcasted to.
-        self.non_driver_workers: List[ProcessWorkerWrapper] = []
+        self.non_driver_workers: List[ProcessWorkerWrapper] = [[] in range(sequence_parallel_size)]
 
         if world_size == 1:
             self.worker_monitor = None
@@ -94,13 +94,14 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
                             distributed_init_method=distributed_init_method,
                         )))
                 self.workers.append(worker)
+                SP_rank = rank//tensor_parallel_size
                 if rank % tensor_parallel_size == 0:
                 # if rank % tensor_parallel_size == 0:
                     print(f"rank: {rank}: tp_driver_worker")
-                    self.tp_driver_workers.append(worker)
+                    self.tp_driver_workers[SP_rank].append(worker)
                 else:
                     print(f"rank: {rank}: non_driver_worker")
-                    self.non_driver_workers.append(worker)
+                    self.non_driver_workers[SP_rank].append(worker)
 
             self.worker_monitor = WorkerMonitor(self.workers, result_handler)
             result_handler.start()
