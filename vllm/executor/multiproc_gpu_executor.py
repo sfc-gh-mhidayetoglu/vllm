@@ -266,6 +266,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
         for sp_rank in range(self.parallel_config.sequence_parallel_size):
             for pp_rank, driver_worker in enumerate(self.tp_driver_workers[sp_rank],
                                                     start=1):
+                print(f"sp_rank: {sp_rank} pp_rank: {pp_rank}", flush=True)
                 tasks.append(
                     asyncio.create_task(
                         _run_task_with_lock(driver_worker.execute_method_async,
