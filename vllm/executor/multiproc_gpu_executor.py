@@ -272,7 +272,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                 tasks.append(
                     asyncio.create_task(
                         _run_task_with_lock(driver_worker.execute_method_async,
-                                            self.pp_locks[pp_rank],
+                                            self.pp_locks[pp_rank//sp_rank],
                                             "execute_model", execute_model_req)))
 
         if torch.distributed.get_rank() == 0:
