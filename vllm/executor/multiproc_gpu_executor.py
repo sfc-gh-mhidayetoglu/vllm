@@ -210,8 +210,8 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
         driver_worker_output = driver_worker_method(*args, **kwargs)
 
         # Get the results of the workers.
-        return # [driver_worker_output
-               #  ] + [output.get() for output in worker_outputs]
+        return [driver_worker_output
+                ] + [output.get() for output in worker_outputs]
 
     def check_health(self) -> None:
         """Raises an error if engine is unhealthy."""
