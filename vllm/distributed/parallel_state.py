@@ -1026,7 +1026,8 @@ def initialize_model_parallel(
         group_ranks.append(ranks)
 
     # message queue broadcaster is only used in tensor model parallel group
-    print(f"TP group_ranks: {group_ranks}")
+    if torch.distributed.get_rank() == 0:
+        print(f"TP group_ranks: {group_ranks}")
     _TP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -1044,7 +1045,8 @@ def initialize_model_parallel(
         ranks = list(range(i, world_size, num_pipeline_model_parallel_groups))
         group_ranks.append(ranks)
     # pipeline parallel does not need custom allreduce
-    print(f"SP group_ranks: {group_ranks}")
+    if torch.distributed.get_rank() == 0:
+        print(f"SP group_ranks: {group_ranks}")
     _PP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -1053,13 +1055,28 @@ def initialize_model_parallel(
     
     # Built the ulysses groups
     tensor_ulysses_parallel_size: int = (world_size // sequence_ulysses_parallel_size)
-    print(f"world_size: {world_size},                                       \
-          tensor_model_parallel_size: {tensor_model_parallel_size},         \
-          pipeline_model_parallel_size: {pipeline_model_parallel_size},     \
-          sequence_data_parallel_size: {sequence_ulysses_parallel_size},    \
-          tensor_ulysses_parallel_size: {tensor_ulysses_parallel_size}")
+    if torch.distributed.get_rank() == 0:
+        print(f"world_size: {world_size}, tensor_model_parallel_size: {tensor_model_parallel_size}, pipeline_model_parallel_size: {pipeline_model_parallel_size}, sequence_data_parallel_size: {sequence_ulysses_parallel_size}, tensor_ulysses_parallel_size: {tensor_ulysses_parallel_size}")
+
+    global _SP_ulysses
+    assert _SP_ulysses is None, ("sequence ulysses parallel group is already initialized")
+    group_ranks = []
+    for i in range(tensor_ulysses_parallel_size):
+        ranks = list(range(i, world_size, tensor_ulysses_parallel_size))
+        group_ranks.append(ranks)
+    if torch.distributed.get_rank() == 0:
+        print(f"SP ulysses group_ranks: {group_ranks}")
+
     global _TP_ulysses
     assert _TP_ulysses is None, ("tensor ulysses parallel group is already initialized")
+    group_ranks = []
+    for i in range(sequence_ulysses_parallel_size):
+        ranks = list(range(i * tensor_ulysses_parallel_size, (i + 1) * tensor_ulysses_parallel_size))
+        group_ranks.append(ranks)
+    if torch.distributed.get_rank() == 0:
+        print(f"TP ulysses group_ranks: {group_ranks}")
+
+
 
 
 
