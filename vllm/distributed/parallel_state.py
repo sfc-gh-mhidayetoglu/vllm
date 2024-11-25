@@ -1053,10 +1053,10 @@ def initialize_model_parallel(
     
     # Built the ulysses groups
     tensor_ulysses_parallel_size: int = (world_size // sequence_ulysses_parallel_size)
-    print(f"world_size: {world_size},
-          tensor_model_parallel_size: {tensor_model_parallel_size},
-          pipeline_model_parallel_size: {pipeline_model_parallel_size},
-          sequence_data_parallel_size: {sequence_ulysses_parallel_size},
+    print(f"world_size: {world_size},                                       \
+          tensor_model_parallel_size: {tensor_model_parallel_size},         \
+          pipeline_model_parallel_size: {pipeline_model_parallel_size},     \
+          sequence_data_parallel_size: {sequence_ulysses_parallel_size},    \
           tensor_ulysses_parallel_size: {tensor_ulysses_parallel_size}")
     global _TP_ulysses
     assert _TP_ulysses is None, ("tensor ulysses parallel group is already initialized")
