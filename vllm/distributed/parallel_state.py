@@ -888,10 +888,12 @@ get_tensor_model_parallel_group = get_tp_group
 
 _SP: Optional[GroupCoordinator] = None
 def get_sp_group() -> GroupCoordinator:
-    assert _SP is not None, ("sequence model parallel group is not initialized")
+    assert _SP is not None
     return _SP
-# kept for backward compatibility
-get_sequence_model_parallel_group = get_sp_group
+_SP_TP: Optional[GroupCoordinator] = None
+def get_sp_tp_group() -> GroupCoordinator:
+    assert _SP_TP is not None
+    return _SP_TP
 
 
 _PP: Optional[GroupCoordinator] = None
@@ -1064,14 +1066,15 @@ def initialize_model_parallel(
                                     group_name="pp")
     
     # Build the sequence model-parallel groups.
+    ulysses_model_parallel_size = tensor_model_parallel_size * sequence_model_parallel_size
     global _SP
     assert _SP is None, ("sequence model parallel group is already initialized")
     group_ranks = []
     for i in range(pipeline_model_parallel_size):
         for j in range(tensor_model_parallel_size):
             ranks = list(
-                range(i * tensor_model_parallel_size * sequence_model_parallel_size + j,
-                      (i + 1) * tensor_model_parallel_size * sequence_model_parallel_size + j,
+                range(i * ulysses_model_parallel_size + j,
+                      (i + 1) * ulysses_model_parallel_size + j,
                       tensor_model_parallel_size))
             group_ranks.append(ranks)
     if torch.distributed.get_rank() == 0:
@@ -1081,6 +1084,22 @@ def initialize_model_parallel(
                                     backend,
                                     use_custom_allreduce=False,
                                     group_name="sp")
+    global _SP_TP
+    assert _SP_TP is None
+    group_ranks = []
+    for i in range(pipeline_model_parallel_size):
+        ranks = list(range(i * ulysses_model_parallel_size, (i + 1) * ulysses_model_parallel_size))
+        group_ranks.append(ranks)
+    if torch.distributed.get_rank() == 0:
+        print(f"ulysses model parallel group ranks: {group_ranks}")
+    _SP_TP = init_model_parallel_group(group_ranks,
+                                        get_world_group().local_rank,
+                                        backend,
+                                        use_custom_allreduce=False,
+                                        use_message_queue_broadcaster=True,
+                                        group_name="sp_tp")
+
+    
 
 def ensure_model_parallel_initialized(
     tensor_model_parallel_size: int,
