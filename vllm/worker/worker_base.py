@@ -226,6 +226,12 @@ class LocalOrDistributedWorkerBase(WorkerBase):
     ) -> Optional[Tuple[BroadcastableModelInput, WorkerInput, Dict[
             str, torch.Tensor]]]:
         """ Get the worker input from the broadcasted tensor dict. """
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        print("get_worker_input_from_broadcast", flush=True)
+        exit()
+
         assert self.do_metadata_broadcast
         assert not self.is_driver_worker
         broadcast_data = broadcast_tensor_dict(src=0)
@@ -245,6 +251,12 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         self, execute_model_req: ExecuteModelRequest
     ) -> Tuple[BroadcastableModelInput, WorkerInput, Dict[str, torch.Tensor]]:
         """ Get the driver input and broadcast it to other workers.  """
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        print("get_driver_input_and_broadcast", flush=True)
+        exit()
+
         assert self.is_driver_worker
 
         worker_input: WorkerInput = self.prepare_worker_input(
@@ -309,7 +321,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         inputs = self.prepare_input(execute_model_req)
         if inputs is None:
             return None
-
+        
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
