@@ -46,5 +46,5 @@ def broadcast_tensor_dict(tensor_dict: Optional[Dict[Any, Union[torch.Tensor,
     torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
         print(f"broadcast_tensor_dict {result}", flush=True)
-        print(f"ranks: {get_sp_tp_group().get_ranks()}", flush=True)
+        print(f"ranks: {get_sp_tp_group().ranks}", flush=True)
     return result
