@@ -888,6 +888,17 @@ def get_pp_group() -> GroupCoordinator:
 # kept for backward compatibility
 get_pipeline_model_parallel_group = get_pp_group
 
+# ulysses communicators
+_SP_ulysses: Optional[GroupCoordinator] = None
+def get_sp_ulysses_group() -> GroupCoordinator:
+    assert _SP_ulysses is not None, (
+        "sp_ulysses group is not initialized")
+    return _SP_ulysses
+_TP_ulysses: Optional[GroupCoordinator] = None
+def get_tp_ulysses_group() -> GroupCoordinator:
+    assert _TP_ulysses is not None, (
+        "tp_ulysses group is not initialized")
+    return _TP_ulysses
 
 @contextmanager
 def graph_capture():
@@ -962,6 +973,7 @@ def init_distributed_environment(
 def initialize_model_parallel(
     tensor_model_parallel_size: int = 1,
     pipeline_model_parallel_size: int = 1,
+    ulysses_data_parallel_size: int = 1,
     backend: Optional[str] = None,
 ) -> None:
     """
@@ -1034,11 +1046,24 @@ def initialize_model_parallel(
                                     backend,
                                     use_custom_allreduce=False,
                                     group_name="pp")
+    
+    # Build the ulysses groups
+    ulysses_model_parallel_size = world_size // ulysses_data_parallel_size
+
+    print(f"world_size: {world_size}, ulysses_data_parallel_size: {ulysses_data_parallel_size}, ulysses_model_parallel_size: {ulysses_model_parallel_size}")
+    # global _SP_ulysses
+    # assert _SP_ulysses is None, (
+    #     "sp_ulysses group is already initialized")
+    # group_ranks = []
+    # for i in range (0, )
+
+    # num_tensor_model_parallel_groups = (world_size // sequence_data_parallel_size)
 
 
 def ensure_model_parallel_initialized(
     tensor_model_parallel_size: int,
     pipeline_model_parallel_size: int,
+    sequence_data_parallel_size: int,
     backend: Optional[str] = None,
 ) -> None:
     """Helper to initialize model parallel groups if they are not initialized,
@@ -1049,7 +1074,8 @@ def ensure_model_parallel_initialized(
         get_world_group().device_group)
     if not model_parallel_is_initialized():
         initialize_model_parallel(tensor_model_parallel_size,
-                                  pipeline_model_parallel_size, backend)
+                                  pipeline_model_parallel_size,
+                                  sequence_data_parallel_size, backend)
         return
 
     assert (
@@ -1119,6 +1145,14 @@ def destroy_model_parallel():
         _PP.destroy()
     _PP = None
 
+    global _SP_ulysses
+    if _SP_ulysses:
+        _SP_ulysses.destroy()
+    _SP_ulysses = None
+    global _TP_ulysses
+    if _TP_ulysses:
+        _TP_ulysses.destroy()
+    _TP_ulysses = None
 
 def destroy_distributed_environment():
     global _WORLD
