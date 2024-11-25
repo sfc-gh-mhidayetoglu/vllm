@@ -362,12 +362,12 @@ class LlamaModel(nn.Module):
         for i in range(N % SP):
             N_ranks[i] += 1
         if torch.distributed.get_rank() == 0:
-            print(f"input_ids {input_ids.shape}, positions {positions.shape}")
-            print(f"N {N}, N_ranks {N_ranks}")
+            print(f"input_ids {input_ids.shape}, positions {positions.shape}", flush=True)
+            print(f"N {N}, N_ranks {N_ranks}", flush=True)
         SP_rank = get_sp_ulysses_group().rank_in_group
         input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
         if torch.distributed.get_rank() == 0:
-            print(f"narrowed input_ids {input_ids.shape}")
+            print(f"narrowed input_ids {input_ids.shape}", flush=True)
 
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
@@ -383,7 +383,7 @@ class LlamaModel(nn.Module):
         for i in range(0, 3): # range(self.start_layer, self.end_layer):
             layer = self.layers[i]
             if torch.distributed.get_rank() == 0:
-                print("Layer", i)
+                print("Layer", i, flush=True)
             hidden_states, residual = layer(positions, hidden_states, N_ranks,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)

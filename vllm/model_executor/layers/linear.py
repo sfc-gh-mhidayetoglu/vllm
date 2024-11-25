@@ -375,6 +375,8 @@ class ColumnParallelLinear(LinearBase):
         else:
             output = output_parallel
         output_bias = self.bias if self.skip_bias_add else None
+        if torch.distributed.get_rank() == 0:
+            print(f"output_parallel: {output_parallel}, output: {output}, output_bias: {output_bias}", flush=True)
         return output, output_bias
 
     def extra_repr(self) -> str:
