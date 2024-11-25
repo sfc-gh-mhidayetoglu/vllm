@@ -97,7 +97,7 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
                         )))
                 self.workers.append(worker)
                 SP_rank = rank//tensor_parallel_size
-                if rank % tensor_parallel_size == 0:
+                if rank % (tensor_parallel_size * sequence_parallel_size) == 0:
                 # if rank % tensor_parallel_size == 0:
                     print(f"rank: {rank} SP_rank {SP_rank}: tp_driver_worker")
                     # self.tp_driver_workers[SP_rank].append(worker)
