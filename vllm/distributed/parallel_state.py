@@ -1066,6 +1066,11 @@ def initialize_model_parallel(
         group_ranks.append(ranks)
     if torch.distributed.get_rank() == 0:
         print(f"SP ulysses group_ranks: {group_ranks}")
+    _SP_ulysses = init_model_parallel_group(group_ranks,
+                                            get_world_group().local_rank,
+                                            backend,
+                                            use_custom_allreduce=False,
+                                            group_name="sp_ulysses")
 
     global _TP_ulysses
     assert _TP_ulysses is None, ("tensor ulysses parallel group is already initialized")
@@ -1075,6 +1080,10 @@ def initialize_model_parallel(
         group_ranks.append(ranks)
     if torch.distributed.get_rank() == 0:
         print(f"TP ulysses group_ranks: {group_ranks}")
+    _TP_ulysses = init_model_parallel_group(group_ranks,
+                                            get_world_group().local_rank,
+                                            backend,
+                                            group_name="tp_ulysses")
 
 
 
