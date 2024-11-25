@@ -292,8 +292,8 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         """
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print("prepare input", flush=True)
-        exit()
+        if torch.distributed.get_rank() == 0:
+            print("prepare input", flush=True)
         if self.is_driver_worker:
             if execute_model_req is None:
                 if self.do_metadata_broadcast:
