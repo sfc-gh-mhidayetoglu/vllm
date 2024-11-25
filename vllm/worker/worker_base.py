@@ -290,6 +290,10 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         """
         Prepare the inputs to ModelRunner and workers.
         """
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        print("prepare input", flush=True)
+        exit()
         if self.is_driver_worker:
             if execute_model_req is None:
                 if self.do_metadata_broadcast:
