@@ -823,6 +823,7 @@ class ParallelConfig:
 
     def __init__(
         self,
+        sequence_parallel_size: int,
         pipeline_parallel_size: int,
         tensor_parallel_size: int,
         worker_use_ray: Optional[bool] = None,
@@ -834,6 +835,7 @@ class ParallelConfig:
         distributed_executor_backend: Optional[Union[
             str, Type["ExecutorBase"]]] = None,
     ) -> None:
+        self.sequence_parallel_size = sequence_parallel_size
         self.pipeline_parallel_size = pipeline_parallel_size
         self.tensor_parallel_size = tensor_parallel_size
         self.distributed_executor_backend = distributed_executor_backend
