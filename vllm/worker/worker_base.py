@@ -304,9 +304,14 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                     # notify all other workers to stop their execution loop.
                     broadcast_tensor_dict({}, src=0)
                 return None
-            return self._get_driver_input_and_broadcast(execute_model_req)
+            result = self._get_driver_input_and_broadcast(execute_model_req)
         else:
-            return self._get_worker_input_from_broadcast()
+            result = self._get_worker_input_from_broadcast()
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"result {result}", flush=True)
+        return result
 
     def execute_model(
         self,
