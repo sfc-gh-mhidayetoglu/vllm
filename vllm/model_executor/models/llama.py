@@ -179,9 +179,23 @@ class LlamaAttention(nn.Module):
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
+        N_ranks: List[int],
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
+        
+        # variables for Ulysses attention
+        SP = get_sp_ulysses_group().world_size
+        TP = get_tp_ulysses_group().world_size
+        N = sum(N_ranks) 
+        N_ulysses = N_ranks[get_sp_ulysses_group().rank_in_group]
+        d = self.total_num_heads * self.head_dim
+        d_kv = self.total_num_kv_heads * self.head_dim
+        assert N_ulysses == hidden_states.shape[0]
+        assert d == hidden_states.shape[1]
+        assert d//TP == self.q_size
+        assert d_kv//TP == self.kv_size
+
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
@@ -244,6 +258,7 @@ class LlamaDecoderLayer(nn.Module):
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
+        N_ranks: List[int],
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
         residual: Optional[torch.Tensor],
@@ -257,6 +272,7 @@ class LlamaDecoderLayer(nn.Module):
                 hidden_states, residual)
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
+                                       N_ranks=N_ranks,
                                        kv_cache=kv_cache,
                                        attn_metadata=attn_metadata)
 
@@ -367,7 +383,7 @@ class LlamaModel(nn.Module):
             layer = self.layers[i]
             if torch.distributed.get_rank() == 0:
                 print("Layer", i)
-            hidden_states, residual = layer(positions, hidden_states,
+            hidden_states, residual = layer(positions, hidden_states, N_ranks,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
