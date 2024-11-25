@@ -332,6 +332,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             print(f"after prepare_input {type(inputs)}", flush=True)
         torch.cuda.synchronize()
         torch.distributed.barrier()
+        exit()
 
         model_input, worker_input, kwargs = inputs
         num_steps = worker_input.num_steps
