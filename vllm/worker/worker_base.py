@@ -230,7 +230,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         print("get_worker_input_from_broadcast", flush=True)
-        exit()
+        # exit()
 
         assert self.do_metadata_broadcast
         assert not self.is_driver_worker
@@ -255,7 +255,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         print("get_driver_input_and_broadcast", flush=True)
-        exit()
+        # exit()
 
         assert self.is_driver_worker
 
