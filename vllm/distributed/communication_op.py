@@ -41,4 +41,9 @@ def broadcast_tensor_dict(tensor_dict: Optional[Dict[Any, Union[torch.Tensor,
     if not torch.distributed.is_initialized():
         return tensor_dict
     # return get_tp_group().broadcast_tensor_dict(tensor_dict, src)
-    return tensor_dict # get_sp_tp_group().broadcast_tensor_dict(tensor_dict, src)
+    result = get_sp_tp_group().broadcast_tensor_dict(tensor_dict, src)
+    torch.cuda.synchronize()
+    torch.distributed.barrier()
+    if torch.distributed.get_rank() == 0:
+        print(f"broadcast_tensor_dict {result}", flush=True)
+    return result
