@@ -310,6 +310,8 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         if inputs is None:
             return None
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"after prepare_input {type(inputs)}", flush=True)
         torch.cuda.synchronize()

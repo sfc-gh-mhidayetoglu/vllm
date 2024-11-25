@@ -4,6 +4,7 @@ import torch
 import torch.distributed
 
 from .parallel_state import get_tp_group
+from .parallel_state import get_sp_tp_group
 
 
 def tensor_model_parallel_all_reduce(input_: torch.Tensor) -> torch.Tensor:
@@ -39,4 +40,5 @@ def broadcast_tensor_dict(tensor_dict: Optional[Dict[Any, Union[torch.Tensor,
                           src: int = 0):
     if not torch.distributed.is_initialized():
         return tensor_dict
-    return get_tp_group().broadcast_tensor_dict(tensor_dict, src)
+    # return get_tp_group().broadcast_tensor_dict(tensor_dict, src)
+    return get_sp_tp_group().broadcast_tensor_dict(tensor_dict, src)
