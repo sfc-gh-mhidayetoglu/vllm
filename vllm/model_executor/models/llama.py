@@ -329,6 +329,28 @@ class LlamaModel(nn.Module):
         intermediate_tensors: Optional[IntermediateTensors],
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+        
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print("start inference *********************", flush=True)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+
+        '''assert inputs_embeds is None
+        N = len(input_ids)
+        SP = get_sp_group().world_size
+        N_ranks = [N//SP]*SP
+        for i in range(N % SP):
+            N_ranks[i] += 1
+        if torch.distributed.get_rank() == 0:
+            print(f"input_ids {input_ids.shape}, positions {positions.shape}")
+            print(f"N {N}, N_ranks {N_ranks}")
+        SP_rank = get_sp_group().rank_in_group
+        input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
+        if torch.distributed.get_rank() == 0:
+            print(f"narrowed input_ids {input_ids.shape}")'''
+
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
@@ -355,6 +377,7 @@ class LlamaModel(nn.Module):
             })
 
         hidden_states, _ = self.norm(hidden_states, residual)
+        
         return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
