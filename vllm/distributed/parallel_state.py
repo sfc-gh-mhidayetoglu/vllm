@@ -1099,8 +1099,6 @@ def initialize_model_parallel(
                                         use_message_queue_broadcaster=True,
                                         group_name="sp_tp")
 
-    
-
 def ensure_model_parallel_initialized(
     tensor_model_parallel_size: int,
     sequence_model_parallel_size: int,
