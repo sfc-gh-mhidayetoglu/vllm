@@ -962,6 +962,7 @@ def init_distributed_environment(
 def initialize_model_parallel(
     tensor_model_parallel_size: int = 1,
     pipeline_model_parallel_size: int = 1,
+    sequence_ulysses_parallel_size: int = 1,
     backend: Optional[str] = None,
 ) -> None:
     """
@@ -1034,6 +1035,10 @@ def initialize_model_parallel(
                                     backend,
                                     use_custom_allreduce=False,
                                     group_name="pp")
+    
+    # Built the ulysses groups
+    num_tensor_ulysses_parallel_groups: int = (world_size // sequence_ulysses_parallel_size)
+    print(f"world_size: {world_size}, tensor_model_parallel_size: {tensor_model_parallel_size}, pipeline_model_parallel_size: {pipeline_model_parallel_size}, sequence_data_parallel_size: {sequence_ulysses_parallel_size}")
 
 
 def ensure_model_parallel_initialized(
