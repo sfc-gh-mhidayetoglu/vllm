@@ -227,8 +227,8 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             str, torch.Tensor]]]:
         """ Get the worker input from the broadcasted tensor dict. """
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
         print("get_worker_input_from_broadcast", flush=True)
         # exit()
 
@@ -252,8 +252,8 @@ class LocalOrDistributedWorkerBase(WorkerBase):
     ) -> Tuple[BroadcastableModelInput, WorkerInput, Dict[str, torch.Tensor]]:
         """ Get the driver input and broadcast it to other workers.  """
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
         print("get_driver_input_and_broadcast", flush=True)
         # exit()
 
