@@ -889,6 +889,19 @@ def get_pp_group() -> GroupCoordinator:
 get_pipeline_model_parallel_group = get_pp_group
 
 
+# ulysses communicators
+_SP_ulysses: Optional[GroupCoordinator] = None
+def get_sp_ulysses_group() -> GroupCoordinator:
+    assert _SP_ulysses is not None, (
+        "sp_ulysses group is not initialized")
+    return _SP_ulysses
+_TP_ulysses: Optional[GroupCoordinator] = None
+def get_tp_ulysses_group() -> GroupCoordinator:
+    assert _TP_ulysses is not None, (
+        "tp_ulysses group is not initialized")
+    return _TP_ulysses
+
+
 @contextmanager
 def graph_capture():
     """
@@ -1013,6 +1026,7 @@ def initialize_model_parallel(
         group_ranks.append(ranks)
 
     # message queue broadcaster is only used in tensor model parallel group
+    print(f"TP group_ranks: {group_ranks}")
     _TP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -1030,6 +1044,7 @@ def initialize_model_parallel(
         ranks = list(range(i, world_size, num_pipeline_model_parallel_groups))
         group_ranks.append(ranks)
     # pipeline parallel does not need custom allreduce
+    print(f"SP group_ranks: {group_ranks}")
     _PP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -1037,8 +1052,15 @@ def initialize_model_parallel(
                                     group_name="pp")
     
     # Built the ulysses groups
-    num_tensor_ulysses_parallel_groups: int = (world_size // sequence_ulysses_parallel_size)
-    print(f"world_size: {world_size}, tensor_model_parallel_size: {tensor_model_parallel_size}, pipeline_model_parallel_size: {pipeline_model_parallel_size}, sequence_data_parallel_size: {sequence_ulysses_parallel_size}")
+    tensor_ulysses_parallel_size: int = (world_size // sequence_ulysses_parallel_size)
+    print(f"world_size: {world_size},
+          tensor_model_parallel_size: {tensor_model_parallel_size},
+          pipeline_model_parallel_size: {pipeline_model_parallel_size},
+          sequence_data_parallel_size: {sequence_ulysses_parallel_size},
+          tensor_ulysses_parallel_size: {tensor_ulysses_parallel_size}")
+    global _TP_ulysses
+    assert _TP_ulysses is None, ("tensor ulysses parallel group is already initialized")
+
 
 
 def ensure_model_parallel_initialized(
