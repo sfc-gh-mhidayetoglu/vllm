@@ -378,6 +378,11 @@ class LlamaModel(nn.Module):
             })
 
         hidden_states, _ = self.norm(hidden_states, residual)
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"end of inference *************************** hidden_states {hidden_states.shape}", flush=True)
         
         return hidden_states
 
