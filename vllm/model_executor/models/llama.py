@@ -467,6 +467,8 @@ class LlamaModel(nn.Module):
         if torch.distributed.get_rank() == 0:
             print("test 3", flush=True)
 
+        return torch.ones((sum(N_ranks), self.config.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
+
         # all-gather sequences
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         # torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
