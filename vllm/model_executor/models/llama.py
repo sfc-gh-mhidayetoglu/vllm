@@ -706,7 +706,6 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         if torch.distributed.get_rank() == 0:
             print(f"compute_logits logits type {type(logits)}")
             print(f"compute_logits logits {logits.shape}")
-        exit()
         return logits
 
     def sample(self, logits: torch.Tensor,
