@@ -70,7 +70,6 @@ class LogitsProcessor(nn.Module):
         print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
         if not get_sp_tp_group().is_first_rank:
             logits = None
-        exit()
 
         if logits is not None:
             if self.soft_cap is not None:
@@ -89,7 +88,7 @@ class LogitsProcessor(nn.Module):
         if torch.distributed.get_rank() == 0:
             print(f"LogitsProcessor logits type {type(logits)}", flush=True)
             print(f"LogitsProcessor logits shape {logits.shape}", flush=True)
-        # exit()
+        exit()
 
         return logits
 
