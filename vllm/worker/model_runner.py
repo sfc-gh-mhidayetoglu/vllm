@@ -1715,7 +1715,6 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         if torch.distributed.get_rank() == 0:
             for line in traceback.format_stack():
                 print(line.strip())
-        exit()
 
         if not self.is_driver_worker:
             return []
