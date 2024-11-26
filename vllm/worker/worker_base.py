@@ -294,6 +294,8 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print("prepare input", flush=True)
+
+        print(f"myid {torch.distributed.get_rank()} is_driver_worker {self.is_driver_worker} execute_model_req {type(execute_model_req)} do_metadata_broadcast {self.do_metadata_broadcast}", flush=True)
         if self.is_driver_worker:
             if execute_model_req is None:
                 if self.do_metadata_broadcast:
