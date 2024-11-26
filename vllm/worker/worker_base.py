@@ -340,7 +340,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        exit()
 
         model_input, worker_input, kwargs = inputs
         num_steps = worker_input.num_steps
@@ -382,6 +381,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             print(f"model end test ************ type of output {type(output)}")
         torch.cuda.synchronize()
         torch.distributed.barrier()
+        exit()
 
         model_execute_time = time.perf_counter() - start_time
         if not get_pp_group().is_last_rank:
@@ -404,7 +404,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print("model is executed")
-        # exit()
+        exit()
 
         # output is List[SamplerOutput]
         return output
