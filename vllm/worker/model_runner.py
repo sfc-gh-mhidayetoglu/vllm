@@ -1710,7 +1710,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"ModelRunner: logits type: {type(logits)}")
+        print(f"myid {torch.distributed.get_rank()} ModelRunner: logits type: {type(logits)}\n")
         exit()
 
         if not self.is_driver_worker:
