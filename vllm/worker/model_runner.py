@@ -1702,6 +1702,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"ModelRunner: logits shape: {logits.shape}")
+        exit()
 
         if not self.is_driver_worker:
             return []
