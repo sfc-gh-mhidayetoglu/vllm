@@ -66,7 +66,7 @@ class LogitsProcessor(nn.Module):
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"LogitsProcessor logits shape {logits.shape}", flush=True)
+        print(f"LogitsProcessor logits type {type(logits)}", flush=True)
 
         if logits is not None:
             if self.soft_cap is not None:
