@@ -1706,7 +1706,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
 
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
-
+        
         
         torch.cuda.synchronize()
         torch.distributed.barrier()

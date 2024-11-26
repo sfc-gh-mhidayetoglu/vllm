@@ -466,6 +466,10 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print("test 3", flush=True)
+            import traceback
+            for line in traceback.format_stack():
+                print(line.strip())
+
 
         return torch.ones((sum(N_ranks), self.config.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
