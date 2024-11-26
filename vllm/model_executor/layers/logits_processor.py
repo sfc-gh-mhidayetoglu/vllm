@@ -66,7 +66,7 @@ class LogitsProcessor(nn.Module):
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"myid {torch.distribued.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
+        print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
         exit()
 
         if logits is not None:
