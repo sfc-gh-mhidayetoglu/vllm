@@ -62,7 +62,7 @@ class GPUExecutor(ExecutorBase):
             speculative_config=self.speculative_config,
             prompt_adapter_config=self.prompt_adapter_config,
             is_driver_worker=(not self.parallel_config)
-            or (rank % self.parallel_config.tensor_parallel_size == 0),
+            or (rank % (self.parallel_config.tensor_parallel_size * self.parallel_config.sequence_parallel_size) == 0),
             observability_config=self.observability_config,
         )
 
