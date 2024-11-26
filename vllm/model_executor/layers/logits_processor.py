@@ -67,6 +67,7 @@ class LogitsProcessor(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         print(f"LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
+        exit()
 
         if logits is not None:
             if self.soft_cap is not None:
