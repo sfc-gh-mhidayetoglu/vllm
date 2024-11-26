@@ -106,7 +106,7 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
                     # self.tp_driver_workers[SP_rank].append(worker)
                     self.tp_driver_workers.append(worker)
                 else:
-                    print(f"rank: {rank} PP_rank {PP_rank} SP_rank {SP_rank} TP_rank {TP_rank}: non_driver_worker")
+                    print(f"rank: {rank} PP_rank {PP_rank} SP_TP_rank {SP_TP_rank} SP_rank {SP_rank} TP_rank {TP_rank}: non_driver_worker")
                     self.non_driver_workers.append(worker)
 
             self.worker_monitor = WorkerMonitor(self.workers, result_handler)
