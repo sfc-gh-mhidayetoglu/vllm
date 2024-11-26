@@ -328,6 +328,8 @@ class LocalOrDistributedWorkerBase(WorkerBase):
 
 
         inputs = self.prepare_input(execute_model_req)
+        if inputs is None:
+            return None
         
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -337,8 +339,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.distributed.barrier()
         # exit()
 
-        if inputs is None:
-            return None
 
         model_input, worker_input, kwargs = inputs
         num_steps = worker_input.num_steps
