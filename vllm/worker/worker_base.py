@@ -346,10 +346,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         if torch.distributed.get_rank() == 0:
             print(f"after execute_worker model_input type {type(model_input)} worker_input type {type(worker_input)} kwargs type {type(kwargs)}", flush=True)
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        exit()
-
         # If there is no input, we don't need to execute the model.
         if worker_input.num_seq_groups == 0:
             return []
@@ -366,9 +362,12 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                     "model_execute_time", torch.tensor(0)).item()
 
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"model start test ************ type of model_input {type(model_input)} type of worker_input {type(worker_input)} type of intermediate_tensors {type(intermediate_tensors)}")
             print(f"num_steps {num_steps}")
+        exit()
 
         output = self.model_runner.execute_model(
             model_input=model_input,
