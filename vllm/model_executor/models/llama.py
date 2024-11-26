@@ -474,12 +474,13 @@ class LlamaModel(nn.Module):
 
         # all-gather sequences
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
-        torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
-        hidden_states = torch.cat(hidden_states_list)
+        # torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+        hidden_states_ = torch.cat(hidden_states_list)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
         print(f"myid {torch.distributed.get_rank()} after allgather hidden_states {type(hidden_states)} shape {hidden_states.shape}", flush=True)
+        print(f"myid {torch.distributed.get_rank()} after allgather hidden_states_ {type(hidden_states_)} shape {hidden_states_.shape}", flush=True)
 
         return torch.ones((sum(N_ranks), self.config.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
