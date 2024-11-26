@@ -390,7 +390,7 @@ class VocabParallelEmbedding(torch.nn.Module):
 
     def forward(self, input_):
         torch.cuda.synchronize()
-        torch.dist.barrier()
+        torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"VocabParallelEmbedding forward {input_.shape}", flush=True)
         if self.tp_size > 1:
