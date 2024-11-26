@@ -68,7 +68,7 @@ class LogitsProcessor(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
-        if not get_sp_tp_group().is_first_rank():
+        if not get_sp_tp_group().is_first_rank:
             logits = None
         exit()
 
