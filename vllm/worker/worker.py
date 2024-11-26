@@ -222,6 +222,13 @@ class Worker(LocalOrDistributedWorkerBase):
         # of the model.
         self.model_runner.profile_run()
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            logger.info("Profiling completed. Calculating the number of "
+                        "available blocks.")
+        exit()
+
         # Calculate the number of blocks that can be allocated with the
         # profiled peak memory.
         torch.cuda.synchronize()
