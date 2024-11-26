@@ -332,19 +332,15 @@ class LocalOrDistributedWorkerBase(WorkerBase):
 
 
         inputs = self.prepare_input(execute_model_req)
+        if inputs is None:
+            return None
+
         if torch.distributed.get_rank() == 0:
-            print(f"after prepare_input", flush=True)
-        print(f"myid {torch.distributed.get_rank()} after prepare_input {type(inputs)}", flush=True)
-        exit()
+            print(f"after prepare_input {inputs}", flush=True)
         
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        # print(f"myid {torch.distributed.get_rank()} after prepare_input {type(inputs)}", flush=True)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-
-        if inputs is None:
-            return None
+        exit()
 
         model_input, worker_input, kwargs = inputs
         num_steps = worker_input.num_steps
