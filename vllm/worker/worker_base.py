@@ -405,7 +405,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print("model is executed")
-        exit()
 
         # output is List[SamplerOutput]
         return output
