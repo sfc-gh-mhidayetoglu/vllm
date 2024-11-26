@@ -305,7 +305,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                     broadcast_tensor_dict({}, src=0)
                     torch.cuda.synchronize()
                     torch.distributed.barrier()
-                    exit()
                 return None
             result = self._get_driver_input_and_broadcast(execute_model_req)
         else:
