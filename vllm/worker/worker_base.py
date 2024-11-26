@@ -310,6 +310,9 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                     # driver broadcasts an empty input. Send an empty input to
                     # notify all other workers to stop their execution loop.
                     broadcast_tensor_dict({}, src=0)
+                    torch.cuda.synchronize()
+                    torch.distributed.barrier()
+                    exit()
                 return None
             result = self._get_driver_input_and_broadcast(execute_model_req)
         else:
