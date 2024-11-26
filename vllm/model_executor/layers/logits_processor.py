@@ -64,6 +64,10 @@ class LogitsProcessor(nn.Module):
                 print(f"hidden_states after pruning shape {hidden_states.shape} embedding_bias type {type(embedding_bias)}", flush=True)
             # Get the logits for the next tokens.
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        print(f"LogitsProcessor logits shape {logits.shape}", flush=True)
+
         if logits is not None:
             if self.soft_cap is not None:
                 logits = logits / self.soft_cap
