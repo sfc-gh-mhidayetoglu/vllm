@@ -11,6 +11,7 @@ from vllm.model_executor.layers.vocab_parallel_embedding import (
     VocabParallelEmbedding)
 from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.platforms import current_platform
+from vllm.distributed import get_sp_tp_group
 
 
 class LogitsProcessor(nn.Module):
@@ -67,6 +68,8 @@ class LogitsProcessor(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
+        if not get_sp_tp_group().is_first_rank():
+            logits = None
         exit()
 
         if logits is not None:
