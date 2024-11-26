@@ -51,6 +51,7 @@ class LogitsProcessor(nn.Module):
         sampling_metadata: SamplingMetadata,
         embedding_bias: Optional[torch.Tensor] = None,
     ) -> Optional[torch.Tensor]:
+        print("test", flush=True)
         if self.logits_as_input:
             logits = hidden_states
         else:
@@ -79,6 +80,7 @@ class LogitsProcessor(nn.Module):
         lm_head: VocabParallelEmbedding,
         embedding_bias: Optional[torch.Tensor],
     ) -> Optional[torch.Tensor]:
+        print("logits_processor _get_logits", flush=True)
         # Get the logits for the next tokens.
         logits = lm_head.linear_method.apply(lm_head,
                                              hidden_states,
