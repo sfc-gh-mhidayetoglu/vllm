@@ -1695,14 +1695,18 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                     torch.tensor(model_forward_time + orig_model_forward_time))
             return hidden_or_intermediate_states
 
-        logits = self.model.compute_logits(hidden_or_intermediate_states,
-                                           model_input.sampling_metadata)
-
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"ModelRunner: logits shape: {logits.shape}")
+            print(f"ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}")
+            print(f"ModelRunner: hidden_or_intermediate_states shape: {hidden_or_intermediate_states.shape}")
+            # print(f"ModelRunner: logits shape: {logits.shape}")
         exit()
+
+        logits = self.model.compute_logits(hidden_or_intermediate_states,
+                                           model_input.sampling_metadata)
+
+        
 
         if not self.is_driver_worker:
             return []
