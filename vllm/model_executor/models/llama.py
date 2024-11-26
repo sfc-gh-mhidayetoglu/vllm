@@ -704,7 +704,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"compute_logits logits {logits.shape}")
+            print(f"compute_logits logits type {type(logits)}")
+            # print(f"compute_logits logits {logits.shape}")
         exit()
         return logits
 
