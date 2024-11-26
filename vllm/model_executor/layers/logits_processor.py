@@ -61,7 +61,7 @@ class LogitsProcessor(nn.Module):
             hidden_states = _prune_hidden_states(hidden_states,
                                                  sampling_metadata)
             if torch.distributed.get_rank() == 0:
-                print(f"hidden_states after pruning shape {hidden_states.shape}", flush=True)
+                print(f"hidden_states after pruning shape {hidden_states.shape} embedding_bias type {type(embedding_bias)}", flush=True)
             # Get the logits for the next tokens.
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
         if logits is not None:
