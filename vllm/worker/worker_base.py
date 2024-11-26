@@ -313,7 +313,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         # if torch.distributed.get_rank() == 0:
-        print(f"myid {torch.distributed.my_rank()} result type {type(result)}", flush=True)
+        print(f"myid {torch.distributed.get_rank()} result type {type(result)}", flush=True)
         exit()
         return result
 
