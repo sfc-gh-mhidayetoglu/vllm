@@ -1697,6 +1697,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
+        print(f"ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}")
         if torch.distributed.get_rank() == 0:
             print(f"ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}")
             print(f"ModelRunner: hidden_or_intermediate_states shape: {hidden_or_intermediate_states.shape}")
