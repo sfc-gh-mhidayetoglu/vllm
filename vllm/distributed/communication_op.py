@@ -26,8 +26,8 @@ def tensor_model_parallel_gather(input_: torch.Tensor,
     torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
         print(f"afdfdasfasdfadsfdsgsdfgsdfghsdfghsadlkfjads;flgkja'sdlkfjasd.fjklas.djfha;.skdjhfas ;lk {input_.shape}", flush=True)
-    # output = get_tp_group().gather(input_, dst, dim)
-    output = get_sp_tp_group().gather(input_, dst, dim)
+    output = get_tp_group().gather(input_, dst, dim)
+    # output = get_sp_tp_group().gather(input_, dst, dim)
     torch.cuda.synchronize()
     torch.distributed.barrier()
     if torch.distributed.get_rank() == 0:
