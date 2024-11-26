@@ -7,7 +7,8 @@ from torch.nn.parameter import Parameter, UninitializedParameter
 
 from vllm.distributed import (divide, get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size,
-                              tensor_model_parallel_all_reduce)
+                              tensor_model_parallel_all_reduce,
+                              get_sp_tp_group)
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig, QuantizeMethodBase, method_has_implemented_embedding)
 from vllm.model_executor.parameter import BasevLLMParameter
@@ -203,8 +204,8 @@ class VocabParallelEmbedding(torch.nn.Module):
         super().__init__()
 
         # Keep the input dimensions.
-        tp_rank = get_tensor_model_parallel_rank()
-        self.tp_size = get_tensor_model_parallel_world_size()
+        tp_rank = get_sp_tp_group().rank_in_group # get_tensor_model_parallel_rank()
+        self.tp_size = get_sp_tp_group().world_size # get_tensor_model_parallel_world_size()
         self.num_embeddings = num_embeddings
         self.padding_size = padding_size
         self.org_vocab_size = org_num_embeddings or num_embeddings
