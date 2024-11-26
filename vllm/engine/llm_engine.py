@@ -242,7 +242,7 @@ class LLMEngine:
             "rope_scaling=%r, rope_theta=%r, tokenizer_revision=%s, "
             "trust_remote_code=%s, dtype=%s, max_seq_len=%d, "
             "download_dir=%r, load_format=%s, tensor_parallel_size=%d, "
-            "pipeline_parallel_size=%d, "
+            "pipeline_parallel_size=%d, sequence_parallel_size=%d, "
             "disable_custom_all_reduce=%s, quantization=%s, "
             "enforce_eager=%s, kv_cache_dtype=%s, "
             "quantization_param_path=%s, device_config=%s, "
@@ -270,6 +270,7 @@ class LLMEngine:
             load_config.load_format,
             parallel_config.tensor_parallel_size,
             parallel_config.pipeline_parallel_size,
+            parallel_config.sequence_parallel_size,
             parallel_config.disable_custom_all_reduce,
             model_config.quantization,
             model_config.enforce_eager,
