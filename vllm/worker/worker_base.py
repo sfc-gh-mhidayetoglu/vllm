@@ -309,8 +309,9 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             result = self._get_worker_input_from_broadcast()
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"result {result}", flush=True)
+        # if torch.distributed.get_rank() == 0:
+        print(f"myid {torch.distributed.my_rank()} result type {type(result)}", flush=True)
+        exit()
         return result
 
     def execute_model(
@@ -328,14 +329,15 @@ class LocalOrDistributedWorkerBase(WorkerBase):
 
 
         inputs = self.prepare_input(execute_model_req)
+        if torch.distributed.get_rank() == 0:
+            print(f"after prepare_input", flush=True)
+        exit()
         
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"after prepare_input {type(inputs)}", flush=True)
+        # print(f"myid {torch.distributed.get_rank()} after prepare_input {type(inputs)}", flush=True)
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        exit()
 
         if inputs is None:
             return None
