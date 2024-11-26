@@ -684,6 +684,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     ) -> Union[torch.Tensor, IntermediateTensors]:
         model_output = self.model(input_ids, positions, kv_caches,
                                   attn_metadata, intermediate_tensors)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"llama model_output {model_output.shape}")
         return model_output
 
     def compute_logits(
