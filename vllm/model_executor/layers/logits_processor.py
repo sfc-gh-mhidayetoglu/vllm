@@ -73,6 +73,11 @@ class LogitsProcessor(nn.Module):
             if self.scale != 1.0:
                 logits *= self.scale
 
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+            if torch.distributed.get_rank() == 0:
+                print(f"LogitsProcessor logits shape {logits.shape}", flush=True)
+
             # Apply logits processors (if any).
             logits = _apply_logits_processors(logits, sampling_metadata)
 
