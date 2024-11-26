@@ -84,6 +84,7 @@ class LogitsProcessor(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"LogitsProcessor logits type {type(logits)}", flush=True)
+            print(f"LogitsProcessor logits shape {logits.shape}", flush=True)
         exit()
 
         return logits
