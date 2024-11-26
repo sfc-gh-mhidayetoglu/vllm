@@ -87,7 +87,7 @@ class LogitsProcessor(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print("logits_processor _get_logits", flush=True)
+            print(f"logits_processor _get_logits hidden_states shape {hidden_states.shape}", flush=True)
         # Get the logits for the next tokens.
         logits = lm_head.linear_method.apply(lm_head,
                                              hidden_states,
@@ -102,6 +102,11 @@ class LogitsProcessor(nn.Module):
             # because XLA requires strict SPMD among all devices. Every device
             # should execute the same operations after gathering the logits.
             logits = tensor_model_parallel_all_gather(logits)
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"logits_processor _get_logits logits shape {logits.shape}", flush=True)
         # Remove paddings in vocab (if any).
         if logits is not None:
             logits = logits[..., :self.org_vocab_size]
