@@ -227,6 +227,10 @@ class Worker(LocalOrDistributedWorkerBase):
         if torch.distributed.get_rank() == 0:
             logger.info("Profiling completed. Calculating the number of "
                         "available blocks.")
+        import traceback
+        if torch.distributed.get_rank() == 0:
+            for line in traceback.format_stack():
+                print(line.strip())
         exit()
 
         # Calculate the number of blocks that can be allocated with the

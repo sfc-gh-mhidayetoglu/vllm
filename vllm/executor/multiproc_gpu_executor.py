@@ -215,6 +215,12 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
         driver_worker_method = getattr(self.driver_worker, method)
         driver_worker_output = driver_worker_method(*args, **kwargs)
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"test 3 driver_worker_output {driver_worker_output}")
+        exit()
+
         # Get the results of the workers.
         return [driver_worker_output
                 ] + [output.get() for output in worker_outputs]
