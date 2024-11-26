@@ -367,7 +367,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         if torch.distributed.get_rank() == 0:
             print(f"model start test ************ type of model_input {type(model_input)} type of worker_input {type(worker_input)} type of intermediate_tensors {type(intermediate_tensors)}")
             print(f"num_steps {num_steps}")
-        exit()
 
         output = self.model_runner.execute_model(
             model_input=model_input,
