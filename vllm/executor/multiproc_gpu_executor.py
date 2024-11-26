@@ -99,9 +99,10 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
                 PP_rank = rank//(tensor_parallel_size * sequence_parallel_size)
                 SP_rank = rank//tensor_parallel_size
                 TP_rank = rank % tensor_parallel_size
+                SP_TP_rank = rank % (tensor_parallel_size * sequence_parallel_size)
                 if rank % (tensor_parallel_size * sequence_parallel_size) == 0:
                 # if rank % tensor_parallel_size == 0:
-                    print(f"rank: {rank} PP_rank {PP_rank} SP_rank {SP_rank} TP_rank {TP_rank}: tp_driver_worker")
+                    print(f"rank: {rank} PP_rank {PP_rank} SP_TP_rank {SP_TP_rank} SP_rank {SP_rank} TP_rank {TP_rank}: tp_driver_worker")
                     # self.tp_driver_workers[SP_rank].append(worker)
                     self.tp_driver_workers.append(worker)
                 else:
