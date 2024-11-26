@@ -383,7 +383,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             print(f"model end test ************ type of output {type(output)}")
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        exit()
 
         model_execute_time = time.perf_counter() - start_time
         if not get_pp_group().is_last_rank:
