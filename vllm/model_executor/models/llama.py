@@ -496,7 +496,7 @@ class LlamaModel(nn.Module):
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"myid {torch.distributed.get_rank()} after allgather hidden_states {type(hidden_states)} shape {hidden_states.shape}\n", flush=True)
+        # print(f"myid {torch.distributed.get_rank()} after allgather hidden_states {type(hidden_states)} shape {hidden_states.shape}\n", flush=True)
         # print(f"hidden_states_list {hidden_states_list}", flush=True)
         # print(f"hidden_states_ {hidden_states_}", flush=True)
         # print(f"myid {torch.distributed.get_rank()} after allgather hidden_states_ {type(hidden_states_)} shape {hidden_states_.shape}", flush=True)
@@ -508,10 +508,10 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"end of inference *************************** hidden_states {hidden_states.shape}", flush=True)
+            print(f"end of inference {self.numforward} *************************** hidden_states {hidden_states.shape}", flush=True)
 
-        if self.numforward == 2:
-            exit()
+        # if self.numforward == 2:
+        #     exit()
         self.numforward += 1
 
         return hidden_states
@@ -720,6 +720,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"llama model_output {model_output.shape}", flush=True)
+        exit()
         return model_output
 
     def compute_logits(
