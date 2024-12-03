@@ -1680,7 +1680,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"ModelRunner count: {self.execute_model_count}")
-        if self.execute_model_count == 3:
+        if self.execute_model_count == 2:
             exit()
         self.execute_model_count += 1
 
