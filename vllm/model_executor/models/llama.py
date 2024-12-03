@@ -480,6 +480,8 @@ class LlamaModel(nn.Module):
         hidden_states = torch.empty((sum(N_ranks), hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
 
         if self.numforward == 4:
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
             exit()
         self.numforward += 1
 
