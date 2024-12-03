@@ -66,7 +66,7 @@ class LogitsProcessor(nn.Module):
             torch.cuda.synchronize()
             torch.distributed.barrier()
             if torch.distributed.get_rank() == 0:
-                print(f"hidden_states before pruning shape {hidden_states.shape} sampling_metadata type {sampling_metadata.type}", flush=True)
+                print(f"hidden_states before pruning shape {hidden_states.shape} sampling_metadata type {type(sampling_metadata}", flush=True)
             if self.numforward == 2:
                 exit()
             hidden_states = _prune_hidden_states(hidden_states,
