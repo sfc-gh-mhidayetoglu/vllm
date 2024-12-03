@@ -490,7 +490,7 @@ class LlamaModel(nn.Module):
         # hidden_states = torch.cat(hidden_states_)
 
         # hidden_states = torch.cat(hidden_states_list)
-        hidden_states = torch.empty((sum(N_ranks), hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        hidden_states = hidden_states_ # torch.empty((sum(N_ranks), hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
         # torch.cat(hidden_states_list, out=hidden_states)
 
         torch.cuda.synchronize()
