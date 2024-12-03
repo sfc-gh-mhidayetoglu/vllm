@@ -56,8 +56,14 @@ class LogitsProcessor(nn.Module):
     ) -> Optional[torch.Tensor]:
         torch.cuda.synchronize()
         torch.distributed.barrier()
+
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"myid {torch.distributed.get_rank()} LogitsProcessor {self.numforward} hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}\n", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
         # if torch.distributed.get_rank() == 0:
-        print(f"myid {torch.distributed.get_rank()} LogitsProcessor {self.numforward} hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}\n", flush=True)
+        # print(f"myid {torch.distributed.get_rank()} LogitsProcessor {self.numforward} hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}\n", flush=True)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
