@@ -380,6 +380,8 @@ class LlamaModel(nn.Module):
         self.make_empty_intermediate_tensors = (
             make_empty_intermediate_tensors_factory(
                 ["hidden_states", "residual"], config.hidden_size))
+        
+        self.numforward = 0
 
     def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.embed_tokens(input_ids)
@@ -465,7 +467,8 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print("test 3", flush=True)
+            print(f"test 3 forward {self.numforward}", flush=True)
+            self.numforward += 1
             import traceback
             for line in traceback.format_stack():
                 print(line.strip())
@@ -475,11 +478,11 @@ class LlamaModel(nn.Module):
         # all-gather sequences
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         # torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
-        hidden_states_ = torch.cat(hidden_states_list)
+        hidden_states = torch.cat(hidden_states_list)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"myid {torch.distributed.get_rank()} after allgather hidden_states {type(hidden_states_)} shape {hidden_states_.shape}\n", flush=True)
+        print(f"myid {torch.distributed.get_rank()} after allgather hidden_states {type(hidden_states)} shape {hidden_states.shape}\n", flush=True)
         # print(f"hidden_states_list {hidden_states_list}", flush=True)
         # print(f"hidden_states_ {hidden_states_}", flush=True)
         # print(f"myid {torch.distributed.get_rank()} after allgather hidden_states_ {type(hidden_states_)} shape {hidden_states_.shape}", flush=True)
@@ -491,9 +494,9 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         get_world_group().barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"end of inference *************************** hidden_states {hidden_states_.shape}", flush=True)
+            print(f"end of inference *************************** hidden_states {hidden_states.shape}", flush=True)
 
-        return hidden_states_
+        return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
         stacked_params_mapping = [
