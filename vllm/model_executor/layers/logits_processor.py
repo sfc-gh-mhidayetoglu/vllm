@@ -58,11 +58,6 @@ class LogitsProcessor(nn.Module):
         torch.distributed.barrier()
         # if torch.distributed.get_rank() == 0:
         print(f"myid {torch.distributed.get_rank()} LogitsProcessor {self.numforward} hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}\n", flush=True)
-        if self.numforward == 2:
-            exit()
-        self.numforward += 1
-
-        
 
 
         if self.logits_as_input:
@@ -77,6 +72,11 @@ class LogitsProcessor(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
+        if self.numforward == 2:
+            exit()
+        self.numforward += 1
+
+        
         if not get_sp_tp_group().is_first_rank:
             logits = None
 
