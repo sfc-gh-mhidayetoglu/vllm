@@ -1717,10 +1717,6 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
             # print(f"ModelRunner: logits shape: {logits.shape}")
         # exit()
 
-        if self.execute_model_count == 2:
-            exit()
-        self.execute_model_count += 1
-
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
         
@@ -1729,6 +1725,10 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         torch.distributed.barrier()
         print(f"myid {torch.distributed.get_rank()} ModelRunner: logits type: {type(logits)} is_driver_worker {self.is_driver_worker}\n")
  
+        if self.execute_model_count == 2:
+            exit()
+        self.execute_model_count += 1
+
 
         if not self.is_driver_worker:
             return []
