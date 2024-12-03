@@ -1676,7 +1676,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                 **seqlen_agnostic_kwargs)
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        exit()
+        # exit()
 
         if (self.observability_config is not None
                 and self.observability_config.collect_model_forward_time):
