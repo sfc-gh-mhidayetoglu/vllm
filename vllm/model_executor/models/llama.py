@@ -698,7 +698,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"llama model_output {model_output.shape}")
+            print(f"llama model_output {model_output.shape}", flush=True)
         return model_output
 
     def compute_logits(
@@ -709,14 +709,14 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"compute_logits hidden_states {hidden_states.shape}")
+            print(f"compute_logits hidden_states {hidden_states.shape}", flush=True)
         logits = self.logits_processor(self.lm_head, hidden_states,
                                        sampling_metadata)
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"compute_logits logits type {type(logits)}")
-            print(f"compute_logits logits {logits.shape}")
+            print(f"compute_logits logits type {type(logits)}", flush=True)
+            print(f"compute_logits logits {logits.shape}", flush=True)
         return logits
 
     def sample(self, logits: torch.Tensor,
