@@ -479,7 +479,7 @@ class LlamaModel(nn.Module):
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"myid {torch.distributed.get_rank()} after allgather hidden_states {type(hidden_states)} shape {hidden_states.shape}\n", flush=True)
+        print(f"myid {torch.distributed.get_rank()} after allgather hidden_states {type(hidden_states_)} shape {hidden_states_.shape}\n", flush=True)
         # print(f"hidden_states_list {hidden_states_list}", flush=True)
         # print(f"hidden_states_ {hidden_states_}", flush=True)
         # print(f"myid {torch.distributed.get_rank()} after allgather hidden_states_ {type(hidden_states_)} shape {hidden_states_.shape}", flush=True)
