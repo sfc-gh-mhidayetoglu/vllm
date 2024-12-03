@@ -1676,13 +1676,12 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                 **MultiModalInputs.as_kwargs(multi_modal_kwargs,
                                              device=self.device),
                 **seqlen_agnostic_kwargs)
+            
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"ModelRunner count: {self.execute_model_count}")
-        if self.execute_model_count == 2:
-            exit()
-        self.execute_model_count += 1
+
 
         if (self.observability_config is not None
                 and self.observability_config.collect_model_forward_time):
@@ -1707,14 +1706,20 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                     torch.tensor(model_forward_time + orig_model_forward_time))
             return hidden_or_intermediate_states
 
+
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"myid {torch.distributed.get_rank()} ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)} shape: {hidden_or_intermediate_states.shape}\n")
+        if torch.distributed.get_rank() == 0:
+            print(f"myid {torch.distributed.get_rank()} ModelRunner {self.execute_model_count}: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)} shape: {hidden_or_intermediate_states.shape}\n")
         # if torch.distributed.get_rank() == 0:
         #     print(f"ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}")
         #    print(f"ModelRunner: hidden_or_intermediate_states shape: {hidden_or_intermediate_states.shape}")
             # print(f"ModelRunner: logits shape: {logits.shape}")
         # exit()
+
+        if self.execute_model_count == 2:
+            exit()
+        self.execute_model_count += 1
 
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
