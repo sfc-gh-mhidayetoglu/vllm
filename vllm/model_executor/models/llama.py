@@ -487,7 +487,7 @@ class LlamaModel(nn.Module):
             #for i in range(SP):
         #     print(f"myid {torch.distributed.get_rank()} hidden_states_list type {[hidden_states_list[i].type for i in range(SP)]} shape {[hidden_states_list[i].shape for i in range(SP)]}\n", flush=True)
             # print(f"hidden_states_list {hidden_states_list}", flush=True)
-        hidden_states = torch.cat(hidden_states_)
+        # hidden_states = torch.cat(hidden_states_)
         if self.numforward == 2:
             exit()
         self.numforward += 1
