@@ -483,6 +483,8 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         print(f"myid {torch.distributed.get_rank()} numforward {self.numforward}\n", flush=True)
+        if torch.distributed.get_rank() == 0:
+            print(f"hidden_states_list {hidden_states_list}", flush=True)
         if self.numforward == 2:
             exit()
         self.numforward += 1
