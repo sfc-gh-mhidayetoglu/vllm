@@ -484,7 +484,7 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         print(f"myid {torch.distributed.get_rank()} numforward {self.numforward}\n", flush=True)
         if torch.distributed.get_rank() == 0:
-            for i in range(SP)
+            for i in range(SP):
                 print(f"myid {torch.distributed.get_rank()} hidden_states_list type {hidden_states_list[i].type}", flush=True)
             # print(f"hidden_states_list {hidden_states_list}", flush=True)
         if self.numforward == 2:
