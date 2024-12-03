@@ -57,7 +57,12 @@ class LogitsProcessor(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         # if torch.distributed.get_rank() == 0:
-        # print(f"myid {torch.distributed.get_rank()} LogitsProcessor {self.numforward} hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}\n", flush=True)
+        print(f"myid {torch.distributed.get_rank()} LogitsProcessor {self.numforward} hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}\n", flush=True)
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if self.numforward == 2:
+            exit()
 
 
         if self.logits_as_input:
