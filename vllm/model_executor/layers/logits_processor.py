@@ -67,8 +67,13 @@ class LogitsProcessor(nn.Module):
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        # if self.numforward == 2:
-        #     exit()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"myid {torch.distributed.get_rank()} hidden_states before pruning shape {hidden_states.shape} sampling indices {sampling_metadata.selected_token_indices} hidden_states {hidden_states}\n", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+        if self.numforward == 2:
+            exit()
 
 
         if self.logits_as_input:
