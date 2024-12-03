@@ -490,7 +490,7 @@ class LlamaModel(nn.Module):
         # hidden_states = torch.cat(hidden_states_)
 
         # hidden_states = torch.cat(hidden_states_list)
-        hidden_states = hidden_states_ # torch.empty((sum(N_ranks), hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        # hidden_states = hidden_states_ # torch.empty((sum(N_ranks), hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
         # torch.cat(hidden_states_list, out=hidden_states)
 
         torch.cuda.synchronize()
@@ -507,13 +507,13 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"end of inference {self.numforward} *************************** hidden_states {hidden_states.shape}", flush=True)
+            print(f"end of inference {self.numforward} *************************** hidden_states {hidden_states_.shape}", flush=True)
 
         # if self.numforward == 2:
         #     exit()
         self.numforward += 1
 
-        return hidden_states
+        return hidden_states_
 
     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
         stacked_params_mapping = [
