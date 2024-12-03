@@ -45,6 +45,8 @@ class LogitsProcessor(nn.Module):
         # Whether to use gather or all-gather to gather the logits.
         self.use_gather = not current_platform.is_tpu()
 
+        self.numforward = 0
+
     def forward(
         self,
         lm_head: VocabParallelEmbedding,
@@ -55,7 +57,14 @@ class LogitsProcessor(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"myid {torch.distributed.get_rank()} LogitsProcessor hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}", flush=True)
+            print(f"myid {torch.distributed.get_rank()} LogitsProcessor {self.numforward} hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}", flush=True)
+        if self.numforward == 3:
+            exit()
+        self.numforward += 1
+
+        
+
+
         if self.logits_as_input:
             logits = hidden_states
         else:
