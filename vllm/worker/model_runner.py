@@ -1717,10 +1717,10 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
             # print(f"ModelRunner: logits shape: {logits.shape}")
         # exit()
 
-        if self.execute_model_count == 2:
-            exit()
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
+        if self.execute_model_count == 2:
+            exit()
         
         
         torch.cuda.synchronize()
