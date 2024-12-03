@@ -733,7 +733,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"compute_logits forward {self.numforward} hidden_states {hidden_states.shape}", flush=True)
-        if self.numforward == 2:
+        if self.numforward == 3:
             exit()
         logits = self.logits_processor(self.lm_head, hidden_states,
                                        sampling_metadata)
