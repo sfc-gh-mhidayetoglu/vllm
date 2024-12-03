@@ -468,10 +468,13 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"test 3 forward {self.numforward}", flush=True)
-            self.numforward += 1
             import traceback
             for line in traceback.format_stack():
                 print(line.strip())
+
+        if self.numforward == 4:
+            exit()
+        self.numforward += 1
 
 
 
