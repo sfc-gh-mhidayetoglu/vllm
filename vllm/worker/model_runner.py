@@ -1611,6 +1611,8 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                                    is_prompt=is_prompt,
                                    virtual_engine=virtual_engine)
 
+    execute_model_count = 0
+
     @torch.inference_mode()
     @dump_input_when_exception(exclude_args=[0], exclude_kwargs=["self"])
     def execute_model(
@@ -1676,7 +1678,11 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                 **seqlen_agnostic_kwargs)
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        # exit()
+        if torch.distributed.get_rank() == 0:
+            print(f"ModelRunner count: {self.execute_model_count}")
+        if self.execute_model_count == 2:
+            exit()
+        self.execute_model_count += 1
 
         if (self.observability_config is not None
                 and self.observability_config.collect_model_forward_time):
