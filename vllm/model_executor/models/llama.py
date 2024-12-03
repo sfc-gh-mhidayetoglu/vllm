@@ -398,11 +398,11 @@ class LlamaModel(nn.Module):
 
 
         torch.cuda.synchronize()
-        get_world_group().barrier()
+        torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print("start inference *********************", flush=True)
+            print(f"start inference {self.numforward} *********************", flush=True)
         torch.cuda.synchronize()
-        get_world_group().barrier()
+        torch.distributed.barrier()
 
         assert inputs_embeds is None
         N = len(input_ids)
@@ -468,9 +468,6 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"test 3 forward {self.numforward}", flush=True)
-            import traceback
-            for line in traceback.format_stack():
-                print(line.strip())
 
 
         # all-gather sequences
@@ -735,7 +732,9 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"compute_logits hidden_states {hidden_states.shape}", flush=True)
+            print(f"compute_logits forward {self.numforward} hidden_states {hidden_states.shape}", flush=True)
+        if self.numforward == 2:
+            exit()
         logits = self.logits_processor(self.lm_head, hidden_states,
                                        sampling_metadata)
         torch.cuda.synchronize()
