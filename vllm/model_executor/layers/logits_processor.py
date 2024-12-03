@@ -67,14 +67,15 @@ class LogitsProcessor(nn.Module):
             torch.distributed.barrier()
             # if torch.distributed.get_rank() == 0:
             print(f"myid {torch.distributed.get_rank()} hidden_states before pruning shape {hidden_states.shape} sampling indices {sampling_metadata.selected_token_indices}\n", flush=True)
-            if self.numforward == 2:
-                exit()
-            hidden_states = _prune_hidden_states(hidden_states,
-                                                 sampling_metadata)
+            # hidden_states = _prune_hidden_states(hidden_states,
+            #                                      sampling_metadata)
+            hidden_states.index_select(0, sampling_metadata.selected_token_indices)
             torch.cuda.synchronize()
             torch.distributed.barrier()
             if torch.distributed.get_rank() == 0:
                 print(f"hidden_states after pruning shape {hidden_states.shape} embedding_bias type {type(embedding_bias)}", flush=True)
+            if self.numforward == 2:
+                exit()
             # Get the logits for the next tokens.
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
         torch.cuda.synchronize()
