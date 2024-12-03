@@ -1674,6 +1674,9 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                 **MultiModalInputs.as_kwargs(multi_modal_kwargs,
                                              device=self.device),
                 **seqlen_agnostic_kwargs)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        exit()
 
         if (self.observability_config is not None
                 and self.observability_config.collect_model_forward_time):
