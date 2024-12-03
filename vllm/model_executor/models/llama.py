@@ -733,8 +733,11 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     ) -> Optional[torch.Tensor]:
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"myid {torch.distributed.get_rank()} compute_logits forward {self.numforward} hidden_states {hidden_states.shape}", flush=True)
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"myid {torch.distributed.get_rank()} compute_logits hidden_states {hidden_states.shape}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
         logits = self.logits_processor(self.lm_head, hidden_states,
                                        sampling_metadata)
         torch.cuda.synchronize()
