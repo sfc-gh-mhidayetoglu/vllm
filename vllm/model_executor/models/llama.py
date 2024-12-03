@@ -430,7 +430,7 @@ class LlamaModel(nn.Module):
             residual = intermediate_tensors["residual"]
 
         torch.cuda.synchronize()
-        get_world_group().barrier()
+        torch.distributed.barrier()
 
         P = get_world_group().world_size
         TP = get_tp_group().world_size
@@ -489,9 +489,6 @@ class LlamaModel(nn.Module):
         #     print(f"myid {torch.distributed.get_rank()} hidden_states_list type {[hidden_states_list[i].type for i in range(SP)]} shape {[hidden_states_list[i].shape for i in range(SP)]}\n", flush=True)
             # print(f"hidden_states_list {hidden_states_list}", flush=True)
         # hidden_states = torch.cat(hidden_states_)
-        if self.numforward == 2:
-            exit()
-        self.numforward += 1
 
         # hidden_states = torch.cat(hidden_states_list)
         hidden_states = torch.empty((sum(N_ranks), hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
@@ -508,9 +505,13 @@ class LlamaModel(nn.Module):
         # return torch.ones((sum(N_ranks), self.config.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
         torch.cuda.synchronize()
-        get_world_group().barrier()
+        torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"end of inference *************************** hidden_states {hidden_states.shape}", flush=True)
+
+        if self.numforward == 2:
+            exit()
+        self.numforward += 1
 
         return hidden_states
 
