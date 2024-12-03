@@ -1308,6 +1308,9 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         with set_compile_context(batch_size_capture_list):
             self.execute_model(model_input, kv_caches, intermediate_tensors)
         torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print("Profiling run completed.")
         return
 
     def remove_all_loras(self):
@@ -1697,10 +1700,10 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}")
-        if torch.distributed.get_rank() == 0:
-            print(f"ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}")
-            print(f"ModelRunner: hidden_or_intermediate_states shape: {hidden_or_intermediate_states.shape}")
+        print(f"myid {torch.distributed.get_rank()} ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)} shape: {hidden_or_intermediate_states.shape}\n")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}")
+        #    print(f"ModelRunner: hidden_or_intermediate_states shape: {hidden_or_intermediate_states.shape}")
             # print(f"ModelRunner: logits shape: {logits.shape}")
         # exit()
 
