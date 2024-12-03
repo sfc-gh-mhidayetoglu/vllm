@@ -63,12 +63,14 @@ class LogitsProcessor(nn.Module):
         if self.logits_as_input:
             logits = hidden_states
         else:
+            if torch.distributed.get_rank() == 0:
+                print(f"hidden_states after pruning shape {hidden_states.shape} sampling_metadata {sampling_metadata.shape}", flush=True)
+            if self.numforward == 2:
+                exit()
             hidden_states = _prune_hidden_states(hidden_states,
                                                  sampling_metadata)
             if torch.distributed.get_rank() == 0:
                 print(f"hidden_states after pruning shape {hidden_states.shape} embedding_bias type {type(embedding_bias)}", flush=True)
-            if self.numforward == 2:
-                exit()
             # Get the logits for the next tokens.
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
         torch.cuda.synchronize()
