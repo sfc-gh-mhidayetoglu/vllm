@@ -54,8 +54,7 @@ class LogitsProcessor(nn.Module):
     ) -> Optional[torch.Tensor]:
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"LogitsProcessor hidden_states shape {hidden_states.shape}", flush=True)
+        print(f"myid {torch.distributed.get_rank()} LogitsProcessor hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}", flush=True)
         if self.logits_as_input:
             logits = hidden_states
         else:
