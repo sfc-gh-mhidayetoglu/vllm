@@ -705,6 +705,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
             self.lm_head = PPMissingLayer()
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
+        
+        self.numforward = 0
 
     def forward(
         self,
@@ -719,8 +721,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"llama model_output {model_output.shape}", flush=True)
-        exit()
+            print(f"forward {self.numforward} llama model_output {model_output.shape}", flush=True)
+        if self.numforward == 2:
+            exit()
+        self.numforward += 1
         return model_output
 
     def compute_logits(
