@@ -501,7 +501,7 @@ class LlamaModel(nn.Module):
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"myid {torch.distributed.get_rank()} numforward {self.numforward} hidden_states_ type {[hidden_states_list[i].type for i in range(SP)]} shape {[hidden_states_list[i].shape for i in range(SP)]}\n", flush=True)
+        print(f"myid {torch.distributed.get_rank()} numforward {self.numforward} hidden_states_ type {[hidden_states_list[i].type for i in range(SP)]} shape {[hidden_states_list[i].shape for i in range(SP)]}", flush=True)
         # if torch.distributed.get_rank() == 0:
             #for i in range(SP):
         #     print(f"myid {torch.distributed.get_rank()} hidden_states_list type {[hidden_states_list[i].type for i in range(SP)]} shape {[hidden_states_list[i].shape for i in range(SP)]}\n", flush=True)
