@@ -188,7 +188,15 @@ class LlamaAttention(nn.Module):
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
-        
+
+
+        test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         # variables for Ulysses attention
         SP = get_sp_group().world_size
         TP = get_tp_group().world_size
@@ -201,12 +209,6 @@ class LlamaAttention(nn.Module):
         assert d//TP == self.q_size
         assert d_kv//TP == self.kv_size
 
-        test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
 
         qkv_ = torch.ones((N, (self.q_size+2*self.kv_size)//SP), dtype=torch.float16, device=get_world_group().device)
         for i in range(torch.distributed.get_world_size()):
@@ -358,6 +360,16 @@ class LlamaDecoderLayer(nn.Module):
         else:
             hidden_states, residual = self.input_layernorm(
                 hidden_states, residual)
+            
+        
+
+        test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
