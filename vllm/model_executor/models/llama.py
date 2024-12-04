@@ -470,6 +470,16 @@ class LlamaModel(nn.Module):
             print(f"test 3 forward {self.numforward}", flush=True)
 
 
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states type: {type(hidden_states)} shape: {hidden_states.shape} {hidden_states}\n")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
+
         # all-gather sequences
         # hidden_states_ = torch.split(torch.empty((sum(N_ranks), hidden_states.shape[1]), device=hidden_states.device, dtype=hidden_states.dtype), N_ranks)
         hidden_states_ = torch.empty((sum(N_ranks), hidden_states.shape[1]), device=hidden_states.device, dtype=hidden_states.dtype)
@@ -479,7 +489,7 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states type: {type(hidden_states_)} shape: {hidden_states_.shape} {hidden_states_}\n")
+                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states_ type: {type(hidden_states_)} shape: {hidden_states_.shape} {hidden_states_}\n")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
