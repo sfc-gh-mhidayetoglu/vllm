@@ -436,8 +436,14 @@ class LlamaModel(nn.Module):
 
         SP_rank = get_sp_group().rank_in_group
         input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
-        if torch.distributed.get_rank() == 0:
-            print(f"narrowed input_ids {input_ids.shape}")
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"myid {torch.distributed.get_rank()} narrowed input_ids {input_ids.shape}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
