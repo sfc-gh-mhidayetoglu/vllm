@@ -394,7 +394,7 @@ class LlamaDecoderLayer(nn.Module):
         # Fully Connected
         # hidden_states, residual = self.post_attention_layernorm(
         #     hidden_states, residual)
-        hidden_states = self.mlp(hidden_states)
+        # hidden_states = self.mlp(hidden_states)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
