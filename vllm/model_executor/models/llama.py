@@ -201,7 +201,14 @@ class LlamaAttention(nn.Module):
         assert d//TP == self.q_size
         assert d_kv//TP == self.kv_size
 
-        qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=torch.float16, device=get_world_group().device)
+        test = torch.ones((5, 3), device=get_sp_group().get_device(), dtype=torch.float16)
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
+        qkv_ = torch.ones((N, (self.q_size+2*self.kv_size)//SP), dtype=torch.float16, device=get_world_group().device)
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 print(f"before all-to-all qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
@@ -513,7 +520,7 @@ class LlamaModel(nn.Module):
                 print(f"myid {torch.distributed.get_rank()} hidden_states {hidden_states.shape} {hidden_states} residual {residual.shape if residual is not None else None} {residual}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
-
+        
         # for i in range(self.start_layer, self.end_layer):
         for i in range(self.start_layer, 3):
             layer = self.layers[i]
