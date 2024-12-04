@@ -219,8 +219,8 @@ class LlamaAttention(nn.Module):
             torch.cuda.synchronize()
             torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
-            #if torch.distributed.get_rank() == i:
-            #    print(f"qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
+            if torch.distributed.get_rank() == i:
+                print(f"qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
