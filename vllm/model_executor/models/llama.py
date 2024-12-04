@@ -580,7 +580,7 @@ class LlamaModel(nn.Module):
                 "residual": residual
             })
         
-        hidden_states_, _ = self.norm(hidden_states_, residual)
+        # hidden_states_, _ = self.norm(hidden_states_, residual)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
