@@ -497,7 +497,7 @@ class LlamaModel(nn.Module):
 
         # all-gather sequences
         # hidden_states_ = torch.split(torch.empty((sum(N_ranks), hidden_states.shape[1]), device=hidden_states.device, dtype=hidden_states.dtype), N_ranks)
-        hidden_states_ = torch.empty((sum(N_ranks), self.hidden_size), device=get_world_group().get_device(), dtype=hidden_states.dtype)
+        hidden_states_ = torch.empty((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=hidden_states.dtype)
         # hidden_states_ = torch.empty((5, 10), device=get_sp_group().get_device(), dtype=hidden_states.dtype)
 
 
