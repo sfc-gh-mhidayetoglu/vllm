@@ -465,7 +465,9 @@ class LlamaModel(nn.Module):
             torch.distributed.barrier()
 
         # torch.empty gives CUDA exception
-        hidden_states_ = torch.ones((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
+        # hidden_states_ = torch.ones((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
+
+        hidden_states_ = torch.narrow(hidden_states_, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -475,15 +477,12 @@ class LlamaModel(nn.Module):
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
-        hidden_states = torch.narrow(hidden_states_, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
-
         P = get_world_group().world_size
         TP = get_tp_group().world_size
         PP = get_pp_group().world_size
         # torch.set_printoptions(profile="full")
         if torch.distributed.get_rank() == 0:
             print(f"P {P} TP {TP}, SP {SP}, PP {PP}")
-            print(f"positions {positions.shape} hidden_states {hidden_states.shape} residual {residual.shape if residual is not None else None}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
         # torch.set_printoptions(profile="default")
 
@@ -492,7 +491,7 @@ class LlamaModel(nn.Module):
             layer = self.layers[i]
             if torch.distributed.get_rank() == 0:
                 print(f"layer {i}")
-            hidden_states, residual = layer(positions, hidden_states, N_ranks,
+            hidden_states_, residual = layer(positions, hidden_states_, N_ranks,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
@@ -507,7 +506,7 @@ class LlamaModel(nn.Module):
                 "residual": residual
             })
         
-        hidden_states, _ = self.norm(hidden_states, residual)
+        hidden_states_, _ = self.norm(hidden_states_, residual)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -527,7 +526,7 @@ class LlamaModel(nn.Module):
 
         # all-gather sequences
         # hidden_states_ = torch.split(torch.empty((sum(N_ranks), hidden_states.shape[1]), device=hidden_states.device, dtype=hidden_states.dtype), N_ranks)
-        hidden_states_ = torch.empty((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
+        # hidden_states_ = torch.empty((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
         # hidden_states_ = torch.empty((5, 10), device=get_sp_group().get_device(), dtype=hidden_states.dtype)
 
 
@@ -540,10 +539,10 @@ class LlamaModel(nn.Module):
             torch.distributed.barrier()
 
 
-        hidden_states_list = [torch.narrow(hidden_states_, 0, sum(N_ranks[:i]), N_ranks[i]) for i in range(SP)]
+        hidden_states_list = [torch.narrow(hidden_states, 0, sum(N_ranks[:i]), N_ranks[i]) for i in range(SP)]
 
         # print(f"myid {torch.distributed.get_rank()} sp_group ranks {get_sp_group().ranks}", flush=True)
-        torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+        torch.distributed.all_gather(hidden_states_list, hidden_states_, group=get_sp_group().device_group)
 
 
         # hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
@@ -584,7 +583,7 @@ class LlamaModel(nn.Module):
         #     exit()
         self.numforward += 1
 
-        return hidden_states_
+        return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
         stacked_params_mapping = [
