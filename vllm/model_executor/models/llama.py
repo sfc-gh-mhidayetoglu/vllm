@@ -218,6 +218,11 @@ class LlamaAttention(nn.Module):
                 print(f"hidden_states type {hidden_states.dtype} shape {hidden_states.shape} {hidden_states}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         # communication
         torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
