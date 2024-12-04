@@ -467,7 +467,7 @@ class LlamaModel(nn.Module):
         # torch.empty gives CUDA exception
         # hidden_states_ = torch.ones((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
 
-        hidden_states_ = torch.narrow(hidden_states_, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
+        hidden_states_ = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -576,7 +576,7 @@ class LlamaModel(nn.Module):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"end of inference {self.numforward} *************************** hidden_states {hidden_states_.shape}", flush=True)
+            print(f"end of inference {self.numforward} *************************** hidden_states {hidden_states.shape}", flush=True)
 
 
         # if self.numforward == 2:
