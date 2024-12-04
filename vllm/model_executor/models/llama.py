@@ -366,8 +366,8 @@ class LlamaDecoderLayer(nn.Module):
 
 
         # Self Attention
-        # if residual is None:
-        #     residual = hidden_states
+        if residual is None:
+            residual = hidden_states
         #     hidden_states = self.input_layernorm(hidden_states)
         # else:
         #     hidden_states, residual = self.input_layernorm(
