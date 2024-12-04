@@ -210,6 +210,15 @@ class LlamaAttention(nn.Module):
                          k.view((N_ulysses, SP, self.kv_size//SP)),
                          v.view((N_ulysses, SP, self.kv_size//SP))], dim=-1).transpose(0, 1).contiguous()
         qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=hidden_states.dtype, device=hidden_states.device)
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"hidden_states type {hidden_states.dtype} shape {hidden_states.shape} {hidden_states}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         # communication
         torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         # unpack receive buffer
