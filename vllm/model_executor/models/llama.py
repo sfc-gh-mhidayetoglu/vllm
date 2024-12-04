@@ -456,14 +456,6 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} hidden_states {hidden_states.shape} {hidden_states} residual {residual.shape if residual is not None else None} {residual}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-
         # torch.empty gives CUDA exception
         # hidden_states_ = torch.ones((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
 
@@ -485,6 +477,14 @@ class LlamaModel(nn.Module):
             print(f"P {P} TP {TP}, SP {SP}, PP {PP}")
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
         # torch.set_printoptions(profile="default")
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"myid {torch.distributed.get_rank()} hidden_states {hidden_states.shape} {hidden_states} residual {residual.shape if residual is not None else None} {residual}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         # for i in range(self.start_layer, self.end_layer):
         for i in range(self.start_layer, 3):
