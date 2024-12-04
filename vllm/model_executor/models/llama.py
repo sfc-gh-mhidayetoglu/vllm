@@ -201,14 +201,6 @@ class LlamaAttention(nn.Module):
         assert d//TP == self.q_size
         assert d_kv//TP == self.kv_size
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"hidden_states type {hidden_states.dtype} shape {hidden_states.shape} {hidden_states}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-
         # qkv projection
         qkv, _ = self.qkv_proj(hidden_states)
 
@@ -229,13 +221,19 @@ class LlamaAttention(nn.Module):
 
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                # print(f"qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
-                print(f"qkv_ type {qkv_.dtype} shape {qkv_.shape}", flush=True)
+                print(f"before all-to-all qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
         # communication
         torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
+
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"after all-to-all qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([self.q_size//SP, self.kv_size//SP, self.kv_size//SP], dim=-1)
 
@@ -266,6 +264,16 @@ class LlamaAttention(nn.Module):
 
         # output projection
         output, _ = self.o_proj(c)
+
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"hidden_states type {hidden_states.dtype} shape {hidden_states.shape} {hidden_states}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
 
         return output
 
