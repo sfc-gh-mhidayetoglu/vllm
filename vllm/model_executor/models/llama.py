@@ -500,6 +500,14 @@ class LlamaModel(nn.Module):
         if torch.distributed.get_rank() == 0:
             print("test 2", flush=True)
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states type: {type(hidden_states)} shape: {hidden_states.shape} device: {hidden_states.device} shape[1]: {hidden_states.shape[1]} {hidden_states}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
                 "hidden_states": hidden_states,
@@ -514,14 +522,6 @@ class LlamaModel(nn.Module):
             print(f"test 3 forward {self.numforward}", flush=True)
 
 
-
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states type: {type(hidden_states)} shape: {hidden_states.shape} device: {hidden_states.device} shape[1]: {hidden_states.shape[1]} {hidden_states}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
 
 
         # all-gather sequences
