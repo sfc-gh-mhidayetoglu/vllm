@@ -201,7 +201,7 @@ class LlamaAttention(nn.Module):
         assert d//TP == self.q_size
         assert d_kv//TP == self.kv_size
 
-        test = torch.ones((5, 3), device=get_sp_group().get_device(), dtype=torch.float16)
+        test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
