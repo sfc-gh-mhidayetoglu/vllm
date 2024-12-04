@@ -386,15 +386,15 @@ class LlamaDecoderLayer(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"llama decoder layer input_layernorm hidden_states {hidden_states.shape}, residual {residual.shape}")
-        # hidden_states = self.self_attn(positions=positions,
-        #                                hidden_states=hidden_states,
-        #                                N_ranks=N_ranks,
-        #                                kv_cache=kv_cache,
-        #                                attn_metadata=attn_metadata)
+        hidden_states = self.self_attn(positions=positions,
+                                       hidden_states=hidden_states,
+                                       N_ranks=N_ranks,
+                                       kv_cache=kv_cache,
+                                       attn_metadata=attn_metadata)
         # Fully Connected
         # hidden_states, residual = self.post_attention_layernorm(
         #     hidden_states, residual)
-        # hidden_states = self.mlp(hidden_states)
+        hidden_states = self.mlp(hidden_states)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -608,7 +608,7 @@ class LlamaModel(nn.Module):
         hidden_states_list = [torch.narrow(hidden_states, 0, sum(N_ranks[:i]), N_ranks[i]) for i in range(SP)]
 
         # print(f"myid {torch.distributed.get_rank()} sp_group ranks {get_sp_group().ranks}", flush=True)
-        # torch.distributed.all_gather(hidden_states_list, hidden_states_, group=get_sp_group().device_group)
+        torch.distributed.all_gather(hidden_states_list, hidden_states_, group=get_sp_group().device_group)
 
 
         # hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
