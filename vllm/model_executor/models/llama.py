@@ -441,7 +441,7 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} narrowed input_ids {input_ids.shape}")
+                print(f"myid {torch.distributed.get_rank()} narrowed input_ids {input_ids.shape} {input_ids}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
