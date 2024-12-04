@@ -425,9 +425,15 @@ class LlamaModel(nn.Module):
         N_ranks = [N//SP]*SP
         for i in range(N % SP):
             N_ranks[i] += 1
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 print(f"myid {torch.distributed.get_rank()} input_ids {input_ids.shape}, positions {positions.shape}, N {N}, N_ranks {N_ranks}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         SP_rank = get_sp_group().rank_in_group
         input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
         if torch.distributed.get_rank() == 0:
