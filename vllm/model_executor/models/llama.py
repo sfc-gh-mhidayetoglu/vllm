@@ -483,10 +483,7 @@ class LlamaModel(nn.Module):
         # all-gather sequences
         # hidden_states_ = torch.split(torch.empty((sum(N_ranks), hidden_states.shape[1]), device=hidden_states.device, dtype=hidden_states.dtype), N_ranks)
         hidden_states_ = torch.empty((sum(N_ranks), hidden_states.shape[1]), device=hidden_states.device, dtype=hidden_states.dtype)
-        hidden_states_list = [torch.narrow(hidden_states_, 0, sum(N_ranks[:i]), N_ranks[i]) for i in range(SP)]
 
-        # print(f"myid {torch.distributed.get_rank()} sp_group ranks {get_sp_group().ranks}", flush=True)
-        torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -495,6 +492,13 @@ class LlamaModel(nn.Module):
                 print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states_ type: {type(hidden_states_)} shape: {hidden_states_.shape} {hidden_states_}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
+
+
+        hidden_states_list = [torch.narrow(hidden_states_, 0, sum(N_ranks[:i]), N_ranks[i]) for i in range(SP)]
+
+        # print(f"myid {torch.distributed.get_rank()} sp_group ranks {get_sp_group().ranks}", flush=True)
+        torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+
 
         # hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         # print(f"myid {torch.distributed.get_rank()} {[hidden_states_list[i].shape in range(SP)]}\n", flush=True)
