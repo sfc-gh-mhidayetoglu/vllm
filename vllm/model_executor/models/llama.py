@@ -435,7 +435,7 @@ class LlamaModel(nn.Module):
             torch.distributed.barrier()
 
         SP_rank = get_sp_group().rank_in_group
-        input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
+        # input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -474,6 +474,8 @@ class LlamaModel(nn.Module):
                 print(f"myid {torch.distributed.get_rank()} hidden_states_ {hidden_states_.shape} {hidden_states_}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
+
+        hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
 
         P = get_world_group().world_size
         TP = get_tp_group().world_size
