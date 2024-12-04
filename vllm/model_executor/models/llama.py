@@ -219,8 +219,8 @@ class LlamaAttention(nn.Module):
             torch.cuda.synchronize()
             torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
+            #if torch.distributed.get_rank() == i:
+            #    print(f"qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
@@ -395,6 +395,7 @@ class LlamaModel(nn.Module):
             make_empty_intermediate_tensors_factory(
                 ["hidden_states", "residual"], config.hidden_size))
         
+        self.hidden_size = config.hidden_size
         self.numforward = 0
 
     def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
@@ -496,7 +497,7 @@ class LlamaModel(nn.Module):
 
         # all-gather sequences
         # hidden_states_ = torch.split(torch.empty((sum(N_ranks), hidden_states.shape[1]), device=hidden_states.device, dtype=hidden_states.dtype), N_ranks)
-        hidden_states_ = torch.empty((sum(N_ranks), hidden_states.shape[1]), device=hidden_states.device, dtype=hidden_states.dtype)
+        hidden_states_ = torch.empty((sum(N_ranks), self.hidden_size), device=hidden_states.device, dtype=hidden_states.dtype)
 
 
         torch.cuda.synchronize()
