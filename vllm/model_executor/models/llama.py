@@ -475,7 +475,7 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states type: {type(hidden_states)} shape: {hidden_states.shape} {hidden_states}\n")
+                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states type: {type(hidden_states)} shape: {hidden_states.shape} {hidden_states}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
@@ -489,7 +489,7 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states_ type: {type(hidden_states_)} shape: {hidden_states_.shape} {hidden_states_}\n")
+                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states_ type: {type(hidden_states_)} shape: {hidden_states_.shape} {hidden_states_}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
