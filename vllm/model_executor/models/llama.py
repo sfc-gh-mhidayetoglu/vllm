@@ -353,6 +353,18 @@ class LlamaDecoderLayer(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, N_ranks {N_ranks}, kv_cache {kv_cache.shape} residual {residual.shape if residual is not None else None}")
+
+
+        
+
+        test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"test before layernorm type {test.dtype} shape {test.shape} {test}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
+
         # Self Attention
         if residual is None:
             residual = hidden_states
@@ -366,7 +378,7 @@ class LlamaDecoderLayer(nn.Module):
         test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
+                print(f"test after layernorm type {test.dtype} shape {test.shape} {test}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
