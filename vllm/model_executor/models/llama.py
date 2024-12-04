@@ -475,7 +475,7 @@ class LlamaModel(nn.Module):
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
-        hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
+        hidden_states = torch.narrow(hidden_states_, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
 
         P = get_world_group().world_size
         TP = get_tp_group().world_size
