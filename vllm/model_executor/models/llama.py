@@ -204,6 +204,7 @@ class LlamaAttention(nn.Module):
         # qkv projection
         qkv, _ = self.qkv_proj(hidden_states)
 
+        qkv = torch.transpose(qkv, 0, 1).contiguous()
         torch.cuda.synchronize()
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
