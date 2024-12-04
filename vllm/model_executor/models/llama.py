@@ -464,7 +464,8 @@ class LlamaModel(nn.Module):
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
-        hidden_states_ = torch.empty((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
+        # torch.empty gives CUDA exception
+        hidden_states_ = torch.ones((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
