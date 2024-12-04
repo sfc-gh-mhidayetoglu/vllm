@@ -509,6 +509,14 @@ class LlamaModel(nn.Module):
         if torch.distributed.get_rank() == 0:
             print(f"end of inference {self.numforward} *************************** hidden_states {hidden_states_.shape}", flush=True)
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states type: {type(hidden_states_)} shape: {hidden_states_.shape} {hidden_states_}\n")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         # if self.numforward == 2:
         #     exit()
         self.numforward += 1
