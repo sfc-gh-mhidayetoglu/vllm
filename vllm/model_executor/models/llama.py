@@ -218,7 +218,7 @@ class LlamaAttention(nn.Module):
         #qkv = torch.cat((q.view((N_ulysses, SP, self.q_size//SP)),
         #                 k.view((N_ulysses, SP, self.kv_size//SP)),
         #                 v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
-        qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=hidden_states.dtype, device=hidden_states.device)
+        qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=torch.float16, device=get_world_group().device)
 
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
