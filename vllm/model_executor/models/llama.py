@@ -230,10 +230,10 @@ class LlamaAttention(nn.Module):
             torch.distributed.barrier()
 
         # pack send buffer
-        # q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-        #qkv = torch.cat((q.view((N_ulysses, SP, self.q_size//SP)),
-        #                 k.view((N_ulysses, SP, self.kv_size//SP)),
-        #                 v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
+        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        qkv = torch.cat((q.view((N_ulysses, SP, self.q_size//SP)),
+                         k.view((N_ulysses, SP, self.kv_size//SP)),
+                         v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
         
 
         # communication
@@ -357,12 +357,12 @@ class LlamaDecoderLayer(nn.Module):
 
         
 
-        test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"test before layernorm type {test.dtype} shape {test.shape} {test}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"test before layernorm type {test.dtype} shape {test.shape} {test}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
 
         # Self Attention
