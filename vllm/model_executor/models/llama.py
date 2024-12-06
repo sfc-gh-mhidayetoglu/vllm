@@ -368,10 +368,10 @@ class LlamaDecoderLayer(nn.Module):
         # Self Attention
         if residual is None:
             residual = hidden_states
-        #     hidden_states = self.input_layernorm(hidden_states)
-        # else:
-        #     hidden_states, residual = self.input_layernorm(
-        #         hidden_states, residual)
+            hidden_states = self.input_layernorm(hidden_states)
+        else:
+            hidden_states, residual = self.input_layernorm(
+                hidden_states, residual)
             
         
 
@@ -386,15 +386,15 @@ class LlamaDecoderLayer(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"llama decoder layer input_layernorm hidden_states {hidden_states.shape}, residual {residual.shape}")
-        # hidden_states = self.self_attn(positions=positions,
-        #                                hidden_states=hidden_states,
-         #                               N_ranks=N_ranks,
-         #                               kv_cache=kv_cache,
-         #                              attn_metadata=attn_metadata)
+        hidden_states = self.self_attn(positions=positions,
+                                       hidden_states=hidden_states,
+                                       N_ranks=N_ranks,
+                                       kv_cache=kv_cache,
+                                       attn_metadata=attn_metadata)
         # Fully Connected
-        # hidden_states, residual = self.post_attention_layernorm(
-        #     hidden_states, residual)
-        # hidden_states = self.mlp(hidden_states)
+        hidden_states, residual = self.post_attention_layernorm(
+            hidden_states, residual)
+        hidden_states = self.mlp(hidden_states)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -580,7 +580,7 @@ class LlamaModel(nn.Module):
                 "residual": residual
             })
         
-        # hidden_states_, _ = self.norm(hidden_states_, residual)
+        hidden_states_, _ = self.norm(hidden_states_, residual)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
