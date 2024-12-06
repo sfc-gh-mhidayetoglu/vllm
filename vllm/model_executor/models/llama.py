@@ -546,12 +546,12 @@ class LlamaModel(nn.Module):
             torch.cuda.synchronize()
             torch.distributed.barrier()
         
-        test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
         
         # for i in range(self.start_layer, self.end_layer):
         for i in range(self.start_layer, 3):
