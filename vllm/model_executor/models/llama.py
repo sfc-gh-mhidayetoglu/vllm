@@ -190,12 +190,12 @@ class LlamaAttention(nn.Module):
     ) -> torch.Tensor:
 
 
-        test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         # variables for Ulysses attention
         SP = get_sp_group().world_size
@@ -520,6 +520,7 @@ class LlamaModel(nn.Module):
 
         hidden_states_ = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
 
+        torch.set_printoptions(sci_mode=True)
         torch.cuda.synchronize()
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
