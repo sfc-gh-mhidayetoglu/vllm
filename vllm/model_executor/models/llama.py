@@ -545,13 +545,7 @@ class LlamaModel(nn.Module):
             print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
         # torch.set_printoptions(profile="default")
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} hidden_states {hidden_states.shape} {hidden_states} residual {residual.shape if residual is not None else None} {residual}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        
         
         # test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
         # for i in range(torch.distributed.get_world_size()):
@@ -568,6 +562,13 @@ class LlamaModel(nn.Module):
             hidden_states_, residual = layer(positions, hidden_states_, N_ranks,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+            for i in range(torch.distributed.get_world_size()):
+                if torch.distributed.get_rank() == i:
+                    print(f"myid {torch.distributed.get_rank()} hidden_states {hidden_states.shape} {hidden_states} residual {residual.shape if residual is not None else None} {residual}")
+                torch.cuda.synchronize()
+                torch.distributed.barrier()
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
