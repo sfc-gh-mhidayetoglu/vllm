@@ -574,6 +574,9 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print("test 2", flush=True)
+        
+        if self.numforward == 2:
+            exit()
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
@@ -640,8 +643,6 @@ class LlamaModel(nn.Module):
             torch.distributed.barrier()
             
         
-        if self.numforward == 2:
-            exit()
         # if torch.distributed.get_rank() == 0:
             #for i in range(SP):
         #     print(f"myid {torch.distributed.get_rank()} hidden_states_list type {[hidden_states_list[i].type for i in range(SP)]} shape {[hidden_states_list[i].shape for i in range(SP)]}\n", flush=True)
