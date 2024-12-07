@@ -220,7 +220,14 @@ class LlamaAttention(nn.Module):
         # qkv projection
         qkv, _ = self.qkv_proj(hidden_states)
 
-        qkv = torch.transpose(qkv, 0, 1).contiguous()
+        # qkv = torch.transpose(qkv, 0, 1).contiguous()
+
+        # pack send buffer
+        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        qkv = torch.cat((q.view((N_ulysses, SP, self.q_size//SP)),
+                         k.view((N_ulysses, SP, self.kv_size//SP)),
+                         v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
+        
         torch.cuda.synchronize()
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
@@ -228,13 +235,6 @@ class LlamaAttention(nn.Module):
                 print(f"qkv type {qkv.dtype} shape {qkv.shape} {qkv}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
-
-        # pack send buffer
-        # q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-        #qkv = torch.cat((q.view((N_ulysses, SP, self.q_size//SP)),
-        #                 k.view((N_ulysses, SP, self.kv_size//SP)),
-        #                 v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
-        
 
         # communication
         torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
