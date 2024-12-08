@@ -287,7 +287,7 @@ class LlamaAttention(nn.Module):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"hidden_states type {hidden_states.dtype} shape {hidden_states.shape} {hidden_states}", flush=True)
+                print(f"output type {output.dtype} shape {output.shape} {output}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
