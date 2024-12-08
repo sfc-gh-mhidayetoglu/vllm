@@ -218,10 +218,10 @@ class LlamaAttention(nn.Module):
             torch.distributed.barrier()     
 
         # qkv projection
-        # if hidden_states.shape[0] > 0:
-        qkv, _ = self.qkv_proj(hidden_states)
-        # else:
-        #     qkv = torch.empty((0, self.q_size + 2*self.kv_size), dtype=hidden_states.dtype, device=hidden_states.device)
+        if hidden_states.shape[0] > 0:
+            qkv, _ = self.qkv_proj(hidden_states)
+        else:
+            qkv = torch.empty((0, self.q_size + 2*self.kv_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
         # qkv = torch.transpose(qkv, 0, 1).contiguous()
 
