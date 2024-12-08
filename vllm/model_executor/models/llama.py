@@ -629,8 +629,10 @@ class LlamaModel(nn.Module):
 
 
         # hidden_states_list = [torch.narrow(hidden_states, 0, sum(N_ranks[:i]), N_ranks[i]) for i in range(SP)]
+        hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         # print(f"myid {torch.distributed.get_rank()} sp_group ranks {get_sp_group().ranks}", flush=True)
-        # torch.distributed.all_gather(hidden_states_list, hidden_states_, group=get_sp_group().device_group)
+        torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+        hidden_states = torch.cat(hidden_states_list)
 
         # hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         # print(f"myid {torch.distributed.get_rank()} {[hidden_states_list[i].shape in range(SP)]}\n", flush=True)
@@ -664,7 +666,7 @@ class LlamaModel(nn.Module):
         # hidden_states = hidden_states_ # torch.empty((sum(N_ranks), hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
         # torch.cat(hidden_states_list, out=hidden_states)
 
-        hidden_states = torch.ones((sum(N_ranks), self.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
+        # hidden_states = torch.ones((sum(N_ranks), self.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
