@@ -266,14 +266,10 @@ class LlamaAttention(nn.Module):
         #         print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
 
         # positional embeddings
-        if hidden_states.shape[0] > 0:
-            q_, k_ = self.rotary_emb(positions, q_, k_)
+        q_, k_ = self.rotary_emb(positions, q_, k_)
 
         # attention 
-        if hidden_states.shape[0] > 0:
-            attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
-        else:
-            attn_output = torch.empty((0, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
+        attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
         # communication
         c = torch.empty((SP, N_ulysses, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
