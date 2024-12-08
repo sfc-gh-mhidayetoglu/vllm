@@ -277,10 +277,10 @@ class LlamaAttention(nn.Module):
         c = torch.transpose(c, 0, 1).reshape(N_ulysses, self.q_size)
 
         # output projection
-        if hidden_states.shape[0] > 0:
-            output, _ = self.o_proj(c)
-        else:
-            output = torch.empty((0, self.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
+        # if hidden_states.shape[0] > 0:
+        output, _ = self.o_proj(c)
+        # else:
+        #     output = torch.empty((0, self.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
 
         torch.cuda.synchronize()
