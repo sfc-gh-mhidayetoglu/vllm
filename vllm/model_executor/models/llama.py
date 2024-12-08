@@ -512,7 +512,7 @@ class LlamaModel(nn.Module):
             torch.distributed.barrier()
 
         SP_rank = get_sp_group().rank_in_group
-        input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
+        # input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
         # if get_sp_group().rank_in_group >= N % SP:
         #     input_ids = torch.cat((input_ids, torch.tensor([0], device=input_ids.device, dtype=input_ids.dtype)))
 
@@ -538,7 +538,7 @@ class LlamaModel(nn.Module):
         # torch.empty gives CUDA exception
         # hidden_states_ = torch.ones((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
 
-        # hidden_states_ = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
+        hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
         # if hidden_states_.shape[0] == 0:
         #     hidden_states_ = torch.zeros((1, self.hidden_size), device=hidden_states.device, dtype=hidden_states.dtype)
 
