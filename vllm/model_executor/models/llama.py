@@ -208,7 +208,6 @@ class LlamaAttention(nn.Module):
         assert d == hidden_states.shape[1]
         assert d//TP == self.q_size
         assert d_kv//TP == self.kv_size
-        is_empty = N_ulysses == 0
 
 
         qkv_ = torch.ones((N, (self.q_size+2*self.kv_size)//SP), dtype=torch.float16, device=get_world_group().device)
@@ -219,7 +218,7 @@ class LlamaAttention(nn.Module):
             torch.distributed.barrier()     
 
         # qkv projection
-        if not is_empty:
+        if hidden_states.shape[0] > 0:
             qkv, _ = self.qkv_proj(hidden_states)
         else:
             qkv = torch.empty((0, self.q_size + 2*self.kv_size), dtype=hidden_states.dtype, device=hidden_states.device)
@@ -267,11 +266,11 @@ class LlamaAttention(nn.Module):
         #         print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
 
         # positional embeddings
-        if not is_empty:
+        if hidden_states.shape[0] > 0:
             q_, k_ = self.rotary_emb(positions, q_, k_)
 
         # attention 
-        if not is_empty:
+        if hidden_states.shape[0] > 0:
             attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
         else:
             attn_output = torch.empty((0, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
@@ -282,9 +281,9 @@ class LlamaAttention(nn.Module):
         c = torch.transpose(c, 0, 1).reshape(N_ulysses, self.q_size)
 
         # output projection
-        if not is_empty:
+        if hidden_states.shape[0] > 0:
             output, _ = self.o_proj(c)
-        else
+        else:
             output = torch.empty((0, self.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
 
