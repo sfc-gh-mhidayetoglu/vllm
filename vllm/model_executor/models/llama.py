@@ -219,18 +219,21 @@ class LlamaAttention(nn.Module):
         else:
             qkv = torch.empty((0, self.q_size + 2*self.kv_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
-        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        # q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        # q.reshape((N_ulysses, SP, self.q_size//SP))
+        # k.reshape((N_ulysses, SP, self.kv_size//SP))
+        # v.reshape((N_ulysses, SP, self.kv_size//SP))
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
                 # print(f"qkv type {qkv.dtype} shape {qkv.shape} {qkv}", flush=True)
-                print(f"myid {torch.distributed.get_rank()} q type {q.dtype} shape {q.shape} {q}", flush=True)
-                print(f"myid {torch.distributed.get_rank()} k type {k.dtype} shape {k.shape} {k}", flush=True)
-                print(f"myid {torch.distributed.get_rank()} v type {v.dtype} shape {v.shape} {v}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        #         print(f"myid {torch.distributed.get_rank()} q type {q.dtype} shape {q.shape} {q}", flush=True)
+        #         print(f"myid {torch.distributed.get_rank()} k type {k.dtype} shape {k.shape} {k}", flush=True)
+        #         print(f"myid {torch.distributed.get_rank()} v type {v.dtype} shape {v.shape} {v}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         # qkv = torch.transpose(qkv, 0, 1).contiguous()
 
@@ -279,6 +282,12 @@ class LlamaAttention(nn.Module):
 
         # attention 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
+
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"myid {torch.distributed.get_rank()} attn_output type {attn_output.dtype} shape {attn_output.shape} {attn_output}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         # communication
         c = torch.empty((SP, N_ulysses, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
