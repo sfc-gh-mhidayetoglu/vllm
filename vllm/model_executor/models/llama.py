@@ -276,6 +276,14 @@ class LlamaAttention(nn.Module):
         torch.distributed.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape(N_ulysses, self.q_size)
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"c type {c.dtype} shape {c.shape} {c}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         # output projection
         if hidden_states.shape[0] > 0:
             output, _ = self.o_proj(c)
