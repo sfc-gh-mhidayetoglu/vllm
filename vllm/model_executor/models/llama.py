@@ -269,6 +269,7 @@ class LlamaAttention(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"d {d}, d_kv {d_kv}, TP {TP}, SP {SP}, N {N}, N_ulysses {N_ulysses}")
+            print(f"q shape {q.shape}, k shape {k.shape}, v shape {v.shape}")
         torch.cuda.synchronize()
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
