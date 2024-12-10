@@ -52,6 +52,7 @@ from vllm.sequence import IntermediateTensors
 from vllm.utils import is_hip
 
 from .interfaces import SupportsLoRA, SupportsPP
+import traceback
 from .utils import (AutoWeightsLoader, PPMissingLayer, is_pp_missing_parameter,
                     make_empty_intermediate_tensors_factory, make_layers)
 
@@ -576,6 +577,8 @@ class LlamaModel(nn.Module):
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"start inference {self.numforward} *********************", flush=True)
+            for line in traceback.format_stack():
+                print(line.strip())
         torch.cuda.synchronize()
         torch.distributed.barrier()
 
@@ -595,6 +598,8 @@ class LlamaModel(nn.Module):
                     print(f"layer {i} kv_cache shape {cache.shape}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
+
+        traceback.print_stack()
 
         SP_rank = get_sp_group().rank_in_group
         # input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
