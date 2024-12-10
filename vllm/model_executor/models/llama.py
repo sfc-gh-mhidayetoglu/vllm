@@ -263,6 +263,10 @@ class LlamaAttention(nn.Module):
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([self.q_size//SP, self.kv_size//SP, self.kv_size//SP], dim=-1)
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"d {d}, d_kv {d_kv}, TP {TP}, SP {SP}, N {N}, N_ulysses {N_ulysses}")
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 print(f"q_ type {q_.dtype} shape {q_.shape} {q_}", flush=True)
@@ -270,6 +274,19 @@ class LlamaAttention(nn.Module):
                 print(f"v_ type {v_.dtype} shape {v_.shape} {v_}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
+
+        q__ = torch.reshape((N, self.num_heads, self.head_dim), q_.shape)
+        k__ = torch.reshape((N, self.num_kv_heads, self.head_dim), k_.shape)
+        v__ = torch.reshape((N, self.num_kv_heads, self.head_dim), v_.shape)
+
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"q__ type {q__.dtype} shape {q__.shape} {q__}", flush=True)
+                print(f"k__ type {k__.dtype} shape {k__.shape} {k__}", flush=True)
+                print(f"v__ type {v__.dtype} shape {v_.shape} {v__}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
 
         # if torch.distributed.get_rank() == 0:
         #         print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
