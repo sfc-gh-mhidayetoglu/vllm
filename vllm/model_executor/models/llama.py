@@ -283,7 +283,7 @@ class LlamaAttention(nn.Module):
             if torch.distributed.get_rank() == i:
                 print(f"q__ type {q__.dtype} shape {q__.shape} {q__}", flush=True)
                 print(f"k__ type {k__.dtype} shape {k__.shape} {k__}", flush=True)
-                print(f"v__ type {v__.dtype} shape {v_.shape} {v__}", flush=True)
+                print(f"v__ type {v__.dtype} shape {v__.shape} {v__}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
