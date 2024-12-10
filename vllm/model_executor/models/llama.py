@@ -275,9 +275,9 @@ class LlamaAttention(nn.Module):
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
-        q__ = torch.reshape((N, self.num_heads, self.head_dim), q_.shape)
-        k__ = torch.reshape((N, self.num_kv_heads, self.head_dim), k_.shape)
-        v__ = torch.reshape((N, self.num_kv_heads, self.head_dim), v_.shape)
+        q__ = torch.reshape(q_, (N, self.num_heads, self.head_dim))
+        k__ = torch.reshape(k_, (N, self.num_kv_heads, self.head_dim))
+        v__ = torch.reshape(v_, (N, self.num_kv_heads, self.head_dim))
 
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
