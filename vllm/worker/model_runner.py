@@ -1305,12 +1305,17 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         ]
         if self.model_config.enforce_eager:
             batch_size_capture_list = []
+
+        if torch.distributed.get_rank() == 0:
+            print(f"kv_cache shape {kv_caches[0].shape}")
         with set_compile_context(batch_size_capture_list):
             self.execute_model(model_input, kv_caches, intermediate_tensors)
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print("Profiling run completed.")
+        if torch.distributed.get_rank() == 0:
+            print(f"kv_cache shape {kv_caches[0].shape}")
         return
 
     def remove_all_loras(self):

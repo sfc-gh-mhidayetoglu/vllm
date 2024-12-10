@@ -594,8 +594,8 @@ class LlamaModel(nn.Module):
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 print(f"myid {torch.distributed.get_rank()} input_ids {input_ids.shape}, positions {positions.shape}, N {N}, N_ranks {N_ranks}")
-                for i, cache in enumerate(kv_caches):
-                    print(f"layer {i} kv_cache shape {cache.shape}")
+                # for i, cache in enumerate(kv_caches):
+                #     print(f"layer {i} kv_cache shape {cache.shape}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
