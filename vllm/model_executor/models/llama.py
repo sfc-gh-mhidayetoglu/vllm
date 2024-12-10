@@ -284,18 +284,21 @@ class LlamaAttention(nn.Module):
         q_ = torch.empty((N, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
         k_ = torch.empty((N, self.kv_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.empty((N, self.kv_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
-        torch.distributed.all_to_all_single(q_, q, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_q, group=get_world_group().device_group)
-        torch.distributed.all_to_all_single(k_, k, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_kv, group=get_world_group().device_group)
-        torch.distributed.all_to_all_single(v_, v, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_kv, group=get_world_group().device_group)
+
         torch.cuda.synchronize()
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"q_ type {q_.dtype} shape {q_.shape} {q_}", flush=True)
-                print(f"k_ type {k_.dtype} shape {k_.shape} {k_}", flush=True)
-                print(f"v_ type {v_.dtype} shape {v_.shape} {v_}", flush=True)
+                print(f"q shape {q.shape}, k shape {k.shape}, v shape {v.shape}")
+                print(f"q_ shape {q_.shape}, k_ shape {k_.shape}, v_ shape {v_.shape}")
+
             torch.cuda.synchronize()
             torch.distributed.barrier()
+
+        torch.distributed.all_to_all_single(q_, q, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_q, group=get_world_group().device_group)
+        torch.distributed.all_to_all_single(k_, k, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_kv, group=get_world_group().device_group)
+        torch.distributed.all_to_all_single(v_, v, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_kv, group=get_world_group().device_group)
+
 
         qkv_ = torch.ones((N, (self.q_size+2*self.kv_size)//SP), dtype=torch.float16, device=get_world_group().device)
         for i in range(torch.distributed.get_world_size()):
