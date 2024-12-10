@@ -297,9 +297,9 @@ class LlamaAttention(nn.Module):
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
-        torch.distributed.all_to_all_single(q_, q, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes, group=get_world_group().device_group)
-        torch.distributed.all_to_all_single(k_, k, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes, group=get_world_group().device_group)
-        torch.distributed.all_to_all_single(v_, v, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes, group=get_world_group().device_group)
+        # torch.distributed.all_to_all_single(q_, q, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes, group=get_world_group().device_group)
+        # torch.distributed.all_to_all_single(k_, k, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes, group=get_world_group().device_group)
+        # torch.distributed.all_to_all_single(v_, v, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes, group=get_world_group().device_group)
 
 
         qkv_ = torch.ones((N, (self.q_size+2*self.kv_size)//SP), dtype=torch.float16, device=get_world_group().device)
