@@ -132,6 +132,8 @@ class LogitsProcessor(nn.Module):
         if torch.distributed.get_rank() == 0:
             print(f"LogitsProcessor logits type {type(logits)}", flush=True)
             print(f"LogitsProcessor logits shape {logits.shape}", flush=True)
+            print(f"LogitsProcessor logits {logits}", flush=True)
+
 
         return logits
 
