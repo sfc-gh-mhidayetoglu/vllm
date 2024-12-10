@@ -284,9 +284,9 @@ class LlamaAttention(nn.Module):
         q_ = torch.empty((N, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
         k_ = torch.empty((N, self.kv_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
         v_ = torch.empty((N, self.kv_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
-        torch.all_to_all_single(q_, q, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_q, group=get_world_group().device_group)
-        torch.all_to_all_single(k_, k, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_kv, group=get_world_group().device_group)
-        torch.all_to_all_single(v_, v, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_kv, group=get_world_group().device_group)
+        torch.distributed.all_to_all_single(q_, q, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_q, group=get_world_group().device_group)
+        torch.distributed.all_to_all_single(k_, k, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_kv, group=get_world_group().device_group)
+        torch.distributed.all_to_all_single(v_, v, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes_kv, group=get_world_group().device_group)
         torch.cuda.synchronize()
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
