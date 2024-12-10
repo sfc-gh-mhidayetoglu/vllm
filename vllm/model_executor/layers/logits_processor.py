@@ -90,10 +90,6 @@ class LogitsProcessor(nn.Module):
             # print(f"myid {torch.distributed.get_rank()} hidden_states before pruning shape {hidden_states.shape} sampling indices {sampling_metadata.selected_token_indices} hidden_states {hidden_states}\n", flush=True)
             # hidden_states = _prune_hidden_states(hidden_states,
             #                                      sampling_metadata)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-            if self.numforward == 2:
-                exit()
             hidden_states = torch.index_select(hidden_states, 0, sampling_metadata.selected_token_indices)
             torch.cuda.synchronize()
             torch.distributed.barrier()
@@ -103,7 +99,16 @@ class LogitsProcessor(nn.Module):
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type after _get_logits {type(logits)}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if self.numforward == 2:
+            exit()
+        # print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
         self.numforward += 1
 
         
