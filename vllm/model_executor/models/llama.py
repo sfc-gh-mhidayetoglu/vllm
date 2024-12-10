@@ -258,8 +258,9 @@ class LlamaAttention(nn.Module):
         my_tp_rank = get_tp_group().rank_in_group
         my_rank = get_world_group().rank_in_group
         for i in range(SP):
-            input_split_sizes_q[my_tp_rank * SP + i] = d//SP//TP
-            input_split_sizes_kv[my_tp_rank * SP + i] = d_kv//SP//TP
+            # input_split_sizes_q[my_tp_rank * SP + i] = d//SP//TP
+            # input_split_sizes_kv[my_tp_rank * SP + i] = d_kv//SP//TP
+            input_split_sizes = [my_tp_rank * SP + i] = 1
             output_split_sizes[my_tp_rank + i * TP] = N_ranks[i]
             # input_split_sizes_q[my_sp_rank*TP + i] = d//SP//TP
             # input_split_sizes_kv[my_sp_rank*SP + i] = d_kv//SP//TP
@@ -274,7 +275,7 @@ class LlamaAttention(nn.Module):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"input_split_sizes_q {input_split_sizes_q} input_split_sizes_kv {input_split_sizes_kv} output_split_sizes {output_split_sizes}")
+                print(f"input_split_sizes {input_split_sizes} output_split_sizes {output_split_sizes}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
