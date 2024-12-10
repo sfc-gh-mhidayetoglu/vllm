@@ -260,7 +260,7 @@ class LlamaAttention(nn.Module):
         for i in range(SP):
             input_split_sizes_q[my_tp_rank * SP + i] = d//SP//TP
             input_split_sizes_kv[my_tp_rank * SP + i] = d_kv//SP//TP
-            output_split_sizes[my_tp_rank * SP + i] = N_ranks[i]
+            output_split_sizes[my_tp_rank + i * TP] = N_ranks[i]
             # input_split_sizes_q[my_sp_rank*TP + i] = d//SP//TP
             # input_split_sizes_kv[my_sp_rank*SP + i] = d_kv//SP//TP
             # output_split_sizes[my_sp_rank*SP + i] = N_ranks[i]
