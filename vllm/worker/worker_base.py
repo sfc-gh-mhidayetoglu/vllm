@@ -295,7 +295,13 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         if torch.distributed.get_rank() == 0:
             print("prepare input", flush=True)
 
-        print(f"myid {torch.distributed.get_rank()} is_driver_worker {self.is_driver_worker} execute_model_req {type(execute_model_req)} do_metadata_broadcast {self.do_metadata_broadcast}", flush=True)
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"myid {torch.distributed.get_rank()} is_driver_worker {self.is_driver_worker} execute_model_req {type(execute_model_req)} do_metadata_broadcast {self.do_metadata_broadcast}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
         if self.is_driver_worker:
             if execute_model_req is None:
                 if self.do_metadata_broadcast:
@@ -313,8 +319,11 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             result = self._get_worker_input_from_broadcast()
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        # print(f"myid {torch.distributed.get_rank()} result type {type(result)}", flush=True)
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"myid {torch.distributed.get_rank()} result type {type(result)}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
         return result
 
     def execute_model(
