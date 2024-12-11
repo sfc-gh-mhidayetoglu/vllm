@@ -1742,8 +1742,8 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         if torch.distributed.get_rank() == 0:
             print(f"myid {torch.distributed.get_rank()} ModelRunner: logits type: {type(logits)} is_driver_worker {self.is_driver_worker}\n")
 
-        if self.execute_model_count == 2:
-            exit()
+        # if self.execute_model_count == 2:
+        #     exit()
  
         self.execute_model_count += 1
 
