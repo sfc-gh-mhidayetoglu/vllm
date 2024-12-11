@@ -315,22 +315,22 @@ class LlamaAttention(nn.Module):
         # communication
         torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
 
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"after all-to-all qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"after all-to-all qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([self.q_size//SP, self.kv_size//SP, self.kv_size//SP], dim=-1)
 
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"q_ type {q_.dtype} shape {q_.shape} {q_}", flush=True)
-                print(f"k_ type {k_.dtype} shape {k_.shape} {k_}", flush=True)
-                print(f"v_ type {v_.dtype} shape {v_.shape} {v_}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"q_ type {q_.dtype} shape {q_.shape} {q_}", flush=True)
+        #         print(f"k_ type {k_.dtype} shape {k_.shape} {k_}", flush=True)
+        #         print(f"v_ type {v_.dtype} shape {v_.shape} {v_}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         # if torch.distributed.get_rank() == 0:
         #         print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
