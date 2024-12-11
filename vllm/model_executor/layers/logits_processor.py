@@ -106,6 +106,7 @@ class LogitsProcessor(nn.Module):
             torch.distributed.barrier()
         torch.cuda.synchronize()
         torch.distributed.barrier()
+        exit()
         # if self.numforward == 2:
         #     exit()
         # print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
