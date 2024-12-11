@@ -461,6 +461,7 @@ class LlamaDecoderLayer(nn.Module):
             torch.distributed.barrier()
 
 
+        exit()
         # Self Attention
         if residual is None:
             residual = hidden_states
