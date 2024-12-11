@@ -461,7 +461,6 @@ class LlamaDecoderLayer(nn.Module):
             torch.distributed.barrier()
 
 
-        exit()
         # Self Attention
         if residual is None:
             residual = hidden_states
@@ -487,6 +486,7 @@ class LlamaDecoderLayer(nn.Module):
                 print(f"myid {torch.distributed.get_rank()} llama decoder layer input_layernorm hidden_states {hidden_states.shape}, residual {residual.shape}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
+        exit()
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
                                        N_ranks=N_ranks,
