@@ -659,8 +659,8 @@ class LlamaModel(nn.Module):
         #     torch.distributed.barrier()
 
 
-        for i in range(self.start_layer, self.end_layer):
-        # for i in range(self.start_layer, 3):
+        # for i in range(self.start_layer, self.end_layer):
+        for i in range(self.start_layer, 3):
             layer = self.layers[i]
             if torch.distributed.get_rank() == 0:
                 print(f"layer {i}")
