@@ -486,7 +486,7 @@ class LlamaDecoderLayer(nn.Module):
                 print(f"myid {torch.distributed.get_rank()} llama decoder layer input_layernorm hidden_states {hidden_states.shape}, residual {residual.shape}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
-        exit()
+        # exit()
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
                                        N_ranks=N_ranks,
@@ -659,8 +659,8 @@ class LlamaModel(nn.Module):
         #     torch.distributed.barrier()
 
 
-        # for i in range(self.start_layer, self.end_layer):
-        for i in range(self.start_layer, 3):
+        for i in range(self.start_layer, self.end_layer):
+        # for i in range(self.start_layer, 3):
             layer = self.layers[i]
             if torch.distributed.get_rank() == 0:
                 print(f"layer {i}")
