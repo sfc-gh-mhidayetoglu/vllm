@@ -519,18 +519,18 @@ class ModelConfig:
         # case where the number of KV heads is smaller than the tensor
         # parallel size so each GPU has at least one KV head.
         return max(1,
-                   total_num_kv_heads // parallel_config.tensor_parallel_size // parallel_config.sequence_parallel_size)
+                   total_num_kv_heads // (parallel_config.tensor_parallel_size * parallel_config.sequence_parallel_size))
 
     def get_num_attention_heads(self,
                                 parallel_config: "ParallelConfig") -> int:
         num_heads = getattr(self.hf_text_config, "num_attention_heads", 0)
-        return num_heads // parallel_config.tensor_parallel_size // parallel_config.sequence_parallel_size
+        return num_heads // (parallel_config.tensor_parallel_size * parallel_config.sequence_parallel_size)
 
     def get_num_layers(self, parallel_config: "ParallelConfig") -> int:
         from vllm.distributed.utils import get_pp_indices
         total_num_hidden_layers = getattr(self.hf_text_config,
                                           "num_hidden_layers", 0)
-        pp_rank = parallel_config.rank // parallel_config.tensor_parallel_size
+        pp_rank = parallel_config.rank // (parallel_config.tensor_parallel_size * parallel_config.sequence_parallel_size)
         pp_size = parallel_config.pipeline_parallel_size
         start, end = get_pp_indices(total_num_hidden_layers, pp_rank, pp_size)
         return end - start
