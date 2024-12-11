@@ -1691,7 +1691,9 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)} shape: {hidden_or_intermediate_states.shape} {hidden_or_intermediate_states}\n")
+                print(f"myid {torch.distributed.get_rank()} ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}\n")
+                if type(hidden_or_intermediate_states) == torch.Tensor:
+                    print(f"shape: {hidden_or_intermediate_states.shape} {hidden_or_intermediate_states}\n")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
