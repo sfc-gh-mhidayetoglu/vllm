@@ -989,7 +989,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print(f"forward {self.numforward} llama model_output {model_output.shape}", flush=True)
+            print(f"forward {self.numforward} llama model_output type {type(model_output)}", flush=True)
         # if self.numforward == 2:
         #     exit()
         self.numforward += 1
