@@ -353,7 +353,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
-                print(f"myid {torch.distributed.get_rank()} inputs type {type(inputs)}", flush=True
+                print(f"myid {torch.distributed.get_rank()} inputs type {type(inputs)}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
