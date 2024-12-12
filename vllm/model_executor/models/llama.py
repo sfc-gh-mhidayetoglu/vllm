@@ -573,15 +573,15 @@ class LlamaModel(nn.Module):
     ) -> Union[torch.Tensor, IntermediateTensors]:
 
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        import traceback
-        if torch.distributed.get_rank() == 0:
-            print(f"start inference {self.numforward} *********************", flush=True)
-            for line in traceback.format_stack():
-                print(line.strip())
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # import traceback
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"start inference {self.numforward} *********************", flush=True)
+        #     for line in traceback.format_stack():
+        #         print(line.strip())
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
 
         assert inputs_embeds is None
         N = len(input_ids)
@@ -590,28 +590,28 @@ class LlamaModel(nn.Module):
         for i in range(N % SP):
             N_ranks[i] += 1
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} input_ids {input_ids.shape}, positions {positions.shape}, N {N}, N_ranks {N_ranks}")
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"myid {torch.distributed.get_rank()} input_ids {input_ids.shape}, positions {positions.shape}, N {N}, N_ranks {N_ranks}")
                 # for i, cache in enumerate(kv_caches):
                 #     print(f"layer {i} kv_cache shape {cache.shape}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         SP_rank = get_sp_group().rank_in_group
         # input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
         # if get_sp_group().rank_in_group >= N % SP:
         #     input_ids = torch.cat((input_ids, torch.tensor([0], device=input_ids.device, dtype=input_ids.dtype)))
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} narrowed input_ids {input_ids.shape} {input_ids}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"myid {torch.distributed.get_rank()} narrowed input_ids {input_ids.shape} {input_ids}")
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
@@ -631,14 +631,14 @@ class LlamaModel(nn.Module):
         # if hidden_states_.shape[0] == 0:
         #     hidden_states_ = torch.zeros((1, self.hidden_size), device=hidden_states.device, dtype=hidden_states.dtype)
 
-        torch.set_printoptions(sci_mode=True)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} hidden_states {hidden_states.shape} {hidden_states} residual {residual.shape if residual is not None else None} {residual}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # torch.set_printoptions(sci_mode=True)
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"myid {torch.distributed.get_rank()} hidden_states {hidden_states.shape} {hidden_states} residual {residual.shape if residual is not None else None} {residual}")
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         P = get_world_group().world_size
         TP = get_tp_group().world_size
