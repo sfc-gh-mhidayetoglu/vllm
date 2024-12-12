@@ -363,7 +363,7 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 for line in traceback.format_stack():
-                    print(line.strip())
+                    print(f"myid {torch.distributed.get_rank()} {line.strip()}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 

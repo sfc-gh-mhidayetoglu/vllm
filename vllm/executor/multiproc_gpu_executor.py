@@ -303,7 +303,7 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
 
     async def _start_worker_execution_loop(self):
         print(f"myid {torch.distributed.get_rank()} start_worker_execution_loop", flush=True)
-        torch.cuda.synchronize()
+        # torch.cuda.synchronize()
         # torch.distirbuted.barrier()
         coros = [
             worker.execute_method_async("start_worker_execution_loop")
