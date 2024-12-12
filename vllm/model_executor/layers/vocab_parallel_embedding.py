@@ -389,10 +389,10 @@ class VocabParallelEmbedding(torch.nn.Module):
         param[loaded_weight.shape[0]:].data.fill_(0)
 
     def forward(self, input_):
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"VocabParallelEmbedding forward {input_.shape}", flush=True)
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"VocabParallelEmbedding forward {input_.shape}", flush=True)
         if self.tp_size > 1:
             # Build the mask.
             masked_input, input_mask = get_masked_input_and_mask(
