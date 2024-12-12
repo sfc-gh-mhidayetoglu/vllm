@@ -358,9 +358,14 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             torch.distributed.barrier()
 
         import traceback
-        if torch.distributed.get_rank() == 0:
-            for line in traceback.format_stack():
-                print(line.strip())
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                for line in traceback.format_stack():
+                    print(line.strip())
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         if inputs is None:
             return None
