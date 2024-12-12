@@ -986,10 +986,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     ) -> Union[torch.Tensor, IntermediateTensors]:
         model_output = self.model(input_ids, positions, kv_caches,
                                   attn_metadata, intermediate_tensors)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"forward {self.numforward} llama model_output type {type(model_output)}", flush=True)
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"forward {self.numforward} llama model_output type {type(model_output)}", flush=True)
         # if self.numforward == 2:
         #     exit()
         self.numforward += 1
