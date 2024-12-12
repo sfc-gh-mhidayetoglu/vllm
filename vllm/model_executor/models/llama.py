@@ -451,14 +451,14 @@ class LlamaDecoderLayer(nn.Module):
 
 
         # test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
                 # print(f"test before layernorm type {test.dtype} shape {test.shape}", flush=True)
-                print(f"myid {torch.distributed.get_rank()} llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, N_ranks {N_ranks}, kv_cache {kv_cache.shape} residual {residual.shape if residual is not None else None}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        #         print(f"myid {torch.distributed.get_rank()} llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, N_ranks {N_ranks}, kv_cache {kv_cache.shape} residual {residual.shape if residual is not None else None}")
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
 
         # Self Attention
@@ -479,13 +479,13 @@ class LlamaDecoderLayer(nn.Module):
         #     torch.cuda.synchronize()
         #     torch.distributed.barrier()
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} llama decoder layer input_layernorm hidden_states {hidden_states.shape}, residual {residual.shape}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"myid {torch.distributed.get_rank()} llama decoder layer input_layernorm hidden_states {hidden_states.shape}, residual {residual.shape}")
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
         # exit()
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
@@ -498,10 +498,10 @@ class LlamaDecoderLayer(nn.Module):
                 hidden_states, residual)
             hidden_states = self.mlp(hidden_states)
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print("test", flush=True)
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     print("test", flush=True)
         return hidden_states, residual
 
 
