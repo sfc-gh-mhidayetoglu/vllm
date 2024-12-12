@@ -357,6 +357,11 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
+        import traceback
+        for line in traceback.format_stack():
+            print(line.strip())
+
+
         if inputs is None:
             return None
 
