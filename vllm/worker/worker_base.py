@@ -339,13 +339,24 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         sequences are provided."""
         start_time = time.perf_counter()
 
-        if torch.distributed.get_rank() == 0:
-            print(f"execute_model_req {type(execute_model_req)}", flush=True)
         torch.cuda.synchronize()
         torch.distributed.barrier()
-
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"myid {torch.distributed.get_rank()} execute_model_req {type(execute_model_req)}", flush=True)
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         inputs = self.prepare_input(execute_model_req)
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"myid {torch.distributed.get_rank()} inputs type {type(inputs)}", flush=True
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         if inputs is None:
             return None
 
