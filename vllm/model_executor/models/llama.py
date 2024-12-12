@@ -208,10 +208,10 @@ class LlamaAttention(nn.Module):
         assert d == hidden_states.shape[1]
         assert d//TP == self.q_size
         assert d_kv//TP == self.kv_size
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"hidden size {d}, q_size {self.q_size}, kv_size {self.kv_size}", flush=True)
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"hidden size {d}, q_size {self.q_size}, kv_size {self.kv_size}", flush=True)
 
         # qkv projection
         if hidden_states.shape[0] > 0:
@@ -244,13 +244,13 @@ class LlamaAttention(nn.Module):
                          v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
         qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=qkv.dtype, device=qkv.device)
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier() 
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"qkv type {qkv.dtype} shape {qkv.shape} {qkv}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier() 
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"qkv type {qkv.dtype} shape {qkv.shape} {qkv}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         # input_split_sizes = [0]*SP*TP
         # input_split_sizes_q = [0]*SP*TP
@@ -315,11 +315,11 @@ class LlamaAttention(nn.Module):
         # communication
         torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
 
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"after all-to-all qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"after all-to-all qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([self.q_size//SP, self.kv_size//SP, self.kv_size//SP], dim=-1)
@@ -344,24 +344,24 @@ class LlamaAttention(nn.Module):
         # attention 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} attn_output type {attn_output.dtype} shape {attn_output.shape} {attn_output}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"myid {torch.distributed.get_rank()} attn_output type {attn_output.dtype} shape {attn_output.shape} {attn_output}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         # communication
         c = torch.empty((SP, N_ulysses, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
         torch.distributed.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape(N_ulysses, self.q_size)
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"c type {c.dtype} shape {c.shape} {c}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"c type {c.dtype} shape {c.shape} {c}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         # output projection
         if hidden_states.shape[0] > 0:
@@ -370,13 +370,13 @@ class LlamaAttention(nn.Module):
             output = torch.empty((0, self.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"output type {output.dtype} shape {output.shape} {output}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         print(f"output type {output.dtype} shape {output.shape} {output}", flush=True)
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
 
         return output
