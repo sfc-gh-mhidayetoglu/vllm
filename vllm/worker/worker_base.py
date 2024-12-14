@@ -357,15 +357,15 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
-        import traceback
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                for line in traceback.format_stack():
-                    print(f"myid {torch.distributed.get_rank()} {line.strip()}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # import traceback
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         for line in traceback.format_stack():
+        #             print(f"myid {torch.distributed.get_rank()} {line.strip()}")
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         if inputs is None:
             return None
