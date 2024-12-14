@@ -356,7 +356,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                 print(f"myid {torch.distributed.get_rank()} inputs type {type(inputs)}", flush=True)
             torch.cuda.synchronize()
             torch.distributed.barrier()
-        exit()
 
         import traceback
         torch.cuda.synchronize()
