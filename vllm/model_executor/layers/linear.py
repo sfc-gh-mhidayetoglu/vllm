@@ -370,8 +370,8 @@ class ColumnParallelLinear(LinearBase):
     def forward(self, input_):
         bias = self.bias if not self.skip_bias_add else None
 
-        if dist.get_rank() == 0:
-            print(f"ColumnParallelLinear.forward: input_.shape={input_.shape}, bias.shape={bias.shape if bias is not None else None}")
+        if torch.distributed.get_rank() == 0:
+            print(f"ColumnParallelLinear.forward input_.shape={input_.shape}, bias={bias.shape if bias is not None else None}, skip_bias_add={self.skip_bias_add}")
 
         # Matrix multiply.
         assert self.quant_method is not None
@@ -1080,16 +1080,8 @@ class RowParallelLinear(LinearBase):
 
     def forward(self, input_):
 
-
-        output_bias = self.bias if self.skip_bias_add else None
-
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
+        if torch.distributed.get_rank() = 0:
                 print(f"RowParallelLinear.forward: myid: {torch.distributed.get_rank()} input_.shape={input_.shape} self.bias {self.bias} self.skip_bias_add {self.skip_bias_add}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
 
         if self.input_is_parallel:
             input_parallel = input_
@@ -1104,16 +1096,12 @@ class RowParallelLinear(LinearBase):
         # Only fuse bias add into GEMM for rank 0 (this ensures that
         # bias will not get added more than once in TP>1 case)
         bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
-        # Ulysses allows input with 0 tokens
-        if input_parallel.shape[0] == 0:
-            return input_parallel, output_bias
-        else:
-            output_parallel = self.quant_method.apply(self, input_parallel, bias=bias_)
+        output_parallel = self.quant_method.apply(self, input_parallel, bias=bias_)
         if self.reduce_results and self.tp_size > 1:
             output = tensor_model_parallel_all_reduce(output_parallel)
         else:
             output = output_parallel
-
+        output_bias = self.bias if self.skip_bias_add else None
         return output, output_bias
 
     def extra_repr(self) -> str:
