@@ -1080,8 +1080,13 @@ class RowParallelLinear(LinearBase):
 
     def forward(self, input_):
 
-        if dist.get_rank() == 0:
-            print(f"RowParallelLinear.forward: input_.shape={input_.shape}")
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"RowParallelLinear.forward: myid: {torch.distributed.get_rank()} input_.shape={input_.shape} self.bias {self.bias} self.skip_bias_add {self.skip_bias_add}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         if self.input_is_parallel:
             input_parallel = input_
