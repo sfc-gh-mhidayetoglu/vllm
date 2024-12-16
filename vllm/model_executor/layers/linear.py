@@ -1080,7 +1080,7 @@ class RowParallelLinear(LinearBase):
 
     def forward(self, input_):
 
-        if torch.distributed.get_rank() = 0:
+        if torch.distributed.get_rank() == 0:
                 print(f"RowParallelLinear.forward: myid: {torch.distributed.get_rank()} input_.shape={input_.shape} self.bias {self.bias} self.skip_bias_add {self.skip_bias_add}")
 
         if self.input_is_parallel:
