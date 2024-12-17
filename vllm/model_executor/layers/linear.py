@@ -20,8 +20,6 @@ from vllm.model_executor.parameter import (BasevLLMParameter,
                                            RowvLLMParameter)
 from vllm.model_executor.utils import set_weight_attrs
 
-import torch.distributed as dist
-
 logger = init_logger(__name__)
 
 WEIGHT_LOADER_V2_SUPPORTED = [
@@ -283,8 +281,6 @@ class ColumnParallelLinear(LinearBase):
                  quant_config: Optional[QuantizationConfig] = None,
                  output_sizes: Optional[List[int]] = None,
                  prefix: str = ""):
-        if torch.distributed.get_rank() == 0:
-            print(f"ColumnParallelLinear: input_size={input_size}, output_size={output_size}")
         super().__init__(input_size, output_size, skip_bias_add, params_dtype,
                          quant_config, prefix)
 
@@ -370,9 +366,6 @@ class ColumnParallelLinear(LinearBase):
     def forward(self, input_):
         bias = self.bias if not self.skip_bias_add else None
 
-        if torch.distributed.get_rank() == 0:
-            print(f"ColumnParallelLinear.forward input_.shape={input_.shape}, bias={bias.shape if bias is not None else None}, skip_bias_add={self.skip_bias_add}")
-
         # Matrix multiply.
         assert self.quant_method is not None
         output_parallel = self.quant_method.apply(self, input_, bias)
@@ -428,8 +421,6 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
         self.output_sizes = output_sizes
         tp_size = get_tensor_model_parallel_world_size()
         assert all(output_size % tp_size == 0 for output_size in output_sizes)
-        if dist.get_rank() == 0:
-            print(f"MergedColumnParallelLinear: input_size={input_size}, output_sizes={output_sizes}")
         super().__init__(input_size=input_size,
                          output_size=sum(output_sizes),
                          bias=bias,
@@ -443,7 +434,6 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
                       param: Parameter,
                       loaded_weight: torch.Tensor,
                       loaded_shard_id: Optional[int] = None):
-
 
         # Special case for GGUF
         # initialize GGUF param after we know the quantize type
@@ -565,8 +555,6 @@ class MergedColumnParallelLinear(ColumnParallelLinear):
 
         assert param_data.shape == loaded_weight.shape
         param_data.copy_(loaded_weight)
-        if dist.get_rank() == 0:
-            print(f"MergedColumnParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}, loaded_shard_id={loaded_shard_id}")
 
     def _load_fused_module_from_checkpoint(self, param: BasevLLMParameter,
                                            loaded_weight: torch.Tensor):
@@ -992,9 +980,6 @@ class RowParallelLinear(LinearBase):
                  reduce_results: bool = True,
                  quant_config: Optional[QuantizationConfig] = None,
                  prefix: str = ""):
-        if dist.get_rank() == 0:
-            print(f"RowParallelLinear: input_size={input_size}, output_size={output_size}")
-            # print(f"RowParallelLinear.weight_loader loaded_weight.shape={loaded_weight.shape}")
         super().__init__(input_size, output_size, skip_bias_add, params_dtype,
                          quant_config, prefix)
 
@@ -1079,10 +1064,6 @@ class RowParallelLinear(LinearBase):
         param.load_row_parallel_weight(loaded_weight=loaded_weight)
 
     def forward(self, input_):
-
-        if torch.distributed.get_rank() == 0:
-                print(f"RowParallelLinear.forward: myid: {torch.distributed.get_rank()} input_.shape={input_.shape} self.bias {self.bias} self.skip_bias_add {self.skip_bias_add}")
-
         if self.input_is_parallel:
             input_parallel = input_
         else:
@@ -1096,12 +1077,16 @@ class RowParallelLinear(LinearBase):
         # Only fuse bias add into GEMM for rank 0 (this ensures that
         # bias will not get added more than once in TP>1 case)
         bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
-        output_parallel = self.quant_method.apply(self, input_parallel, bias=bias_)
+        output_parallel = self.quant_method.apply(self,
+                                                  input_parallel, 
+                                                  bias=bias_)
         if self.reduce_results and self.tp_size > 1:
             output = tensor_model_parallel_all_reduce(output_parallel)
         else:
             output = output_parallel
+
         output_bias = self.bias if self.skip_bias_add else None
+
         return output, output_bias
 
     def extra_repr(self) -> str:
