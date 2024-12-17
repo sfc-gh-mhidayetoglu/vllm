@@ -1305,17 +1305,9 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         ]
         if self.model_config.enforce_eager:
             batch_size_capture_list = []
-
-        if torch.distributed.get_rank() == 0:
-            print(f"kv_cache shape {kv_caches[0].shape}")
         with set_compile_context(batch_size_capture_list):
             self.execute_model(model_input, kv_caches, intermediate_tensors)
         torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print("Profiling run completed.")
-        if torch.distributed.get_rank() == 0:
-            print(f"kv_cache shape {kv_caches[0].shape}")
         return
 
     def remove_all_loras(self):
@@ -1616,8 +1608,6 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                                    is_prompt=is_prompt,
                                    virtual_engine=virtual_engine)
 
-    execute_model_count = 0
-
     @torch.inference_mode()
     @dump_input_when_exception(exclude_args=[0], exclude_kwargs=["self"])
     def execute_model(
@@ -1681,21 +1671,6 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                 **MultiModalInputs.as_kwargs(multi_modal_kwargs,
                                              device=self.device),
                 **seqlen_agnostic_kwargs)
-            
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"ModelRunner count: {self.execute_model_count}")
-
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}\n")
-                if type(hidden_or_intermediate_states) == torch.Tensor:
-                    print(f"shape: {hidden_or_intermediate_states.shape} {hidden_or_intermediate_states}\n")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
 
         if (self.observability_config is not None
                 and self.observability_config.collect_model_forward_time):
@@ -1720,35 +1695,8 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                     torch.tensor(model_forward_time + orig_model_forward_time))
             return hidden_or_intermediate_states
 
-
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)} shape: {hidden_or_intermediate_states.shape} {hidden_or_intermediate_states}\n")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"myid {torch.distributed.get_rank()} ModelRunner {self.execute_model_count}: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)} shape: {hidden_or_intermediate_states.shape}\n")
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"ModelRunner: hidden_or_intermediate_states type: {type(hidden_or_intermediate_states)}")
-        #    print(f"ModelRunner: hidden_or_intermediate_states shape: {hidden_or_intermediate_states.shape}")
-            # print(f"ModelRunner: logits shape: {logits.shape}")
-        # exit()
-
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
-        
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"myid {torch.distributed.get_rank()} ModelRunner: logits type: {type(logits)} is_driver_worker {self.is_driver_worker}\n")
-
-        # if self.execute_model_count == 2:
-        #     exit()
- 
-        self.execute_model_count += 1
-
 
         if not self.is_driver_worker:
             return []
