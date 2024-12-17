@@ -189,14 +189,6 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
 
-
-        # test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
         # variables for Ulysses attention
         SP = get_sp_group().world_size
         TP = get_tp_group().world_size
@@ -208,10 +200,6 @@ class LlamaAttention(nn.Module):
         assert d == hidden_states.shape[1]
         assert d//TP == self.q_size
         assert d_kv//TP == self.kv_size
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"hidden size {d}, q_size {self.q_size}, kv_size {self.kv_size}", flush=True)
 
         # qkv projection
         if hidden_states.shape[0] > 0:
@@ -219,124 +207,16 @@ class LlamaAttention(nn.Module):
         else:
             qkv = torch.empty((0, self.q_size + 2*self.kv_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
-        # q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-        # q.reshape((N_ulysses, SP, self.q_size//SP))
-        # k.reshape((N_ulysses, SP, self.kv_size//SP))
-        # v.reshape((N_ulysses, SP, self.kv_size//SP))
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-                # print(f"qkv type {qkv.dtype} shape {qkv.shape} {qkv}", flush=True)
-        #         print(f"myid {torch.distributed.get_rank()} q type {q.dtype} shape {q.shape} {q}", flush=True)
-        #         print(f"myid {torch.distributed.get_rank()} k type {k.dtype} shape {k.shape} {k}", flush=True)
-        #         print(f"myid {torch.distributed.get_rank()} v type {v.dtype} shape {v.shape} {v}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-        # qkv = torch.transpose(qkv, 0, 1).contiguous()
-
         # pack send buffer
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         qkv = torch.cat((q.view((N_ulysses, SP, self.q_size//SP)),
                          k.view((N_ulysses, SP, self.kv_size//SP)),
                          v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
-        qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=qkv.dtype, device=qkv.device)
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier() 
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"qkv type {qkv.dtype} shape {qkv.shape} {qkv}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-        # input_split_sizes = [0]*SP*TP
-        # input_split_sizes_q = [0]*SP*TP
-        # input_split_sizes_kv = [0]*SP*TP
-        # output_split_sizes = [0]*SP*TP
-        # my_sp_rank = get_sp_group().rank_in_group
-        # my_tp_rank = get_tp_group().rank_in_group
-        # my_rank = get_world_group().rank_in_group
-        # for i in range(SP):
-            # input_split_sizes_q[my_tp_rank * SP + i] = d//SP//TP
-            # input_split_sizes_kv[my_tp_rank * SP + i] = d_kv//SP//TP
-            # input_split_sizes[my_tp_rank * SP + i] = 1
-            # output_split_sizes[my_tp_rank + i * TP] = N_ranks[i]
-            # input_split_sizes_q[my_sp_rank*TP + i] = d//SP//TP
-            # input_split_sizes_kv[my_sp_rank*SP + i] = d_kv//SP//TP
-            # output_split_sizes[my_sp_rank*SP + i] = N_ranks[i]
-        
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"d {d}, d_kv {d_kv}, TP {TP}, SP {SP}, N {N}, N_ulysses {N_ulysses}")
-        #     print(f"q shape {q.shape}, k shape {k.shape}, v shape {v.shape}")
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"input_split_sizes {input_split_sizes} output_split_sizes {output_split_sizes}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-        # q = q.view((N_ulysses, SP, self.q_size//SP)).transpose(0, 1).contiguous()
-        # k = k.view((N_ulysses, SP, self.kv_size//SP)).transpose(0, 1).contiguous()
-        # v = v.view((N_ulysses, SP, self.kv_size//SP)).transpose(0, 1).contiguous()
-        # q_ = torch.empty((N, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
-        # k_ = torch.empty((N, self.kv_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
-        # v_ = torch.empty((N, self.kv_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"q shape {q.shape}, k shape {k.shape}, v shape {v.shape}")
-        #         print(f"q_ shape {q_.shape}, k_ shape {k_.shape}, v_ shape {v_.shape}")
-
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-        # torch.distributed.all_to_all_single(q_, q, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes, group=get_world_group().device_group)
-        # torch.distributed.all_to_all_single(k_, k, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes, group=get_world_group().device_group)
-        # torch.distributed.all_to_all_single(v_, v, output_split_sizes=output_split_sizes, input_split_sizes=input_split_sizes, group=get_world_group().device_group)
-        # torch.distributed.all_to_all_single(q_, q, output_split_sizes=N_ranks, group=get_sp_group().device_group)
-        # torch.distributed.all_to_all_single(k_, k, output_split_sizes=N_ranks, group=get_sp_group().device_group)
-        # torch.distributed.all_to_all_single(v_, v, output_split_sizes=N_ranks, group=get_sp_group().device_group)
-
-
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"before all-to-all qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()     
-
         # communication
+        qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=qkv.dtype, device=qkv.device)
         torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
-
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"after all-to-all qkv_ type {qkv_.dtype} shape {qkv_.shape} {qkv_}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([self.q_size//SP, self.kv_size//SP, self.kv_size//SP], dim=-1)
-
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"q_ type {q_.dtype} shape {q_.shape} {q_}", flush=True)
-        #         print(f"k_ type {k_.dtype} shape {k_.shape} {k_}", flush=True)
-        #         print(f"v_ type {v_.dtype} shape {v_.shape} {v_}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-        # if torch.distributed.get_rank() == 0:
-        #         print(f"llama attention q {q.shape}, k {k.shape}, v {v.shape}")
-        #         print(f"llama attention qkv {qkv.shape} is_contiguous {qkv.is_contiguous()}")
-        #         print(f"llama attention qkv_ {qkv_.shape} is_contiguous {qkv_.is_contiguous()}")
-        #         print(f"llama attention q_ {q_.shape}, k_ {k_.shape}, v_ {v_.shape}")
 
         # positional embeddings
         q_, k_ = self.rotary_emb(positions, q_, k_)
@@ -344,40 +224,16 @@ class LlamaAttention(nn.Module):
         # attention 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"myid {torch.distributed.get_rank()} attn_output type {attn_output.dtype} shape {attn_output.shape} {attn_output}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
         # communication
         c = torch.empty((SP, N_ulysses, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
         torch.distributed.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape(N_ulysses, self.q_size)
 
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"c type {c.dtype} shape {c.shape} {c}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
         # output projection
         if hidden_states.shape[0] > 0:
             output, _ = self.o_proj(c)
         else:
-            output = torch.empty((0, self.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
-
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"output type {output.dtype} shape {output.shape} {output}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
+            output = hidden_states
 
         return output
 
