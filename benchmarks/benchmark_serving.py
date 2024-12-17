@@ -429,8 +429,6 @@ async def benchmark(
     else:
         print("Initial test run completed. Starting main benchmark run...")
 
-    return
-
     if profile:
         print("Starting profiler...")
         profile_input = RequestFuncInput(model=model_id,
