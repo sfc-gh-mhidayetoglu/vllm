@@ -7,8 +7,7 @@ from torch.nn.parameter import Parameter, UninitializedParameter
 
 from vllm.distributed import (divide, get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size,
-                              tensor_model_parallel_all_reduce,
-                              get_sp_tp_group)
+                              tensor_model_parallel_all_reduce)
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig, QuantizeMethodBase, method_has_implemented_embedding)
 from vllm.model_executor.parameter import BasevLLMParameter
@@ -206,8 +205,6 @@ class VocabParallelEmbedding(torch.nn.Module):
         # Keep the input dimensions.
         tp_rank = get_tensor_model_parallel_rank()
         self.tp_size = get_tensor_model_parallel_world_size()
-        # tp_rank = get_sp_tp_group().rank_in_group
-        # self.tp_size = get_sp_tp_group().world_size
         self.num_embeddings = num_embeddings
         self.padding_size = padding_size
         self.org_vocab_size = org_num_embeddings or num_embeddings
@@ -389,10 +386,6 @@ class VocabParallelEmbedding(torch.nn.Module):
         param[loaded_weight.shape[0]:].data.fill_(0)
 
     def forward(self, input_):
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"VocabParallelEmbedding forward {input_.shape}", flush=True)
         if self.tp_size > 1:
             # Build the mask.
             masked_input, input_mask = get_masked_input_and_mask(
