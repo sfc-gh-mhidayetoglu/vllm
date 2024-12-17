@@ -22,18 +22,7 @@ def tensor_model_parallel_gather(input_: torch.Tensor,
                                  dst: int = 0,
                                  dim: int = -1) -> Optional[torch.Tensor]:
     """Gather the input tensor across model parallel group."""
-    torch.cuda.synchronize()
-    torch.distributed.barrier()
-    if torch.distributed.get_rank() == 0:
-        print(f"afdfdasfasdfadsfdsgsdfgsdfghsdfghsadlkfjads;flgkja'sdlkfjasd.fjklas.djfha;.skdjhfas ;lk {input_.shape}", flush=True)
-    output = get_tp_group().gather(input_, dst, dim)
-    # output = get_sp_tp_group().gather(input_, dst, dim)
-    torch.cuda.synchronize()
-    torch.distributed.barrier()
-    if torch.distributed.get_rank() == 0:
-        print(f";lkjasdf;glkjas;dfjh;asodihfj'aopsdf'apwehirg'aoiehg {output.shape}", flush=True)
-
-    return output # get_tp_group().gather(input_, dst, dim)
+    return get_tp_group().gather(input_, dst, dim)
 
 
 def broadcast_tensor_dict(tensor_dict: Optional[Dict[Any, Union[torch.Tensor,
@@ -41,11 +30,4 @@ def broadcast_tensor_dict(tensor_dict: Optional[Dict[Any, Union[torch.Tensor,
                           src: int = 0):
     if not torch.distributed.is_initialized():
         return tensor_dict
-    # return get_tp_group().broadcast_tensor_dict(tensor_dict, src)
-    result = get_sp_tp_group().broadcast_tensor_dict(tensor_dict, src)
-    torch.cuda.synchronize()
-    torch.distributed.barrier()
-    if torch.distributed.get_rank() == 0:
-        print(f"broadcast_tensor_dict {result}", flush=True)
-        print(f"ranks: {get_sp_tp_group().ranks}", flush=True)
-    return result
+    return get_sp_tp_group().broadcast_tensor_dict(tensor_dict, src)
