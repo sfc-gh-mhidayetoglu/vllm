@@ -99,7 +99,6 @@ class LogitsProcessor(nn.Module):
             # because XLA requires strict SPMD among all devices. Every device
             # should execute the same operations after gathering the logits.
             logits = tensor_model_parallel_all_gather(logits)
-
         # Remove paddings in vocab (if any).
         if logits is not None:
             logits = logits[..., :self.org_vocab_size]
