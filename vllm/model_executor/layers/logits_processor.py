@@ -62,8 +62,8 @@ class LogitsProcessor(nn.Module):
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
         
         # this is necessary for Ulysses
-        # if not get_sp_tp_group().is_first_rank:
-        #     logits = None
+        if not get_sp_tp_group().is_first_rank:
+            logits = None
 
         if logits is not None:
             if self.soft_cap is not None:
