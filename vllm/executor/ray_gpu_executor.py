@@ -303,8 +303,6 @@ class RayGPUExecutor(DistributedGPUExecutor):
         # broadcasted to.
         self.non_driver_workers: List[RayWorkerWrapper] = []
 
-        assert(False), "This should not be reached."
-
         # Enforce rank order for correct rank to return final output.
         for index, worker in enumerate(self.workers):
             # The driver worker is rank 0 and not in self.workers.
