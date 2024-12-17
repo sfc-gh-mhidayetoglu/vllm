@@ -54,70 +54,15 @@ class LogitsProcessor(nn.Module):
         sampling_metadata: SamplingMetadata,
         embedding_bias: Optional[torch.Tensor] = None,
     ) -> Optional[torch.Tensor]:
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"myid {torch.distributed.get_rank()} LogitsProcessor {self.numforward} hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        # print(f"myid {torch.distributed.get_rank()} LogitsProcessor {self.numforward} hidden_states shape {hidden_states.shape} logits_as_input {self.logits_as_input}\n", flush=True)
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"myid {torch.distributed.get_rank()} hidden_states before pruning shape {hidden_states.shape} sampling indices {sampling_metadata.selected_token_indices} hidden_states {hidden_states}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-        # if self.numforward == 2:
-        #     exit()
-
-
         if self.logits_as_input:
             logits = hidden_states
         else:
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-            # if torch.distributed.get_rank() == 0:
-            for i in range(torch.distributed.get_world_size()):
-                if i == torch.distributed.get_rank():
-                    print(f"myid {torch.distributed.get_rank()} hidden_states before pruning shape {hidden_states.shape} sampling indices {sampling_metadata.selected_token_indices} hidden_states {hidden_states}\n", flush=True)
-                torch.cuda.synchronize()
-                torch.distributed.barrier()
-            # print(f"myid {torch.distributed.get_rank()} hidden_states before pruning shape {hidden_states.shape} sampling indices {sampling_metadata.selected_token_indices} hidden_states {hidden_states}\n", flush=True)
-            # hidden_states = _prune_hidden_states(hidden_states,
-            #                                      sampling_metadata)
-            hidden_states = torch.index_select(hidden_states, 0, sampling_metadata.selected_token_indices)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-            for i in range(torch.distributed.get_world_size()):
-                if i == torch.distributed.get_rank():
-                    print(f"myid {torch.distributed.get_rank()} hidden_states after pruning shape {hidden_states.shape} hidden_states {hidden_states}\n", flush=True)
-                torch.cuda.synchronize()
-                torch.distributed.barrier()
-            # if torch.distributed.get_rank() == 0:
-            # print(f"myid {torch.distributed.get_rank()} hidden_states after pruning shape {hidden_states.shape} embedding_bias type {type(embedding_bias)}", flush=True)
+            hidden_states = _prune_hidden_states(hidden_states,
+                                                 sampling_metadata)
             # Get the logits for the next tokens.
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type after _get_logits {type(logits)}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        # exit()
-        # if self.numforward == 2:
-        #     exit()
-        # print(f"myid {torch.distributed.get_rank()} LogitsProcessor logits type  after _get_logits{type(logits)}\n", flush=True)
-        self.numforward += 1
-
         
+        # this is necessary for Ulysses
         if not get_sp_tp_group().is_first_rank:
             logits = None
 
@@ -133,14 +78,6 @@ class LogitsProcessor(nn.Module):
             # Apply logits processors (if any).
             logits = _apply_logits_processors(logits, sampling_metadata)
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"LogitsProcessor logits type {type(logits)}", flush=True)
-            print(f"LogitsProcessor logits shape {logits.shape}", flush=True)
-            print(f"LogitsProcessor logits {logits}", flush=True)
-
-
         return logits
 
     def _get_logits(
@@ -149,10 +86,6 @@ class LogitsProcessor(nn.Module):
         lm_head: VocabParallelEmbedding,
         embedding_bias: Optional[torch.Tensor],
     ) -> Optional[torch.Tensor]:
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"logits_processor _get_logits hidden_states shape {hidden_states.shape}", flush=True)
         # Get the logits for the next tokens.
         logits = lm_head.linear_method.apply(lm_head,
                                              hidden_states,
@@ -168,10 +101,6 @@ class LogitsProcessor(nn.Module):
             # should execute the same operations after gathering the logits.
             logits = tensor_model_parallel_all_gather(logits)
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"logits_processor _get_logits logits shape {logits.shape}", flush=True)
         # Remove paddings in vocab (if any).
         if logits is not None:
             logits = logits[..., :self.org_vocab_size]
@@ -188,7 +117,8 @@ def _prune_hidden_states(
     hidden_states: torch.Tensor,
     sampling_metadata: SamplingMetadata,
 ) -> torch.Tensor:
-    return hidden_states.index_select(0, sampling_metadata.selected_token_indices)
+    return hidden_states.index_select(0, 
+                                      sampling_metadata.selected_token_indices)
 
 
 def _apply_logits_processors(
