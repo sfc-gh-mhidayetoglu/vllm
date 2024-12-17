@@ -226,12 +226,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
     ) -> Optional[Tuple[BroadcastableModelInput, WorkerInput, Dict[
             str, torch.Tensor]]]:
         """ Get the worker input from the broadcasted tensor dict. """
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # print(f"myid {torch.distributed.get_rank()} get_worker_input_from_broadcast", flush=True)
-        # exit()
-
         assert self.do_metadata_broadcast
         assert not self.is_driver_worker
         broadcast_data = broadcast_tensor_dict(src=0)
@@ -251,12 +245,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         self, execute_model_req: ExecuteModelRequest
     ) -> Tuple[BroadcastableModelInput, WorkerInput, Dict[str, torch.Tensor]]:
         """ Get the driver input and broadcast it to other workers.  """
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # print(f"myid {torch.distributed.get_rank()} get_driver_input_and_broadcast", flush=True)
-        # exit()
-
         assert self.is_driver_worker
 
         worker_input: WorkerInput = self.prepare_worker_input(
@@ -290,18 +278,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         """
         Prepare the inputs to ModelRunner and workers.
         """
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print("prepare input", flush=True)
-
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"myid {torch.distributed.get_rank()} is_driver_worker {self.is_driver_worker} execute_model_req {type(execute_model_req)} do_metadata_broadcast {self.do_metadata_broadcast}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
         if self.is_driver_worker:
             if execute_model_req is None:
                 if self.do_metadata_broadcast:
@@ -311,25 +287,10 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                     # driver broadcasts an empty input. Send an empty input to
                     # notify all other workers to stop their execution loop.
                     broadcast_tensor_dict({}, src=0)
-                    torch.cuda.synchronize()
-                    torch.distributed.barrier()
-                    for i in range(torch.distributed.get_world_size()):
-                        if i == torch.distributed.get_rank():
-                            print(f"myid {torch.distributed.get_rank()} broadcast empty input", flush=True)
-                        torch.cuda.synchronize()
-                        torch.distributed.barrier()
                 return None
-            result = self._get_driver_input_and_broadcast(execute_model_req)
+            return self._get_driver_input_and_broadcast(execute_model_req)
         else:
-            result = self._get_worker_input_from_broadcast()
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"myid {torch.distributed.get_rank()} result type {type(result)}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-        return result
+            return self._get_worker_input_from_broadcast()
 
     def execute_model(
         self,
@@ -339,47 +300,14 @@ class LocalOrDistributedWorkerBase(WorkerBase):
         sequences are provided."""
         start_time = time.perf_counter()
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"myid {torch.distributed.get_rank()} execute_model_req {type(execute_model_req)}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-
         inputs = self.prepare_input(execute_model_req)
-
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"myid {torch.distributed.get_rank()} inputs type {type(inputs)}", flush=True)
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-
-        # import traceback
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         for line in traceback.format_stack():
-        #             print(f"myid {torch.distributed.get_rank()} {line.strip()}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
         if inputs is None:
             return None
-
-        if torch.distributed.get_rank() == 0:
-            print(f"after prepare_input {inputs}", flush=True)
 
         model_input, worker_input, kwargs = inputs
         num_steps = worker_input.num_steps
 
         self.execute_worker(worker_input)
-
-        if torch.distributed.get_rank() == 0:
-            print(f"after execute_worker model_input type {type(model_input)} worker_input type {type(worker_input)} kwargs type {type(kwargs)}", flush=True)
 
         # If there is no input, we don't need to execute the model.
         if worker_input.num_seq_groups == 0:
@@ -396,13 +324,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
                 orig_model_execute_time = intermediate_tensors.tensors.get(
                     "model_execute_time", torch.tensor(0)).item()
 
-
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"model start test ************ type of model_input {type(model_input)} type of worker_input {type(worker_input)} type of intermediate_tensors {type(intermediate_tensors)}")
-            print(f"num_steps {num_steps}")
-
         output = self.model_runner.execute_model(
             model_input=model_input,
             kv_caches=self.kv_cache[worker_input.virtual_engine]
@@ -411,13 +332,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             num_steps=num_steps,
             **kwargs,
         )
-
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"model end test ************ type of output {type(output)}")
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
 
         model_execute_time = time.perf_counter() - start_time
         if not get_pp_group().is_last_rank:
@@ -435,12 +349,6 @@ class LocalOrDistributedWorkerBase(WorkerBase):
             for o in output:
                 o.model_execute_time = (orig_model_execute_time +
                                         model_execute_time)
-
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print("model is executed")
-        # exit()
 
         # output is List[SamplerOutput]
         return output
