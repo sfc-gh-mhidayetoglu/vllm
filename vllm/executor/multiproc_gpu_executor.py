@@ -186,25 +186,12 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
             raise NotImplementedError(
                 "max_concurrent_workers is not supported yet.")
 
-        # if torch.distributed.is_initialized():
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-        #     if torch.distributed.get_rank() == 0:
-        print(f"test **************************************************************************************** async_run_tensor_parallel_workers_only {async_run_tensor_parallel_workers_only}")
-
         if async_run_tensor_parallel_workers_only:
             # Run only non-driver workers and just return futures.
             return [
                 worker.execute_method(method, *args, **kwargs)
                 for worker in self.non_driver_workers
             ]
-        
-        # if torch.distributed.is_initialized():
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-        #     if torch.distributed.get_rank() == 0:
-        print("test 2 $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-
 
         # Start all remote workers first.
         worker_outputs = [
@@ -214,12 +201,6 @@ class MultiprocessingGPUExecutor(DistributedGPUExecutor):
 
         driver_worker_method = getattr(self.driver_worker, method)
         driver_worker_output = driver_worker_method(*args, **kwargs)
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"test 3 driver_worker_output {driver_worker_output}")
-        # exit()
 
         # Get the results of the workers.
         return [driver_worker_output
@@ -263,51 +244,26 @@ class MultiprocessingGPUExecutorAsync(MultiprocessingGPUExecutor,
                 for _ in range(self.parallel_config.pipeline_parallel_size)
             ]
 
-        print(f"myid {torch.distributed.get_rank()} driver_execute_model_async pp_locks length {len(self.pp_locks)}", flush=True)
-        torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"before async tasks")
-            print(f"self.pp_locks: {self.pp_locks}")
-
         tasks = [
             asyncio.create_task(
                 _run_task_with_lock(self.driver_exec_model, self.pp_locks[0],
                                     execute_model_req))
         ]
-        print(f"tp_driver_workers: {self.tp_driver_workers}", flush=True)
-        # for sp_rank in range(0, self.parallel_config.sequence_parallel_size):
-        #     print(f"sp_rank: {sp_rank}", flush=True)
         for pp_rank, driver_worker in enumerate(self.tp_driver_workers,
                                                 start=1):
-            # print(f"sp_rank: {sp_rank} pp_rank: {pp_rank}", flush=True)
-            print(f"driver_worker: {driver_worker}", flush=True)
             tasks.append(
                 asyncio.create_task(
                     _run_task_with_lock(driver_worker.execute_method_async,
                                         self.pp_locks[pp_rank],
                                         "execute_model", execute_model_req)))
-
-        if torch.distributed.get_rank() == 0:
-            print(f"is torch distributed initialized: {torch.distributed.is_initialized()}", flush=True)
-            print(f"before gather ******************************************", flush=True)
         results = await asyncio.gather(*tasks)
-        torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"after gather ****************************************** results type: {type(results)}", flush=True)
-            print(f"results: {results}", flush=True)
 
         # Only the last PP stage has the final results.
         return results[-1]
 
     async def _start_worker_execution_loop(self):
-        print(f"myid {torch.distributed.get_rank()} start_worker_execution_loop", flush=True)
-        # torch.cuda.synchronize()
-        # torch.distirbuted.barrier()
         coros = [
             worker.execute_method_async("start_worker_execution_loop")
             for worker in self.non_driver_workers
         ]
-        results =  await asyncio.gather(*coros)
-        return results
+        return await asyncio.gather(*coros)
