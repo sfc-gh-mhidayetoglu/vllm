@@ -45,8 +45,6 @@ class LogitsProcessor(nn.Module):
         # Whether to use gather or all-gather to gather the logits.
         self.use_gather = not current_platform.is_tpu()
 
-        self.numforward = 0
-
     def forward(
         self,
         lm_head: VocabParallelEmbedding,
@@ -59,6 +57,7 @@ class LogitsProcessor(nn.Module):
         else:
             hidden_states = _prune_hidden_states(hidden_states,
                                                  sampling_metadata)
+
             # Get the logits for the next tokens.
             logits = self._get_logits(hidden_states, lm_head, embedding_bias)
         
@@ -117,7 +116,7 @@ def _prune_hidden_states(
     hidden_states: torch.Tensor,
     sampling_metadata: SamplingMetadata,
 ) -> torch.Tensor:
-    return hidden_states.index_select(0, 
+    return hidden_states.index_select(0,
                                       sampling_metadata.selected_token_indices)
 
 
