@@ -422,47 +422,6 @@ class LlamaModel(nn.Module):
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
 
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # import traceback
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"start inference {self.numforward} *********************", flush=True)
-        #     for line in traceback.format_stack():
-        #         print(line.strip())
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-
-        assert inputs_embeds is None
-        N = len(input_ids)
-        SP = get_sp_group().world_size
-        N_ranks = [N//SP]*SP
-        for i in range(N % SP):
-            N_ranks[i] += 1
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"myid {torch.distributed.get_rank()} input_ids {input_ids.shape}, positions {positions.shape}, N {N}, N_ranks {N_ranks}")
-                # for i, cache in enumerate(kv_caches):
-                #     print(f"layer {i} kv_cache shape {cache.shape}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-        SP_rank = get_sp_group().rank_in_group
-        # input_ids = torch.narrow(input_ids, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
-        # if get_sp_group().rank_in_group >= N % SP:
-        #     input_ids = torch.cat((input_ids, torch.tensor([0], device=input_ids.device, dtype=input_ids.dtype)))
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"myid {torch.distributed.get_rank()} narrowed input_ids {input_ids.shape} {input_ids}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
@@ -474,69 +433,21 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        # torch.empty gives CUDA exception
-        # hidden_states_ = torch.ones((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
+        N = len(input_ids)
+        SP = get_sp_group().world_size
+        N_ranks = [N//SP]*SP
+        for i in range(N % SP):
+            N_ranks[i] += 1
+        SP_rank = get_sp_group().rank_in_group
 
+        # narrow hidden_states
         hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
-        # if hidden_states_.shape[0] == 0:
-        #     hidden_states_ = torch.zeros((1, self.hidden_size), device=hidden_states.device, dtype=hidden_states.dtype)
-
-        # torch.set_printoptions(sci_mode=True)
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"myid {torch.distributed.get_rank()} hidden_states {hidden_states.shape} {hidden_states} residual {residual.shape if residual is not None else None} {residual}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-        P = get_world_group().world_size
-        TP = get_tp_group().world_size
-        PP = get_pp_group().world_size
-        # torch.set_printoptions(profile="full")
-        if torch.distributed.get_rank() == 0:
-            print(f"P {P} TP {TP}, SP {SP}, PP {PP}")
-            print(f"start_layer {self.start_layer}, end_layer {self.end_layer}")
-        # torch.set_printoptions(profile="default")
-
-        
-        
-        # test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"test type {test.dtype} shape {test.shape} {test}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
 
         for i in range(self.start_layer, self.end_layer):
-        # for i in range(self.start_layer, 3):
             layer = self.layers[i]
-            if torch.distributed.get_rank() == 0:
-                print(f"layer {i}")
             hidden_states, residual = layer(positions, hidden_states, N_ranks,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
-            # torch.cuda.synchronize()
-            # torch.distributed.barrier()
-            # for i in range(torch.distributed.get_world_size()):
-            #     if torch.distributed.get_rank() == i:
-            #         print(f"myid {torch.distributed.get_rank()} hidden_states {hidden_states.shape} {hidden_states} residual {residual.shape if residual is not None else None} {residual}")
-            #     torch.cuda.synchronize()
-            #     torch.distributed.barrier()
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print("test 2", flush=True)
-        
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states type: {type(hidden_states)} shape: {hidden_states.shape} device: {hidden_states.device} shape[1]: {hidden_states.shape[1]}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
@@ -547,90 +458,10 @@ class LlamaModel(nn.Module):
         if hidden_states.shape[0] > 0:
             hidden_states, _ = self.norm(hidden_states, residual)
 
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"test 3 forward {self.numforward}", flush=True)
-
-
-
-
-        # all-gather sequences
-        # hidden_states_ = torch.split(torch.empty((sum(N_ranks), hidden_states.shape[1]), device=hidden_states.device, dtype=hidden_states.dtype), N_ranks)
-        # hidden_states_ = torch.empty((sum(N_ranks), self.hidden_size), device=get_world_group().device, dtype=torch.float16)
-        # hidden_states_ = torch.empty((5, 10), device=get_sp_group().get_device(), dtype=hidden_states.dtype)
-
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"myid {torch.distributed.get_rank()} Llama Model: hidden_states type: {type(hidden_states)} shape: {hidden_states.shape} {hidden_states}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-
-
-        # hidden_states_list = [torch.narrow(hidden_states, 0, sum(N_ranks[:i]), N_ranks[i]) for i in range(SP)]
+        # all-gather hidden_states
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
-        # print(f"myid {torch.distributed.get_rank()} sp_group ranks {get_sp_group().ranks}", flush=True)
         torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
         hidden_states = torch.cat(hidden_states_list)
-
-        # hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
-        # print(f"myid {torch.distributed.get_rank()} {[hidden_states_list[i].shape in range(SP)]}\n", flush=True)
-        # hidden_states = torch.empty((sum(N_ranks), hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"myid {torch.distributed.get_rank()} numforward {self.numforward} hidden_states_ type {[hidden_states_list[i].type for i in range(SP)]} shape {[hidden_states_list[i].shape for i in range(SP)]}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"myid {torch.distributed.get_rank()} hidden_states shape {hidden_states.shape} {hidden_states}", flush=True)
-        #     torch.cuda.synchronize()
-        #    torch.distributed.barrier()
-            
-        
-        # if torch.distributed.get_rank() == 0:
-            #for i in range(SP):
-        #     print(f"myid {torch.distributed.get_rank()} hidden_states_list type {[hidden_states_list[i].type for i in range(SP)]} shape {[hidden_states_list[i].shape for i in range(SP)]}\n", flush=True)
-            # print(f"hidden_states_list {hidden_states_list}", flush=True)
-        # hidden_states = torch.cat(hidden_states_)
-
-        # hidden_states = torch.empty((((N + SP - 1) // SP) * SP, self.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
-        # hidden_states = torch.cat(hidden_states_list)
-        # hidden_states = hidden_states_ # torch.empty((sum(N_ranks), hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
-        # torch.cat(hidden_states_list, out=hidden_states)
-
-        # hidden_states = torch.ones((sum(N_ranks), self.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # print(f"myid {torch.distributed.get_rank()} after allgather hidden_states {type(hidden_states)} shape {hidden_states.shape}\n", flush=True)
-        # print(f"hidden_states_list {hidden_states_list}", flush=True)
-        # print(f"hidden_states_ {hidden_states_}", flush=True)
-        # print(f"myid {torch.distributed.get_rank()} after allgather hidden_states_ {type(hidden_states_)} shape {hidden_states_.shape}", flush=True)
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-
-        # return torch.ones((sum(N_ranks), self.config.hidden_size), dtype=hidden_states.dtype, device=hidden_states.device)
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"end of inference {self.numforward} *************************** hidden_states {hidden_states.shape}", flush=True)
-
-
-        # if self.numforward == 2:
-        #     exit()
-        self.numforward += 1
 
         return hidden_states
 
@@ -823,8 +654,6 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
             self.lm_head = PPMissingLayer()
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
-        
-        self.numforward = 0
 
     def forward(
         self,
@@ -836,13 +665,6 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     ) -> Union[torch.Tensor, IntermediateTensors]:
         model_output = self.model(input_ids, positions, kv_caches,
                                   attn_metadata, intermediate_tensors)
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"forward {self.numforward} llama model_output type {type(model_output)}", flush=True)
-        # if self.numforward == 2:
-        #     exit()
-        self.numforward += 1
         return model_output
 
     def compute_logits(
