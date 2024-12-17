@@ -333,10 +333,6 @@ class GroupCoordinator:
         a new tensor in the same op. So we need to figure out if the op is
         in-place or out-of-place ahead of time.
         """
-
-        if self.rank == 0:
-            print(f"all_reduce input_.size() = {input_.size()}")
-
         # Bypass the function if we are using only 1 GPU.
         if self.world_size == 1:
             return input_
@@ -420,8 +416,6 @@ class GroupCoordinator:
         all the ranks.
         NOTE: `dst` is the local rank of the destination rank.
         """
-        if self.rank == 0:
-            print(f"gather: input_.size() = {input_.size()}")
         world_size = self.world_size
         # Bypass the function if we are using only 1 GPU.
         if world_size == 1:
@@ -581,8 +575,6 @@ class GroupCoordinator:
         # Bypass the function if we are using only 1 GPU.
         if (not torch.distributed.is_initialized() or self.world_size == 1):
             return tensor_dict
-        if self.rank == 0:
-            print(f"broadcast_tensor_dict src {src} group {self.ranks}")
 
         group = self.device_group
         metadata_group = self.cpu_group
@@ -865,8 +857,7 @@ def init_model_parallel_group(
         group_ranks=group_ranks,
         local_rank=local_rank,
         torch_distributed_backend=backend,
-        # use_pynccl=True,
-        use_pynccl=False,
+        use_pynccl=True,
         use_custom_allreduce=use_custom_allreduce,
         use_tpu_communicator=True,
         use_message_queue_broadcaster=use_message_queue_broadcaster,
