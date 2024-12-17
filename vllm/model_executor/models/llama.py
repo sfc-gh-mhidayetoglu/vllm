@@ -281,7 +281,6 @@ class LlamaDecoderLayer(nn.Module):
                                        eps=config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size,
                                                 eps=config.rms_norm_eps)
-        self.inference = 0
 
     def forward(
         self,
@@ -292,25 +291,6 @@ class LlamaDecoderLayer(nn.Module):
         attn_metadata: AttentionMetadata,
         residual: Optional[torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, N_ranks {N_ranks}, kv_cache {kv_cache.shape} residual {residual.shape if residual is not None else None}")
-
-
-        # test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-                # print(f"test before layernorm type {test.dtype} shape {test.shape}", flush=True)
-        #         print(f"myid {torch.distributed.get_rank()} llama decoder layer positions {positions.shape}, hidden_states {hidden_states.shape}, N_ranks {N_ranks}, kv_cache {kv_cache.shape} residual {residual.shape if residual is not None else None}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-
         # Self Attention
         if residual is None:
             residual = hidden_states
@@ -320,38 +300,17 @@ class LlamaDecoderLayer(nn.Module):
             if hidden_states.shape[0] > 0:
                 hidden_states, residual = self.input_layernorm(
                     hidden_states, residual)
-            
-        
-        # test = torch.ones((5, 3), device=get_world_group().device, dtype=torch.float16)
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"test after layernorm type {test.dtype} shape {test.shape}", flush=True)
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if torch.distributed.get_rank() == i:
-        #         print(f"myid {torch.distributed.get_rank()} llama decoder layer input_layernorm hidden_states {hidden_states.shape}, residual {residual.shape}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-        # exit()
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
                                        N_ranks=N_ranks,
                                        kv_cache=kv_cache,
-                                      attn_metadata=attn_metadata)
+                                       attn_metadata=attn_metadata)
         # Fully Connected
         if hidden_states.shape[0] > 0:
             hidden_states, residual = self.post_attention_layernorm(
                 hidden_states, residual)
             hidden_states = self.mlp(hidden_states)
 
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print("test", flush=True)
         return hidden_states, residual
 
 
@@ -405,9 +364,6 @@ class LlamaModel(nn.Module):
         self.make_empty_intermediate_tensors = (
             make_empty_intermediate_tensors_factory(
                 ["hidden_states", "residual"], config.hidden_size))
-        
-        self.hidden_size = config.hidden_size
-        self.numforward = 0
 
     def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.embed_tokens(input_ids)
@@ -421,7 +377,6 @@ class LlamaModel(nn.Module):
         intermediate_tensors: Optional[IntermediateTensors],
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
-
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
