@@ -400,7 +400,6 @@ class LlamaModel(nn.Module):
 
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
-            torch.distributed.barrier()
             if torch.distributed.get_rank() == 0:
                 print(f"Layer {i} hidden_states shape: {hidden_states.shape}")
             hidden_states, residual = layer(positions, hidden_states, N_ranks,
