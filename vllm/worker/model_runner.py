@@ -1905,7 +1905,7 @@ class CUDAGraphRunner:
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} run cuda graph")
+                print(f"myid {torch.distributed.get_rank()} run cuda graph input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
         # Run the graph.
@@ -1913,7 +1913,7 @@ class CUDAGraphRunner:
         # Return the output tensor.
         if get_pp_group().is_last_rank:
             return self.output_buffers["hidden_states"]
-
+        
         return self.output_buffers
 
     def __call__(self, *args, **kwargs):
