@@ -1905,7 +1905,7 @@ class CUDAGraphRunner:
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} run cuda graph\n")
+                print(f"myid {torch.distributed.get_rank()} run cuda graph")
             torch.cuda.synchronize()
             torch.distributed.barrier()
         # Run the graph.
