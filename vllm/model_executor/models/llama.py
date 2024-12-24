@@ -210,7 +210,8 @@ class LlamaAttention(nn.Module):
                          v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
         # communication
         qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=qkv.dtype, device=qkv.device)
-        torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
+        if self.numattention != 171:
+            torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([self.q_size//SP, self.kv_size//SP, self.kv_size//SP], dim=-1)
 
