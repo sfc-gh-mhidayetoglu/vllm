@@ -203,6 +203,9 @@ class LlamaAttention(nn.Module):
         else:
             qkv = torch.empty((0, self.q_size + 2*self.kv_size), dtype=hidden_states.dtype, device=hidden_states.device)
 
+        if self.numattention == 171:
+            print(f"myid {torch.distributed.get_rank()} N_ranks {N_ranks} N_ulysses {N_ulysses}\n")
+
         # pack send buffer
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         qkv = torch.cat((q.view((N_ulysses, SP, self.q_size//SP)),
