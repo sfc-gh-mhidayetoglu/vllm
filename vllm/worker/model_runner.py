@@ -1793,6 +1793,9 @@ class CUDAGraphRunner:
         # Wait for the warm up operations to finish before proceeding with
         # Graph Capture.
         torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print("capture cuda graph")
         # Capture the graph.
         self._graph = torch.cuda.CUDAGraph()
         with torch.cuda.graph(self._graph, pool=memory_pool, stream=stream):
