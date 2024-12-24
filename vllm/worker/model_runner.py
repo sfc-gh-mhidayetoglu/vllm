@@ -1871,6 +1871,14 @@ class CUDAGraphRunner:
         # KV caches are fixed tensors, so we don't need to copy them.
         del kv_caches
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"myid {torch.distributed.get_rank()} prepare cuda graph input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         # Copy the input tensors to the input buffers.
         self.input_buffers["input_ids"].copy_(input_ids, non_blocking=True)
         self.input_buffers["positions"].copy_(positions, non_blocking=True)
@@ -1905,7 +1913,7 @@ class CUDAGraphRunner:
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} run cuda graph input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape}")
+                print(f"myid {torch.distributed.get_rank()} run cuda graph")
             torch.cuda.synchronize()
             torch.distributed.barrier()
         # Run the graph.
