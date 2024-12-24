@@ -404,10 +404,6 @@ class LlamaModel(nn.Module):
         if torch.distributed.get_rank() == 0:
             print(f"*** run model seq_lengths: {N_ranks} total length {N}")
 
-        if self.numforward == 171:
-            if torch.distributed.get_rank() == 0:
-                print(f"exit()")
-            exit()
         # torch.cuda.synchronize()
         # torch.distributed.barrier()
         # for i in range(torch.distributed.get_world_size()):
