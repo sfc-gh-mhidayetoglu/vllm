@@ -174,6 +174,8 @@ class LlamaAttention(nn.Module):
             quant_config=quant_config,
         )
 
+        self.numattention = 0
+
     def forward(
         self,
         positions: torch.Tensor,
@@ -220,7 +222,8 @@ class LlamaAttention(nn.Module):
 
         # communication
         c = torch.empty((SP, N_ulysses, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
-        torch.distributed.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
+        if self.numattention != 171:
+            torch.distributed.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape(N_ulysses, self.q_size)
 
         # output projection
