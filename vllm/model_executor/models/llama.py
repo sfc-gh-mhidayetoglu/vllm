@@ -281,6 +281,7 @@ class LlamaDecoderLayer(nn.Module):
                                        eps=config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size,
                                                 eps=config.rms_norm_eps)
+        self.numdecode = 0
 
     def forward(
         self,
@@ -300,6 +301,8 @@ class LlamaDecoderLayer(nn.Module):
             if hidden_states.shape[0] > 0:
                 hidden_states, residual = self.input_layernorm(
                     hidden_states, residual)
+        if torch.distributed.get_rank() == 0:
+            print(f"*** run decoder {self.numdecode}")
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
                                        N_ranks=N_ranks,
@@ -310,6 +313,8 @@ class LlamaDecoderLayer(nn.Module):
             hidden_states, residual = self.post_attention_layernorm(
                 hidden_states, residual)
             hidden_states = self.mlp(hidden_states)
+
+        self.numdecode += 1
 
         return hidden_states, residual
 
