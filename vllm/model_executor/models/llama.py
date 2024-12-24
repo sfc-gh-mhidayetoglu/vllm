@@ -398,9 +398,9 @@ class LlamaModel(nn.Module):
         # narrow hidden_states
         hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
 
-        hidden_shapes = get_world_group().gather(torch.tensor(hidden_states.shape, device=hidden_states.device))
+        # hidden_shapes = get_world_group().gather(torch.tensor(hidden_states.shape, device=hidden_states.device))
         if torch.distributed.get_rank() == 0:
-            print(f"*** run model hidden_shapes: {hidden_shapes}")
+            print(f"*** run model seq_lengths: {N_ranks} total length {N}\n")
         # torch.cuda.synchronize()
         # torch.distributed.barrier()
         # for i in range(torch.distributed.get_world_size()):
