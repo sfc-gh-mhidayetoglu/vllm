@@ -1782,9 +1782,9 @@ class CUDAGraphRunner:
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"myid {torch.distributed.get_rank()} capture cuda graph input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape}\n")
-                torch.cuda.synchronize()
-                torch.distributed.barrier()
+                print(f"myid {torch.distributed.get_rank()} capture cuda graph input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         # Run the model a few times without capturing the graph.
         # This is to make sure that the captured graph does not include the
@@ -1906,8 +1906,8 @@ class CUDAGraphRunner:
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 print(f"myid {torch.distributed.get_rank()} run cuda graph\n")
-                torch.cuda.synchronize()
-                torch.distributed.barrier()
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
         # Run the graph.
         self.graph.replay()
         # Return the output tensor.
