@@ -312,7 +312,7 @@ class LlamaDecoderLayer(nn.Module):
         if hidden_states.shape[0] > 0:
             hidden_states, residual = self.post_attention_layernorm(
                 hidden_states, residual)
-            # hidden_states = self.mlp(hidden_states)
+            hidden_states = self.mlp(hidden_states)
 
         self.numdecode += 1
 
