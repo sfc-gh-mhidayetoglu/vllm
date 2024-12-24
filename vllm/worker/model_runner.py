@@ -1780,8 +1780,9 @@ class CUDAGraphRunner:
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print("capture cuda graph before warmup")
+        for i in torch.distributed.get_world_size():
+            if torch.distributed.get_rank() == i:
+                print(f"myid {torch.distributed.get_rank()} capture cuda graph input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape} attn_metadata {attn_metadata}")
 
         # Run the model a few times without capturing the graph.
         # This is to make sure that the captured graph does not include the
@@ -1789,7 +1790,7 @@ class CUDAGraphRunner:
         # Note one iteration is not enough for torch.jit.script
         for _ in range(_NUM_WARMUP_ITERS):
             if torch.distributed.get_rank() == 0:
-                print("warm up cuda graph")
+                print("warm up")
             self.model(
                 input_ids=input_ids,
                 positions=positions,
@@ -1898,9 +1899,11 @@ class CUDAGraphRunner:
             self.input_buffers["encoder_positions"].copy_(
                 kwargs['encoder_positions'], non_blocking=True)
 
+        torch.cuda.synchronize()
         torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print("run cuda graph")
+        for i in torch.distributed.get_world_size():
+            if torch.distributed.get_rank() == i:
+                print(f"myid {torch.distributed.get_rank()} run cuda graph")
         # Run the graph.
         self.graph.replay()
         # Return the output tensor.
