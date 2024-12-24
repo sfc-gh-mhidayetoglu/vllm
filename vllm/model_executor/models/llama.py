@@ -432,10 +432,10 @@ class LlamaModel(nn.Module):
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
 
-        if self.numforward == 171:
-            if torch.distributed.get_rank() == 0:
-                print(f"exit()")
-            exit()
+        # if self.numforward == 171:
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"exit()")
+        #     exit()
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
