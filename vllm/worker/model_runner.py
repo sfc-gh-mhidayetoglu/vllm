@@ -1777,11 +1777,19 @@ class CUDAGraphRunner:
         **kwargs,
     ) -> Union[torch.Tensor, IntermediateTensors]:
         assert self._graph is None
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print("capture cuda graph before warmup")
+
         # Run the model a few times without capturing the graph.
         # This is to make sure that the captured graph does not include the
         # kernel launches for initial benchmarking (e.g., Triton autotune).
         # Note one iteration is not enough for torch.jit.script
         for _ in range(_NUM_WARMUP_ITERS):
+            if torch.distributed.get_rank() == 0:
+                print("warm up cuda graph")
             self.model(
                 input_ids=input_ids,
                 positions=positions,
@@ -1790,12 +1798,13 @@ class CUDAGraphRunner:
                 intermediate_tensors=intermediate_inputs,
                 **kwargs,
             )
-        # Wait for the warm up operations to finish before proceeding with
-        # Graph Capture.
         torch.cuda.synchronize()
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
-            print("capture cuda graph")
+            print("capture cuda graph after warmup")
+        # Wait for the warm up operations to finish before proceeding with
+        # Graph Capture.
+        torch.cuda.synchronize()
         # Capture the graph.
         self._graph = torch.cuda.CUDAGraph()
         with torch.cuda.graph(self._graph, pool=memory_pool, stream=stream):
