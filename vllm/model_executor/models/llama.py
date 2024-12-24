@@ -195,8 +195,6 @@ class LlamaAttention(nn.Module):
         assert d//TP == self.q_size
         assert d_kv//TP == self.kv_size
 
-        return hidden_states
-
         # qkv projection
         if hidden_states.shape[0] > 0:
             qkv, _ = self.qkv_proj(hidden_states)
@@ -217,6 +215,7 @@ class LlamaAttention(nn.Module):
         # positional embeddings
         q_, k_ = self.rotary_emb(positions, q_, k_)
 
+        return hidden_states
         # attention 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
