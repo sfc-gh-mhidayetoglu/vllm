@@ -195,6 +195,8 @@ class LlamaAttention(nn.Module):
         assert d//TP == self.q_size
         assert d_kv//TP == self.kv_size
 
+        return hidden_states
+
         # qkv projection
         if hidden_states.shape[0] > 0:
             qkv, _ = self.qkv_proj(hidden_states)
@@ -303,11 +305,11 @@ class LlamaDecoderLayer(nn.Module):
                     hidden_states, residual)
         if torch.distributed.get_rank() == 0:
             print(f"*** run decoder {self.numdecode}")
-        # hidden_states = self.self_attn(positions=positions,
-        #                                hidden_states=hidden_states,
-        #                                N_ranks=N_ranks,
-        #                                kv_cache=kv_cache,
-        #                                attn_metadata=attn_metadata)
+        hidden_states = self.self_attn(positions=positions,
+                                       hidden_states=hidden_states,
+                                       N_ranks=N_ranks,
+                                       kv_cache=kv_cache,
+                                       attn_metadata=attn_metadata)
         # Fully Connected
         if hidden_states.shape[0] > 0:
             hidden_states, residual = self.post_attention_layernorm(
