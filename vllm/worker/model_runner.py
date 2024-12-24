@@ -1886,6 +1886,9 @@ class CUDAGraphRunner:
             self.input_buffers["encoder_positions"].copy_(
                 kwargs['encoder_positions'], non_blocking=True)
 
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print("run cuda graph")
         # Run the graph.
         self.graph.replay()
         # Return the output tensor.
