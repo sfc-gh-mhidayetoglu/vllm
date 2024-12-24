@@ -403,6 +403,11 @@ class LlamaModel(nn.Module):
         # hidden_shapes = get_world_group().gather(torch.tensor(hidden_states.shape, device=hidden_states.device))
         if torch.distributed.get_rank() == 0:
             print(f"*** run model seq_lengths: {N_ranks} total length {N}")
+
+        if self.numforward == 170:
+            if torch.distributed.get_rank() == 0:
+                print(f"exit()")
+            exit()
         # torch.cuda.synchronize()
         # torch.distributed.barrier()
         # for i in range(torch.distributed.get_world_size()):
