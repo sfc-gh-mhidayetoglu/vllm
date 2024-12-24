@@ -417,15 +417,16 @@ class LlamaModel(nn.Module):
 
         # narrow hidden_states
         # hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
-        if SP_rank < SP - 1:
-            hidden_states = torch.narrow(hidden_states, 0, SP_rank*N_ulysses, N_ulysses).clone()
-        else:
-            hidden_states = torch.narrow(hidden_states, 0, SP_rank*N_ulysses, N%N_ulysses).clone()
+        hidden_states = torch.empty((N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        # if SP_rank < SP - 1:
+        #     hidden_states = torch.narrow(hidden_states, 0, SP_rank*N_ulysses, N_ulysses).clone()
+        # else:
+        #     hidden_states = torch.narrow(hidden_states, 0, SP_rank*N_ulysses, N%N_ulysses).clone()
 
         # hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         hidden_states_list = torch.empty((SP*N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
         torch.distributed.all_gather_into_tensor(hidden_states_list, hidden_states, group=get_sp_group().device_group)
-        hidden_states = torch.narrow(hidden_states_list, 0, 0, N).clone()
+        hidden_states = torch.narrow(hidden_states_list, 0, 0, N)
 
         return hidden_states
 
