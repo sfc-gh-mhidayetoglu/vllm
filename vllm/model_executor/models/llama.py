@@ -400,7 +400,7 @@ class LlamaModel(nn.Module):
 
         torch.cuda.synchronize()
         torch.distruibted.barrier()
-        for i in range(torch.distributed.get_world_size())
+        for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
                 print(f"*** run model hidden_states shape: {hidden_states.shape} residual shape: {residual.shape if residual is not None else None}")
             torch.cuda.synchronize()
