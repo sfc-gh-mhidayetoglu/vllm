@@ -406,19 +406,32 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        N = len(input_ids)
         SP = get_sp_group().world_size
-        N_ranks = [N//SP]*SP
-        for i in range(N % SP):
-            N_ranks[i] += 1
         SP_rank = get_sp_group().rank_in_group
+        N = hidden_states.shape[0]
+        N_ulysses = (N + SP - 1) // SP
+        # N = len(input_ids)
+        # N_ranks = [N//SP]*SP
+        # for i in range(N % SP):
+        #     N_ranks[i] += 1
 
         # narrow hidden_states
-        hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
+        # hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
+        if SP_rank < SP - 1:
+            hidden_states = torch.narrow(hidden_states, 0, SP_rank*N_ulysses, N_ulysses).clone()
+        else:
+            hidden_states = torch.narrow(hidden_states, 0, SP_rank*N_ulysses, N%N_ulysses).clone()
+
+        # hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
+        hidden_states_list = torch.empty((SP*N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        torch.distributed.all_gather_into_tensor(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+        hidden_states = torch.narrow(hidden_states_list, 0, 0, N).clone()
+
+        return hidden_states
 
         # hidden_shapes = get_world_group().gather(torch.tensor(hidden_states.shape, device=hidden_states.device))
-        if torch.distributed.get_rank() == 0:
-            print(f"*** run model seq_lengths: {N_ranks} total length {N}")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"*** run model seq_lengths: {N_ranks} total length {N}")
 
         # torch.cuda.synchronize()
         # torch.distributed.barrier()
