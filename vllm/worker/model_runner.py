@@ -1780,7 +1780,7 @@ class CUDAGraphRunner:
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        for i in torch.distributed.get_world_size():
+        for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 print(f"myid {torch.distributed.get_rank()} capture cuda graph input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape} attn_metadata {attn_metadata}")
 
@@ -1901,7 +1901,7 @@ class CUDAGraphRunner:
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        for i in torch.distributed.get_world_size():
+        for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 print(f"myid {torch.distributed.get_rank()} run cuda graph")
         # Run the graph.
