@@ -180,31 +180,29 @@ class LlamaAttention(nn.Module):
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
-        N_ranks: List[int],
+        N: int,
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
 
         # variables for Ulysses attention
         SP = get_sp_group().world_size
-        TP = get_tp_group().world_size
-        N = sum(N_ranks) 
-        N_ulysses = N_ranks[get_sp_group().rank_in_group]
-        d = self.total_num_heads * self.head_dim
-        d_kv = self.total_num_kv_heads * self.head_dim
-        assert N_ulysses == hidden_states.shape[0]
-        assert d == hidden_states.shape[1]
-        assert d//TP == self.q_size
-        assert d_kv//TP == self.kv_size
+        N_ulysses = hidden_states.shape[0]
+        # TP = get_tp_group().world_size
+        # N = sum(N_ranks) 
+        # N_ulysses = N_ranks[get_sp_group().rank_in_group]
+        # d = self.total_num_heads * self.head_dim
+        # d_kv = self.total_num_kv_heads * self.head_dim
+        # assert N_ulysses == hidden_states.shape[0]
+        # assert d == hidden_states.shape[1]
+        # assert d//TP == self.q_size
+        # assert d_kv//TP == self.kv_size
+
+        if torch.distributed.get_rank() == 0:
+            print(f"*** run attention {self.numattention} N_ulysses {N_ulysses} N {N}")
 
         # qkv projection
-        if hidden_states.shape[0] > 0:
-            qkv, _ = self.qkv_proj(hidden_states)
-        else:
-            qkv = torch.empty((0, self.q_size + 2*self.kv_size), dtype=hidden_states.dtype, device=hidden_states.device)
-
-        if self.numattention == 171:
-            print(f"myid {torch.distributed.get_rank()} N_ranks {N_ranks} N_ulysses {N_ulysses}\n")
+        qkv, _ = self.qkv_proj(hidden_states)
 
         # pack send buffer
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
@@ -212,9 +210,10 @@ class LlamaAttention(nn.Module):
                          k.view((N_ulysses, SP, self.kv_size//SP)),
                          v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
         # communication
-        qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=qkv.dtype, device=qkv.device)
-        if self.numattention != 171:
-            torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
+        qkv_ = torch.empty((N_ulysses * SP, (self.q_size+2*self.kv_size)//SP), dtype=qkv.dtype, device=qkv.device)
+        torch.distributed.all_to_all_single(qkv_, qkv, group=get_sp_group().device_group)
+        # unpadding
+        qkv_ = torch.narrow(qkv_, 0, 0, N)
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([self.q_size//SP, self.kv_size//SP, self.kv_size//SP], dim=-1)
 
@@ -224,19 +223,16 @@ class LlamaAttention(nn.Module):
         # attention 
         attn_output = self.attn(q_, k_, v_, kv_cache, attn_metadata)
 
+        # padding
+        attn_output = torch.cat([attn_output, torch.empty((N_ulysses * SP, self.kv_size//SP), dtype=attn_output.dtype, device=attn_output.device)])
+
         # communication
         c = torch.empty((SP, N_ulysses, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
-        if torch.distributed.get_rank() == 0:
-            print(f"*** run attention {self.numattention}")
-        if self.numattention != 171:
-            torch.distributed.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
+        torch.distributed.all_to_all_single(c, attn_output, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape(N_ulysses, self.q_size)
 
         # output projection
-        if hidden_states.shape[0] > 0:
-            output, _ = self.o_proj(c)
-        else:
-            output = hidden_states
+        output, _ = self.o_proj(c)
 
         self.numattention += 1
 
@@ -292,13 +288,12 @@ class LlamaDecoderLayer(nn.Module):
                                        eps=config.rms_norm_eps)
         self.post_attention_layernorm = RMSNorm(config.hidden_size,
                                                 eps=config.rms_norm_eps)
-        self.numdecode = 0
 
     def forward(
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
-        N_ranks: List[int],
+        N: int,
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
         residual: Optional[torch.Tensor],
@@ -306,26 +301,19 @@ class LlamaDecoderLayer(nn.Module):
         # Self Attention
         if residual is None:
             residual = hidden_states
-            if hidden_states.shape[0] > 0:
-                hidden_states = self.input_layernorm(hidden_states)
+            hidden_states = self.input_layernorm(hidden_states)
         else:
-            if hidden_states.shape[0] > 0:
-                hidden_states, residual = self.input_layernorm(
-                    hidden_states, residual)
-        if torch.distributed.get_rank() == 0:
-            print(f"*** run decoder {self.numdecode}")
+            hidden_states, residual = self.input_layernorm(
+                hidden_states, residual)
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
-                                       N_ranks=N_ranks,
+                                       N=N,
                                        kv_cache=kv_cache,
                                        attn_metadata=attn_metadata)
         # Fully Connected
-        if hidden_states.shape[0] > 0:
-            hidden_states, residual = self.post_attention_layernorm(
-                hidden_states, residual)
-            hidden_states = self.mlp(hidden_states)
-
-        self.numdecode += 1
+        hidden_states, residual = self.post_attention_layernorm(
+            hidden_states, residual)
+        hidden_states = self.mlp(hidden_states)
 
         return hidden_states, residual
 
@@ -410,50 +398,29 @@ class LlamaModel(nn.Module):
         SP_rank = get_sp_group().rank_in_group
         N = hidden_states.shape[0]
         N_ulysses = (N + SP - 1) // SP
-        N_ranks = [N_ulysses] * SP
-        if N > SP:
-            N_ranks[-1] = N - (SP - 1) * N_ulysses
-        else:
-            for i in range(SP):
-                if i < N:
-                    N_ranks[i] = 1
-                else:
-                    N_ranks[i] = 0
-        assert sum(N_ranks) == N
+        #N_ranks = [N_ulysses] * SP
+        # if N > SP:
+        #     N_ranks[-1] = N - (SP - 1) * N_ulysses
+        # else:
+        #     for i in range(SP):
+        #         if i < N:
+        #             N_ranks[i] = 1
+        #         else:
+        #             N_ranks[i] = 0
+        # assert sum(N_ranks) == N
         if torch.distributed.get_rank() == 0:
-            print(f"*** run model seq_lengths: {N_ranks} total length {N}")
+            print(f"*** start of model forward {self.numforward} N_ulysses {N_ulysses} N {N}")
+        #     print(f"*** run model seq_lengths: {N_ranks} total length {N}")
 
         # narrow hidden_states
-        # hidden_states_ulysses = torch.empty((N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        hidden_states = torch.empty((N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
         # hidden_states_ulysses[:N_ranks[SP_rank]] = hidden_states.narrow(0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
 
-        # hidden_states = torch.empty((SP*N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
-        # torch.distributed.all_gather_into_tensor(hidden_states, hidden_states_ulysses, group=get_sp_group().device_group)
-        # hidden_states = torch.narrow(hidden_states, 0, 0, N)
-
-        return hidden_states
-
-        # hidden_shapes = get_world_group().gather(torch.tensor(hidden_states.shape, device=hidden_states.device))
-
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"*** run model hidden_states shape: {hidden_states.shape} residual shape: {residual.shape if residual is not None else None}")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
-            # if torch.distributed.get_rank() == 0:
-            #     print(f"Layer {i} hidden_states shape: {hidden_states.shape} residual shape: {residual.shape if residual is not None else None}")
-            hidden_states, residual = layer(positions, hidden_states, N_ranks,
+            hidden_states, residual = layer(positions, hidden_states, N,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
-
-        # if self.numforward == 171:
-        #     if torch.distributed.get_rank() == 0:
-        #         print(f"exit()")
-        #     exit()
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
@@ -461,13 +428,12 @@ class LlamaModel(nn.Module):
                 "residual": residual
             })
 
-        if hidden_states.shape[0] > 0:
-            hidden_states, _ = self.norm(hidden_states, residual)
+        hidden_states, _ = self.norm(hidden_states, residual)
 
         # all-gather hidden_states
-        hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
-        torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
-        hidden_states = torch.cat(hidden_states_list)
+        hidden_states_list = torch.empty((SP*N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        torch.distributed.all_gather_into_tensor(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+        hidden_states = torch.narrow(hidden_states_list, 0, 0, N)
 
         if torch.distributed.get_rank() == 0:
             print(f"*** end of model forwad {self.numforward}")
