@@ -192,6 +192,8 @@ class LlamaAttention(nn.Module):
         if torch.distributed.get_rank() == 0:
             print(f"*** run attention {self.numattention} N_ulysses {N_ulysses} N {N}")
 
+        return hidden_states
+
         # qkv projection
         qkv, _ = self.qkv_proj(hidden_states)
 
