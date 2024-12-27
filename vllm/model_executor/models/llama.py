@@ -414,10 +414,15 @@ class LlamaModel(nn.Module):
         # N_ranks = [N//SP]*SP
         # for i in range(N % SP):
         #     N_ranks[i] += 1
-        N_ranks = [N_ulysses]*SP
-        for i in range(SP):
-            if i * N_ulysses < N:
-                N_ranks[i] = 
+        N_ranks = [N_ulysses] * SP
+        if N > SP:
+            N_ranks[-1] = N - (SP - 1) * N_ulysses
+        else:
+            for i in range(SP):
+                if i < N:
+                    N_ranks[i] = 1
+                else:
+                    N_ranks[i] = 0
         if torch.distributed.get_rank() == 0:
             print(f"*** run model seq_lengths: {N_ranks} total length {N}")
 
