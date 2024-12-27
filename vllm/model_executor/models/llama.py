@@ -405,6 +405,8 @@ class LlamaModel(nn.Module):
             print(f"*** start of model forward {self.numforward} N_ulysses {N_ulysses} N {N}")
         #     print(f"*** run model seq_lengths: {N_ranks} total length {N}")
 
+        return hidden_states
+
         # narrow hidden_states
         hidden_states = torch.empty((N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
         # hidden_states_ulysses[:N_ranks[SP_rank]] = hidden_states.narrow(0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
