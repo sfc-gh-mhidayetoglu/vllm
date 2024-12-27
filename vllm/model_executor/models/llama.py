@@ -410,8 +410,9 @@ class LlamaModel(nn.Module):
         # hidden_states_ulysses[:N_ranks[SP_rank]] = hidden_states.narrow(0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
 
         # all-gather hidden_states
-        hidden_states_list = torch.empty((SP * N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        # hidden_states_list = torch.empty((SP * N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
         # torch.distributed.all_gather_into_tensor(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+        hidden_states_list = get_sp_group().all_gather(hidden_states)
         hidden_states = torch.narrow(hidden_states_list, 0, 0, N)
 
         return hidden_states
