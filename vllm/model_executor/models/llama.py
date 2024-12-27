@@ -425,7 +425,7 @@ class LlamaModel(nn.Module):
 
         # narrow hidden_states
         hidden_states_ulysses = torch.empty((N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
-        hidden_states_ulysses[:N_ulysses] = hidden_states.narrow(0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
+        hidden_states_ulysses[:N_ranks(SP_rank)] = hidden_states.narrow(0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
 
         # hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         hidden_states = torch.empty((SP*N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
