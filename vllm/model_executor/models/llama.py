@@ -410,10 +410,6 @@ class LlamaModel(nn.Module):
         SP_rank = get_sp_group().rank_in_group
         N = hidden_states.shape[0]
         N_ulysses = (N + SP - 1) // SP
-        # N = len(input_ids)
-        # N_ranks = [N//SP]*SP
-        # for i in range(N % SP):
-        #     N_ranks[i] += 1
         N_ranks = [N_ulysses] * SP
         if N > SP:
             N_ranks[-1] = N - (SP - 1) * N_ulysses
@@ -423,6 +419,7 @@ class LlamaModel(nn.Module):
                     N_ranks[i] = 1
                 else:
                     N_ranks[i] = 0
+        assert sum(N_ranks) == N
         if torch.distributed.get_rank() == 0:
             print(f"*** run model seq_lengths: {N_ranks} total length {N}")
 
