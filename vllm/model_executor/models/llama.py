@@ -406,8 +406,9 @@ class LlamaModel(nn.Module):
         #     print(f"*** run model seq_lengths: {N_ranks} total length {N}")
 
         # narrow hidden_states
-        hidden_states = torch.empty((N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        # hidden_states = torch.empty((N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
         # hidden_states_ulysses[:N_ranks[SP_rank]] = hidden_states.narrow(0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
+        hidden_states = torch.narrow(hidden_states, 0, 0, N_ulysses)
 
         # all-gather hidden_states
         hidden_states_list = torch.empty((SP * N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
