@@ -405,11 +405,16 @@ class LlamaModel(nn.Module):
             print(f"*** start of model forward {self.numforward} N_ulysses {N_ulysses} N {N}")
         #     print(f"*** run model seq_lengths: {N_ranks} total length {N}")
 
-        return hidden_states
-
         # narrow hidden_states
         hidden_states = torch.empty((N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
         # hidden_states_ulysses[:N_ranks[SP_rank]] = hidden_states.narrow(0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])
+
+        # all-gather hidden_states
+        hidden_states_list = torch.empty((SP * N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        torch.distributed.all_gather_into_tensor(hidden_states_list, hidden_states, group=get_sp_group().device_group)
+        hidden_states = torch.narrow(hidden_states_list, 0, 0, N)
+
+        return hidden_states
 
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
@@ -424,11 +429,6 @@ class LlamaModel(nn.Module):
             })
 
         hidden_states, _ = self.norm(hidden_states, residual)
-
-        # all-gather hidden_states
-        hidden_states_list = torch.empty((SP*N_ulysses, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
-        torch.distributed.all_gather_into_tensor(hidden_states_list, hidden_states, group=get_sp_group().device_group)
-        hidden_states = torch.narrow(hidden_states_list, 0, 0, N)
 
         if torch.distributed.get_rank() == 0:
             print(f"*** end of model forwad {self.numforward}")
