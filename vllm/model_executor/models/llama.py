@@ -400,20 +400,20 @@ class LlamaModel(nn.Module):
         if torch.distributed.get_rank() == 0:
             print(f"model forward N_ranks: {N_ranks} N: {N}")
 
-        # for i in range(self.start_layer, self.end_layer):
-        #     layer = self.layers[i]
-        #     hidden_states, residual = layer(positions, hidden_states, N_ranks,
-        #                                     kv_caches[i - self.start_layer],
-        #                                     attn_metadata, residual)
-        # 
+        for i in range(self.start_layer, self.end_layer):
+            layer = self.layers[i]
+            hidden_states, residual = layer(positions, hidden_states, N_ranks,
+                                            kv_caches[i - self.start_layer],
+                                            attn_metadata, residual)
+        
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
                 "hidden_states": hidden_states,
                 "residual": residual
             })
         
-        if hidden_states.shape[0] > 0:
-            hidden_states, _ = self.norm(hidden_states, residual)
+        # if hidden_states.shape[0] > 0:
+        #     hidden_states, _ = self.norm(hidden_states, residual)
 
         # all-gather hidden_states
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
