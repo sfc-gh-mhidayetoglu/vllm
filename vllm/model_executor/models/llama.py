@@ -396,7 +396,7 @@ class LlamaModel(nn.Module):
         SP_rank = get_sp_group().rank_in_group
 
         # narrow hidden_states
-        hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
+        hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])#.clone()
         if torch.distributed.get_rank() == 0:
             print(f"model forward N_ranks: {N_ranks} N: {N}")
 
