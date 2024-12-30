@@ -412,8 +412,8 @@ class LlamaModel(nn.Module):
                 "residual": residual
             })
         
-        # if hidden_states.shape[0] > 0:
-        #     hidden_states, _ = self.norm(hidden_states, residual)
+        if hidden_states.shape[0] > 0:
+            hidden_states, _ = self.norm(hidden_states, residual)
 
         # all-gather hidden_states
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
