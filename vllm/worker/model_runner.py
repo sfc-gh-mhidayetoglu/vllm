@@ -1913,8 +1913,8 @@ class CUDAGraphRunner:
             self.input_buffers["encoder_positions"].copy_(
                 kwargs['encoder_positions'], non_blocking=True)
 
-        if torch.distributed.get_rank() == 0:
-            print(f"graph forward N {input_ids.shape[0]}")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"graph forward N {input_ids.shape[0]}")
 
         # Run the graph.
         self.graph.replay()
