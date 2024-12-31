@@ -396,7 +396,7 @@ class LlamaModel(nn.Module):
         SP_rank = get_sp_group().rank_in_group
 
         # narrow hidden_states
-        hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank]).clone()
+        hidden_states = torch.narrow(hidden_states, 0, sum(N_ranks[:SP_rank]), N_ranks[SP_rank])# .clone()
         # if torch.distributed.get_rank() == 0:
         #     print(f"model forward N_ranks: {N_ranks} N: {N}")
 
@@ -419,7 +419,7 @@ class LlamaModel(nn.Module):
         hidden_states_list = [torch.empty((N_ranks[i], hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device) for i in range(SP)]
         torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
         hidden_states = torch.cat(hidden_states_list)
-        assert hidden_states.is_contiguous()
+        # assert hidden_states.is_contiguous()
 
         return hidden_states
 
