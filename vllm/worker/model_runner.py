@@ -1305,8 +1305,26 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         ]
         if self.model_config.enforce_eager:
             batch_size_capture_list = []
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.dist.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"rank {i} before profile run")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         with set_compile_context(batch_size_capture_list):
             self.execute_model(model_input, kv_caches, intermediate_tensors)
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.dist.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"rank {i} after profile run")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
         torch.cuda.synchronize()
         return
 
