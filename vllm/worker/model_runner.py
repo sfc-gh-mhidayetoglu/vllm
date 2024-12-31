@@ -1717,9 +1717,9 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"rank {i} hidden_states type: {type(hidden_or_intermediate_states)} logits type: {type(logits)}")
+                # print(f"rank {i} hidden_states type: {type(hidden_or_intermediate_states)} logits type: {type(logits)}")
                 if logits is not None:
-                    print(f"logits shape: {logits.shape}")
+                    print(f"rank {i} hidden_states {hidden_or_intermediate_states.shape} logits shape: {logits.shape}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
