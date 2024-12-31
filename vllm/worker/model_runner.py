@@ -1620,6 +1620,8 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         if num_steps > 1:
             raise ValueError("num_steps > 1 is not supported in ModelRunner")
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"execute_model")
 
@@ -1652,6 +1654,11 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                 graph_batch_size]
         else:
             model_executable = self.model
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"model_executable: {model_executable}")
 
         multi_modal_kwargs = model_input.multi_modal_kwargs or {}
         seqlen_agnostic_kwargs = {
