@@ -1712,6 +1712,12 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
 
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
+        
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"rank {i} hidden_states type: {type(hidden_or_intermediate_states)} logits type: {type(logits)}")
 
         if not self.is_driver_worker:
             return []
