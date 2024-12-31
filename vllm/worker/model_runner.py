@@ -1682,10 +1682,10 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                                              device=self.device),
                 **seqlen_agnostic_kwargs)
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"model executed")
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #    print(f"model executed")
 
         if (self.observability_config is not None
                 and self.observability_config.collect_model_forward_time):
@@ -1718,6 +1718,8 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
                 print(f"rank {i} hidden_states type: {type(hidden_or_intermediate_states)} logits type: {type(logits)}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         if not self.is_driver_worker:
             return []
