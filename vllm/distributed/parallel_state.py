@@ -915,7 +915,7 @@ def graph_capture():
     in order to explicitly distinguish the kernels to capture
     from other kernels possibly launched on background in the default stream.
     """
-    with get_sp_group().graph_capture() as context, get_pp_group(
+    with get_sp_tp_group().graph_capture() as context, get_pp_group(
     ).graph_capture(context):
         yield context
 
@@ -1065,6 +1065,7 @@ def initialize_model_parallel(
     _SP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
+                                    use_custom_allreduce=False,
                                     group_name="sp")
     global _SP_TP
     assert _SP_TP is None
@@ -1075,6 +1076,7 @@ def initialize_model_parallel(
     _SP_TP = init_model_parallel_group(group_ranks,
                                         get_world_group().local_rank,
                                         backend,
+                                        use_custom_allreduce=False,
                                         group_name="sp_tp")
 
 def ensure_model_parallel_initialized(
