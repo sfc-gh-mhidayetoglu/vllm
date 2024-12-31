@@ -1077,6 +1077,7 @@ def initialize_model_parallel(
                                         get_world_group().local_rank,
                                         backend,
                                         use_custom_allreduce=False,
+                                        use_message_queue_broadcaster=True,
                                         group_name="sp_tp")
 
 def ensure_model_parallel_initialized(
