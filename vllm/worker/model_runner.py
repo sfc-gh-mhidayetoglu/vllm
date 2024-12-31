@@ -1620,11 +1620,6 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         if num_steps > 1:
             raise ValueError("num_steps > 1 is not supported in ModelRunner")
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"execute_model")
-
         if self.lora_config:
             assert model_input.lora_requests is not None
             assert model_input.lora_mapping is not None
@@ -1655,10 +1650,10 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         else:
             model_executable = self.model
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"model_executable: {model_executable}")
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"model_executable: {model_executable}")
 
         multi_modal_kwargs = model_input.multi_modal_kwargs or {}
         seqlen_agnostic_kwargs = {
@@ -1671,6 +1666,11 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
             model_forward_end = torch.cuda.Event(enable_timing=True)
             model_forward_start.record()
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"execute_model")
+
         with set_forward_context(model_input.attn_metadata):
             hidden_or_intermediate_states = model_executable(
                 input_ids=model_input.input_tokens,
@@ -1681,6 +1681,11 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                 **MultiModalInputs.as_kwargs(multi_modal_kwargs,
                                              device=self.device),
                 **seqlen_agnostic_kwargs)
+
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"model executed")
 
         if (self.observability_config is not None
                 and self.observability_config.collect_model_forward_time):
