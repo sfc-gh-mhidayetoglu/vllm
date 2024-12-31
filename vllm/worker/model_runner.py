@@ -1308,7 +1308,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        for i in range(torch.dist.get_world_size()):
+        for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
                 print(f"rank {i} before profile run")
             torch.cuda.synchronize()
@@ -1319,7 +1319,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
 
         torch.cuda.synchronize()
         torch.distributed.barrier()
-        for i in range(torch.dist.get_world_size()):
+        for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
                 print(f"rank {i} after profile run")
             torch.cuda.synchronize()
