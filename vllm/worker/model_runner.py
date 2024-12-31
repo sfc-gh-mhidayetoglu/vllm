@@ -1647,8 +1647,22 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
             graph_batch_size = model_input.input_tokens.shape[0]
             model_executable = self.graph_runners[virtual_engine][
                 graph_batch_size]
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+            for i in range(torch.distributed.get_world_size()):
+                if torch.distributed.get_rank() == i:
+                    print(f"rank {i} graph batch size: {model_input.input_tokens.shape[0]}")
+                torch.cuda.synchronize()
+                torch.distributed.barrier()
         else:
             model_executable = self.model
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+            for i in range(torch.distributed.get_world_size()):
+                if torch.distributed.get_rank() == i:
+                    print(f"rank {i} model batch size: {model_input.input_tokens.shape[0]}")
+                torch.cuda.synchronize()
+                torch.distributed.barrier()
 
         # model_executable = self.model
 
@@ -1668,10 +1682,10 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
             model_forward_end = torch.cuda.Event(enable_timing=True)
             model_forward_start.record()
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"execute_model")
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"execute_model")
 
         with set_forward_context(model_input.attn_metadata):
             hidden_or_intermediate_states = model_executable(
