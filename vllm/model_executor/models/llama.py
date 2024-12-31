@@ -420,7 +420,7 @@ class LlamaModel(nn.Module):
         # torch.distributed.all_gather(hidden_states_list, hidden_states, group=get_sp_group().device_group)
         hidden_states = torch.cat(hidden_states_list)
 
-        return torch.empty((N, hidden_states.shape[1]), dtype=hidden_states.dtype, device=hidden_states.device)
+        return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
         stacked_params_mapping = [
