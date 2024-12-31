@@ -208,7 +208,7 @@ class LlamaAttention(nn.Module):
                          v.view((N_ulysses, SP, self.kv_size//SP))), dim=-1).transpose(0, 1).contiguous()
         # communication
         qkv_ = torch.empty((N, (self.q_size+2*self.kv_size)//SP), dtype=qkv.dtype, device=qkv.device)
-        # torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
+        torch.distributed.all_to_all_single(qkv_, qkv, output_split_sizes=N_ranks, group=get_sp_group().device_group)
         # unpack receive buffer
         q_, k_, v_ = qkv_.split([self.q_size//SP, self.kv_size//SP, self.kv_size//SP], dim=-1)
 
@@ -220,7 +220,7 @@ class LlamaAttention(nn.Module):
 
         # communication
         c = torch.empty((SP, N_ulysses, self.q_size//SP), dtype=hidden_states.dtype, device=hidden_states.device)
-        # torch.distributed.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
+        torch.distributed.all_to_all_single(c, attn_output, input_split_sizes=N_ranks, group=get_sp_group().device_group)
         c = torch.transpose(c, 0, 1).reshape(N_ulysses, self.q_size)
 
         # output projection
