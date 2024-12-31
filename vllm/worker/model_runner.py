@@ -1716,6 +1716,13 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                                              device=self.device),
                 **seqlen_agnostic_kwargs)
 
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"rank {i} model executed {hidden_or_intermediate_states.shape}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
         # torch.cuda.synchronize()
         # torch.distributed.barrier()
         # if torch.distributed.get_rank() == 0:
