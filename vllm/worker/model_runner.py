@@ -1668,10 +1668,10 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
             model_forward_end = torch.cuda.Event(enable_timing=True)
             model_forward_start.record()
 
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"execute_model")
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        if torch.distributed.get_rank() == 0:
+            print(f"execute_model")
 
         with set_forward_context(model_input.attn_metadata):
             hidden_or_intermediate_states = model_executable(
