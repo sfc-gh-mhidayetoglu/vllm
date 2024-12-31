@@ -1668,10 +1668,10 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
             model_forward_end = torch.cuda.Event(enable_timing=True)
             model_forward_start.record()
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"execute_model")
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"execute_model")
 
         with set_forward_context(model_input.attn_metadata):
             hidden_or_intermediate_states = model_executable(
@@ -1715,15 +1715,15 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         logits = self.model.compute_logits(hidden_or_intermediate_states,
                                            model_input.sampling_metadata)
         
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                # print(f"rank {i} hidden_states type: {type(hidden_or_intermediate_states)} logits type: {type(logits)}")
-                if logits is not None:
-                    print(f"rank {i} hidden_states {hidden_or_intermediate_states.shape} logits shape: {logits.shape}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
+        # torch.cuda.synchronize()
+        # torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if torch.distributed.get_rank() == i:
+        #         # print(f"rank {i} hidden_states type: {type(hidden_or_intermediate_states)} logits type: {type(logits)}")
+        #         if logits is not None:
+        #             print(f"rank {i} hidden_states {hidden_or_intermediate_states.shape} logits shape: {logits.shape}")
+        #     torch.cuda.synchronize()
+        #     torch.distributed.barrier()
 
         if not self.is_driver_worker:
             return []
