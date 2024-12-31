@@ -1682,7 +1682,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                 torch.cuda.synchronize()
                 torch.distributed.barrier()
 
-        model_executable = self.model
+        # model_executable = self.model
 
         # torch.cuda.synchronize()
         # torch.distributed.barrier()
