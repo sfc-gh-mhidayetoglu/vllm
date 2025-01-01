@@ -1847,7 +1847,6 @@ class CUDAGraphRunner:
         **kwargs,
     ) -> Union[torch.Tensor, IntermediateTensors]:
         assert self._graph is None
-        return
         # Run the model a few times without capturing the graph.
         # This is to make sure that the captured graph does not include the
         # kernel launches for initial benchmarking (e.g., Triton autotune).
@@ -1861,6 +1860,7 @@ class CUDAGraphRunner:
                 intermediate_tensors=intermediate_inputs,
                 **kwargs,
             )
+        return
         # Wait for the warm up operations to finish before proceeding with
         # Graph Capture.
         torch.cuda.synchronize()
