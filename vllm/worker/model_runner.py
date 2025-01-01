@@ -1536,9 +1536,9 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
                         self._update_inputs_to_capture_for_enc_dec_model(
                             capture_inputs)
 
-                    # with set_forward_context(attn_metadata):
-                    #     graph_runner.capture(**capture_inputs)
-                    # self.graph_memory_pool = graph_runner.graph.pool()
+                    with set_forward_context(attn_metadata):
+                        graph_runner.capture(**capture_inputs)
+                    self.graph_memory_pool = graph_runner.graph.pool()
                     self.graph_runners[virtual_engine][batch_size] = (
                         graph_runner)
 
@@ -1847,6 +1847,7 @@ class CUDAGraphRunner:
         **kwargs,
     ) -> Union[torch.Tensor, IntermediateTensors]:
         assert self._graph is None
+        return
         # Run the model a few times without capturing the graph.
         # This is to make sure that the captured graph does not include the
         # kernel launches for initial benchmarking (e.g., Triton autotune).
