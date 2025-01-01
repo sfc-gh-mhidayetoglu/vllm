@@ -1416,6 +1416,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         Since it is used for decoding-only, it assumes there's only 1 token
         per sequence in the batch.
         """
+        return
         assert not self.model_config.enforce_eager
         logger.info("Capturing the model for CUDA graphs. This may lead to "
                     "unexpected consequences if the model is not static. To "
