@@ -1873,14 +1873,14 @@ class CUDAGraphRunner:
         # Capture the graph.
         self._graph = torch.cuda.CUDAGraph()
         with torch.cuda.graph(self._graph, pool=memory_pool, stream=stream):
-            # output_hidden_or_intermediate_states = self.model(
-            #     input_ids=input_ids,
-            #     positions=positions,
-            #     kv_caches=kv_caches,
-            #     attn_metadata=attn_metadata,
-            #     intermediate_tensors=intermediate_inputs,
-            #     **kwargs,
-            # )
+            output_hidden_or_intermediate_states = self.model(
+                input_ids=input_ids,
+                positions=positions,
+                kv_caches=kv_caches,
+                attn_metadata=attn_metadata,
+                intermediate_tensors=intermediate_inputs,
+                **kwargs,
+            )
             if hidden_or_intermediate_states is not None:
                 if get_pp_group().is_last_rank:
                     hidden_or_intermediate_states.copy_(
