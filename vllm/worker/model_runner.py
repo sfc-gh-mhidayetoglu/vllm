@@ -1536,11 +1536,11 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
                         self._update_inputs_to_capture_for_enc_dec_model(
                             capture_inputs)
 
-                    '''with set_forward_context(attn_metadata):
-                        graph_runner.capture(**capture_inputs)
+                    # with set_forward_context(attn_metadata):
+                    #     graph_runner.capture(**capture_inputs)
                     self.graph_memory_pool = graph_runner.graph.pool()
                     self.graph_runners[virtual_engine][batch_size] = (
-                        graph_runner)'''
+                        graph_runner)
 
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
