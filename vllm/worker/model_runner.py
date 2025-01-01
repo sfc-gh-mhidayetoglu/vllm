@@ -1538,7 +1538,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
 
                     # with set_forward_context(attn_metadata):
                     #     graph_runner.capture(**capture_inputs)
-                    self.graph_memory_pool = graph_runner.graph.pool()
+                    # self.graph_memory_pool = graph_runner.graph.pool()
                     self.graph_runners[virtual_engine][batch_size] = (
                         graph_runner)
 
