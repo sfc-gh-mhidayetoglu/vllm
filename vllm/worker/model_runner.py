@@ -1864,7 +1864,7 @@ class CUDAGraphRunner:
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"rank {i} input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape}")
+                print(f"rank {i} input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape} stream {stream}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
         # Wait for the warm up operations to finish before proceeding with
