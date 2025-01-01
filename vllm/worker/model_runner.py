@@ -1881,6 +1881,7 @@ class CUDAGraphRunner:
                 intermediate_tensors=intermediate_inputs,
                 **kwargs,
             )
+            return
             if hidden_or_intermediate_states is not None:
                 if get_pp_group().is_last_rank:
                     hidden_or_intermediate_states.copy_(
@@ -1899,7 +1900,6 @@ class CUDAGraphRunner:
             gc.collect()
         torch.cuda.synchronize()
 
-        return
         # Save the input and output buffers.
         self.input_buffers = {
             "input_ids":
