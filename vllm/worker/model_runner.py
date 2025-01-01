@@ -1860,12 +1860,19 @@ class CUDAGraphRunner:
                 intermediate_tensors=intermediate_inputs,
                 **kwargs,
             )
-        return
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"rank {i} input_ids {input_ids.shape} positions {positions.shape} kv_caches {kv_caches[0].shape}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
         # Wait for the warm up operations to finish before proceeding with
         # Graph Capture.
         torch.cuda.synchronize()
         # Capture the graph.
         self._graph = torch.cuda.CUDAGraph()
+        return
         with torch.cuda.graph(self._graph, pool=memory_pool, stream=stream):
             output_hidden_or_intermediate_states = self.model(
                 input_ids=input_ids,
