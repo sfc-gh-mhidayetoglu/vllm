@@ -1872,7 +1872,6 @@ class CUDAGraphRunner:
         torch.cuda.synchronize()
         # Capture the graph.
         self._graph = torch.cuda.CUDAGraph()
-        return
         with torch.cuda.graph(self._graph, pool=memory_pool, stream=stream):
             output_hidden_or_intermediate_states = self.model(
                 input_ids=input_ids,
@@ -1900,6 +1899,7 @@ class CUDAGraphRunner:
             gc.collect()
         torch.cuda.synchronize()
 
+        return
         # Save the input and output buffers.
         self.input_buffers = {
             "input_ids":
