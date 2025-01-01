@@ -1416,7 +1416,6 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
         Since it is used for decoding-only, it assumes there's only 1 token
         per sequence in the batch.
         """
-        return
         assert not self.model_config.enforce_eager
         logger.info("Capturing the model for CUDA graphs. This may lead to "
                     "unexpected consequences if the model is not static. To "
@@ -1464,7 +1463,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
             bs for bs in _BATCH_SIZES_TO_CAPTURE if bs <= graph_batch_size
         ]
 
-        with self.attn_state.graph_capture(
+        '''with self.attn_state.graph_capture(
                 max_batch_size), graph_capture() as graph_capture_context:
             # NOTE: Capturing the largest batch size first may help reduce the
             # memory usage of CUDA graph.
@@ -1541,7 +1540,7 @@ class GPUModelRunnerBase(ModelRunnerBase[TModelInputForGPU]):
                         graph_runner.capture(**capture_inputs)
                     self.graph_memory_pool = graph_runner.graph.pool()
                     self.graph_runners[virtual_engine][batch_size] = (
-                        graph_runner)
+                        graph_runner)'''
 
         end_time = time.perf_counter()
         elapsed_time = end_time - start_time
