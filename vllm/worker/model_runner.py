@@ -1660,7 +1660,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
         # TODO(andoorve): We can remove this once all
         # virtual engines share the same kv cache.
         virtual_engine = model_input.virtual_engine
-        if prefill_meta is None and decode_meta.use_cuda_graph:
+        '''if prefill_meta is None and decode_meta.use_cuda_graph:
             assert model_input.input_tokens is not None
             graph_batch_size = model_input.input_tokens.shape[0]
             model_executable = self.graph_runners[virtual_engine][
@@ -1680,7 +1680,7 @@ class ModelRunner(GPUModelRunnerBase[ModelInputForGPUWithSamplingMetadata]):
                 if torch.distributed.get_rank() == i:
                     print(f"rank {i} model batch size: {model_input.input_tokens.shape[0]}")
                 torch.cuda.synchronize()
-                torch.distributed.barrier()
+                torch.distributed.barrier()'''
 
         model_executable = self.model
 
