@@ -381,7 +381,7 @@ class GroupCoordinator:
             torch.distributed.all_reduce(input_, group=self.device_group)
 
     def all_gather_distributed(self, input_: torch.Tensor, N_ranks: int) -> torch.Tensor:
-        assert N_ranks == self.world_size
+        assert len(N_ranks) == self.world_size
         output_list = [torch.empty((N_ranks[i], input_.shape[1]), dtype=input_.dtype, device=input_.device) for i in range(self.world_size)]
         torch.distributed.all_gather(output_list, input_, group=self.device_group)
         output = torch.cat(output_list)
