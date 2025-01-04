@@ -334,7 +334,7 @@ class GroupCoordinator:
         in-place or out-of-place ahead of time.
         """
 
-        torch.distributed.all_reduce(input_, group=get_tp_group().device_group)
+        # torch.distributed.all_reduce(input_, group=get_tp_group().device_group)
 
         return input_
 
@@ -362,6 +362,8 @@ class GroupCoordinator:
             return input_
 
     def _all_reduce_out_place(self, input_: torch.Tensor) -> torch.Tensor:
+        if torch.distributed.get_rank() == 0:
+            print(f"ca_comm.custom_all_reduce {input.shape}")
         ca_comm = self.ca_comm
         assert ca_comm is not None
         assert not ca_comm.disabled
@@ -372,11 +374,15 @@ class GroupCoordinator:
     def _all_reduce_in_place(self, input_: torch.Tensor) -> None:
         pynccl_comm = self.pynccl_comm
         if (pynccl_comm is not None and not pynccl_comm.disabled):
+            if torch.distributed.get_rank() == 0:
+                print(f"pynccl_comm.all_reduce {input.shape}")
             pynccl_comm.all_reduce(input_)
         elif input_.is_cpu:
             import intel_extension_for_pytorch as ipex
             ipex.distributed.all_reduce(input_, group=self.device_group)
         else:
+            if torch.distributed.get_rank() == 0:
+                print(f"torch.distributed.all_reduce {input.shape}")
             torch.distributed.all_reduce(input_, group=self.device_group)
 
     def all_gather(self, input_: torch.Tensor, dim: int = -1) -> torch.Tensor:
