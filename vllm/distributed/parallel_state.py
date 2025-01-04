@@ -1025,6 +1025,7 @@ def initialize_model_parallel(
                                     get_world_group().local_rank,
                                     backend,
                                     use_message_queue_broadcaster=True,
+                                    use_custom_allreduce=False,
                                     group_name="tp")
 
     # Build the pipeline model-parallel groups.
