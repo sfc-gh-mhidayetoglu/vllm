@@ -374,6 +374,15 @@ class GroupCoordinator:
         else:
             torch.distributed.all_reduce(input_, group=self.device_group)
 
+    def all_gather(self, input_: torch.Tensor, N_ranks: int) -> torch.Tensor:
+        assert N_ranks == self.world_size
+        output_list = [torch.empty((N_ranks[i], input_.shape[1]), dtype=input_.dtype, device=input_.device) for i in range(self.world_size)]
+        torch.distributed.all_gather(output_list, input_, group=self.device_group)
+        output = torch.cat(output_list)
+        if torch.distributed.get_rank() == 0:
+            print(f"torch.distributed.all_gather input {input_.shape} output {output.shape}")
+        return output
+
     def all_gather(self, input_: torch.Tensor, dim: int = -1) -> torch.Tensor:
         world_size = self.world_size
         # Bypass the function if we are using only 1 GPU.
