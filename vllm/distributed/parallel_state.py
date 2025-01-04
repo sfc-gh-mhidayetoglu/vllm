@@ -333,6 +333,11 @@ class GroupCoordinator:
         a new tensor in the same op. So we need to figure out if the op is
         in-place or out-of-place ahead of time.
         """
+
+        torch.distributed.all_reduce(input_, group=get_tp_group().device_group)
+
+        return input_
+
         # Bypass the function if we are using only 1 GPU.
         if self.world_size == 1:
             return input_
