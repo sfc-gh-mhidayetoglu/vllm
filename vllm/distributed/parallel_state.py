@@ -336,8 +336,6 @@ class GroupCoordinator:
 
         # torch.distributed.all_reduce(input_, group=get_tp_group().device_group)
 
-        return input_
-
         # Bypass the function if we are using only 1 GPU.
         if self.world_size == 1:
             return input_
