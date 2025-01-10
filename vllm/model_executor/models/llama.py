@@ -404,6 +404,8 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
+        return hidden_states
+
         N = len(input_ids)
         SP = get_sp_group().world_size
         N_ranks = [N//SP]*SP
