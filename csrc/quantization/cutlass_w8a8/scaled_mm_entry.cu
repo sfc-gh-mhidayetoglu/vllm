@@ -3,6 +3,8 @@
 #include <c10/cuda/CUDAGuard.h>
 #include <torch/all.h>
 
+#include "cutlass_extensions/common.hpp"
+
 void cutlass_scaled_mm_sm75(torch::Tensor& c, torch::Tensor const& a,
                             torch::Tensor const& b,
                             torch::Tensor const& a_scales,
@@ -79,16 +81,6 @@ bool cutlass_scaled_mm_supports_fp8(int64_t cuda_device_capability) {
   return false;
 }
 
-int32_t get_sm_version_num() {
-  int32_t major_capability, minor_capability;
-  cudaDeviceGetAttribute(&major_capability, cudaDevAttrComputeCapabilityMajor,
-                         0);
-  cudaDeviceGetAttribute(&minor_capability, cudaDevAttrComputeCapabilityMinor,
-                         0);
-  int32_t version_num = major_capability * 10 + minor_capability;
-  return version_num;
-}
-
 void cutlass_scaled_mm(torch::Tensor& c, torch::Tensor const& a,
                        torch::Tensor const& b, torch::Tensor const& a_scales,
                        torch::Tensor const& b_scales,
@@ -137,9 +129,11 @@ void cutlass_scaled_mm(torch::Tensor& c, torch::Tensor const& a,
     return;
   }
 
-  // Turing
-  TORCH_CHECK(version_num >= 75);
-  cutlass_scaled_mm_sm75(c, a, b, a_scales, b_scales, bias);
+  if (version_num >= 75) {
+    // Turing
+    cutlass_scaled_mm_sm75(c, a, b, a_scales, b_scales, bias);
+    return;
+  }
 #endif
 
   TORCH_CHECK_NOT_IMPLEMENTED(
