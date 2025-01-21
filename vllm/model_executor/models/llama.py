@@ -550,6 +550,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
 
+        self.numforward = 0
+        self.numlogits = 0
+        self.numsample = 0
+
     def _init_model(self, vllm_config: VllmConfig, prefix: str = ""):
         return LlamaModel(vllm_config=vllm_config, prefix=prefix)
 
@@ -568,6 +572,9 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         model_output = self.model(input_ids, positions, kv_caches,
                                   attn_metadata, intermediate_tensors,
                                   inputs_embeds)
+        if torch.distributed.get_rank() == 0:
+            print(f"forward {self.numforward} model_output {model_output.shape}")
+        self.numforward += 1
         return model_output
 
     def compute_logits(
@@ -577,11 +584,17 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     ) -> Optional[torch.Tensor]:
         logits = self.logits_processor(self.lm_head, hidden_states,
                                        sampling_metadata)
+        if torch.distributed.get_rank() == 0:
+            print(f"logits {self.numlogits} logits {logits.shape}")
+        self.numlogits += 1
         return logits
 
     def sample(self, logits: torch.Tensor,
                sampling_metadata: SamplingMetadata) -> Optional[SamplerOutput]:
         next_tokens = self.sampler(logits, sampling_metadata)
+        if torch.distributed.get_rank() == 0:
+            print(f"sample {self.numsample} next_tokens {type(next_tokens)}")
+        self.numsample += 1
         return next_tokens
 
     def load_weights(self, weights: Iterable[Tuple[str,
