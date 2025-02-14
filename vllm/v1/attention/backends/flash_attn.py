@@ -307,37 +307,36 @@ class FlashAttentionImpl(AttentionImpl):
                 softcap=self.logits_soft_cap,
                 fa_version=self.fa_version,
             )
-            # Ulysses all-to-all 2/2
-            c = output.view(self.SP, N_ulysses, self.num_heads, self.head_size)
-            torch.distributed.all_to_all_single(c,
-                                                c_,
-                                                input_split_sizes=N_ranks,
-                                                group=self.device_group)
-            c = torch.transpose(c, 0, 1).reshape(
-                N_ulysses, self.num_heads * self.SP * self.head_size)
-            return c
-
-        # Cascade attention (rare case).
-        cascade_attention(
-            output[:num_actual_tokens],
-            query[:num_actual_tokens],
-            key_cache,
-            value_cache,
-            cu_query_lens=attn_metadata.query_start_loc,
-            max_query_len=attn_metadata.max_query_len,
-            cu_prefix_query_lens=attn_metadata.cu_prefix_query_lens,
-            prefix_kv_lens=attn_metadata.prefix_kv_lens,
-            suffix_kv_lens=attn_metadata.suffix_kv_lens,
-            max_kv_len=attn_metadata.max_seq_len,
-            softmax_scale=self.scale,
-            alibi_slopes=self.alibi_slopes,
-            sliding_window=self.sliding_window,
-            logits_soft_cap=self.logits_soft_cap,
-            block_table=attn_metadata.block_table,
-            common_prefix_len=attn_metadata.common_prefix_len,
-            fa_version=self.fa_version,
-        )
-        return output
+        else:
+            # Cascade attention (rare case).
+            cascade_attention(
+                output=c_[:num_actual_tokens],
+                query=q_[:num_actual_tokens],
+                key_cache=key_cache,
+                value_cache=value_cache,
+                cu_query_lens=attn_metadata.query_start_loc,
+                max_query_len=attn_metadata.max_query_len,
+                cu_prefix_query_lens=attn_metadata.cu_prefix_query_lens,
+                prefix_kv_lens=attn_metadata.prefix_kv_lens,
+                suffix_kv_lens=attn_metadata.suffix_kv_lens,
+                max_kv_len=attn_metadata.max_seq_len,
+                softmax_scale=self.scale,
+                alibi_slopes=self.alibi_slopes,
+                sliding_window=self.sliding_window,
+                logits_soft_cap=self.logits_soft_cap,
+                block_table=attn_metadata.block_table,
+                common_prefix_len=attn_metadata.common_prefix_len,
+                fa_version=self.fa_version,
+            )
+        # Ulysses all-to-all 2/2
+        c = output.view(self.SP, N_ulysses, self.num_heads, self.head_size)
+        torch.distributed.all_to_all_single(c,
+                                            c_,
+                                            input_split_sizes=N_ranks,
+                                            group=self.device_group)
+        c = torch.transpose(c, 0, 1).reshape(
+            N_ulysses, self.num_heads * self.SP * self.head_size)
+        return c
 
 
 def use_cascade_attention(
