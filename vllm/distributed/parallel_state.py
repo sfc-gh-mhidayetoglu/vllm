@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 # Copyright 2023 The vLLM team.
 # Adapted from
 # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/core/parallel_state.py
@@ -327,9 +329,17 @@ class GroupCoordinator:
             return input_
 
         if input_.is_cpu:
-            import intel_extension_for_pytorch as ipex
-            ipex.distributed.all_reduce(input_, group=self.device_group)
-            return input_
+            try:
+                import intel_extension_for_pytorch as ipex
+                ipex.distributed.all_reduce(input_, group=self.device_group)
+                return input_
+            except ImportError:
+                """
+                Intel IPEX not found. Falling back to PyTorch native 
+                all_reduce for CPU
+                """
+                torch.distributed.all_reduce(input_, group=self.device_group)
+                return input_
 
         if self.tpu_communicator is not None and \
             not self.tpu_communicator.disabled:
@@ -1110,8 +1120,8 @@ def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
         return
 
     if all([
-            vllm_config.kv_transfer_config.need_kv_parallel_group,
-            _KV_TRANSFER is None
+            vllm_config.kv_transfer_config.need_kv_parallel_group, _KV_TRANSFER
+            is None
     ]):
         _KV_TRANSFER = kv_transfer.KVTransferAgent(
             rank=get_world_group().rank,
