@@ -575,8 +575,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         from vllm.forward_context import get_forward_context
         if torch.distributed.get_rank() == 0:
             print(f"numforward {self.numforward} N {N} N_ranks "
-                  f"{N_ranks} forward content {get_forward_context()}")
-        self.numforward += 1
+                  f"{N_ranks} forward content "
+                  f"{get_forward_context().attn_metadata}")
+        if get_forward_context().attn_metadata is not None:
+            self.numforward += 1
 
         input_ids[0:N_ulysses] = input_ids[N_start:N_start + N_ulysses]
         positions[0:N_ulysses] = positions[N_start:N_start + N_ulysses]
