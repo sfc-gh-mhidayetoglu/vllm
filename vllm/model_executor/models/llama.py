@@ -574,9 +574,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         #     print(f"N {N}, SP {SP}, N_ranks {N_ranks} sum {sum(N_ranks)}")
         from vllm.forward_context import get_forward_context
         if torch.distributed.get_rank() == 0:
-            print(f"numforward {self.numforward} N {N} N_ranks "
-                  f"{N_ranks} forward content "
-                  f"{get_forward_context().attn_metadata}")
+            print(f"numforward {self.numforward} N {N} "
+                  f"N_ranks {N_ranks}")
         if get_forward_context().attn_metadata is not None:
             self.numforward += 1
 
