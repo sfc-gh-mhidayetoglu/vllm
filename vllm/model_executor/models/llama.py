@@ -579,8 +579,6 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                   f"{get_forward_context().attn_metadata}")
         if get_forward_context().attn_metadata is not None:
             self.numforward += 1
-        else:
-            print(f"numforward {self.numforward} N {N} N_ranks graph")
 
         input_ids[0:N_ulysses] = input_ids[N_start:N_start + N_ulysses]
         positions[0:N_ulysses] = positions[N_start:N_start + N_ulysses]
