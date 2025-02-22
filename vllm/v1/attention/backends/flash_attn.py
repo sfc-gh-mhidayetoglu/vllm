@@ -316,6 +316,8 @@ class FlashAttentionImpl(AttentionImpl):
                                             group=self.device_group)
         c = torch.transpose(c, 0, 1).reshape(
             N_ulysses, self.num_heads * self.SP * self.head_size)
+        if attn_metadata is None:
+            torch.cuda.synchronize()
         return c
 
 
