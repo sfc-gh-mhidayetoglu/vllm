@@ -3349,8 +3349,7 @@ class VllmConfig:
             if self.model_config is not None and \
                 not self.model_config.enforce_eager:
                 batch_size_capture_list = [1, 2, 4
-                                           ] + [i for i in range(8, 129, 8)]
-                # this is required for Ulysses originally 512
+                                           ] + [i for i in range(8, 513, 8)]
 
         batch_size_capture_list = [
             size for size in batch_size_capture_list
