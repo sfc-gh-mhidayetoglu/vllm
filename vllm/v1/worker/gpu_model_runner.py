@@ -759,9 +759,10 @@ class GPUModelRunner:
                 print("graph mode")
         else:
             # Eager mode.
+            SP = self.parallel_config.sequence_parallel_size
             num_input_tokens = num_scheduled_tokens
             if torch.distributed.get_rank() == 0:
-                print("eager mode")
+                print(f"eager mode SP {SP}")
 
         if torch.distributed.get_rank() == 0:
             print(f"num_input_tokens: {num_input_tokens} "
