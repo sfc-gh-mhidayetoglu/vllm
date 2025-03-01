@@ -755,9 +755,17 @@ class GPUModelRunner:
             # Add padding to the batch size.
             num_input_tokens = self.vllm_config.pad_for_cudagraph(
                 num_scheduled_tokens)
+            if torch.distributed.get_rank() == 0:
+                print("graph mode")
         else:
             # Eager mode.
             num_input_tokens = num_scheduled_tokens
+            if torch.distributed.get_rank() == 0:
+                print("eager mode")
+
+        if torch.distributed.get_rank() == 0:
+            print(f"num_input_tokens: {num_input_tokens} "
+                  f"num_scheduled_tokens: {num_scheduled_tokens}")
         attn_metadata.num_input_tokens = num_input_tokens
 
         if self.is_multimodal_model:
