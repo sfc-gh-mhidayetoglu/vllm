@@ -233,7 +233,7 @@ class Attention(nn.Module):
 
             # c = output.view(self.SP, -1, self.num_heads, self.head_size)
             c = output.view(-1, self.SP, self.num_heads * self.head_size)
-            c = torch.transpose(c, 0, 1).continuous()
+            c = torch.transpose(c, 0, 1).contiguous()
             torch.distributed.all_to_all_single(c, c_, group=self.device_group)
             output = torch.transpose(c, 0, 1).contiguous()  #.reshape(
             #     -1, self.num_heads * self.SP * self.head_size)
