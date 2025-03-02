@@ -183,13 +183,13 @@ class Attention(nn.Module):
 
             # Ulysses all-to-all 1/2
             # pack
-            # qkv = torch.cat(
-            #     (query.view((-1, self.SP, self.num_heads * self.head_size)),
-            #      key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
-            #      value.view(
-            #          (-1, self.SP, self.num_kv_heads * self.head_size))),
-            #     dim=-1).transpose(0, 1).reshape(
-            #         -1, self.num_kv_heads * self.head_size)
+            qkv = torch.cat(
+                (query.view((-1, self.SP, self.num_heads * self.head_size)),
+                 key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
+                 value.view(
+                     (-1, self.SP, self.num_kv_heads * self.head_size))),
+                dim=-1).transpose(0, 1).reshape(
+                    -1, self.num_kv_heads * self.head_size)
             # qkv_ = torch.empty_like(qkv).view(
             #     -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
             # all-to-all
@@ -223,21 +223,14 @@ class Attention(nn.Module):
                                   ctx_attn_metadata,
                                   output=c_)
             else:
-                # torch.ops.vllm.unified_attention_with_output(
-                #     query, key, value, output, self.layer_name)
                 torch.ops.vllm.unified_attention_with_output(
                     q_, k_, v_, c_, self.layer_name)
 
             # Ulysses all-to-all 2/2
-            # from vllm.model_executor.models.llama import c
-
-            # c = output.view(self.SP, -1, self.num_heads, self.head_size)
             c = output.view(-1, self.num_heads, self.head_size)
             torch.distributed.all_to_all_single(c, c_, group=self.device_group)
             output = c.view(self.SP, -1, self.num_heads,
                             self.head_size).transpose(0, 1).contiguous()
-            # output = torch.transpose(c, 0, 1).contiguous()  #.reshape(
-            #     -1, self.num_heads * self.SP * self.head_size)
 
             return output.view(-1, hidden_size)
         else:
