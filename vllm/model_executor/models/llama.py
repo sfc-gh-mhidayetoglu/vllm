@@ -453,9 +453,6 @@ class LlamaModel(nn.Module):
         return loaded_params
 
 
-c = None
-
-
 class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     packed_modules_mapping = {
         "qkv_proj": ["q_proj", "k_proj", "v_proj"],
@@ -559,11 +556,6 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         N = input_ids.shape[0]
         N_ulysses = N // SP
         SP_rank = get_sp_group().rank_in_group
-
-        global c
-        c = torch.tensor((SP, N_ulysses, self.config.hidden_size // SP),
-                         dtype=torch.bfloat16,
-                         device=input_ids.device)
 
         # if torch.distributed.get_rank() == 0:
         #     print(f"input_ids: {input_ids.shape}")
