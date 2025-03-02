@@ -454,7 +454,6 @@ class LlamaModel(nn.Module):
 
 
 N = None
-N_ranks = None
 N_ulysses = None
 
 
@@ -559,14 +558,15 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         global N
         N = input_ids.shape[0]
         SP = get_sp_group().world_size
-        global N_ranks
-        N_ranks = [N // SP] * SP
-        for i in range(N % SP):
-            N_ranks[i] += 1
+        # global N_ranks
+        # N_ranks = [N // SP] * SP
+        # for i in range(N % SP):
+        #     N_ranks[i] += 1
         SP_rank = get_sp_group().rank_in_group
         global N_ulysses
-        N_ulysses = N_ranks[SP_rank]
-        N_start = sum(N_ranks[:SP_rank])
+        # N_ulysses = N_ranks[SP_rank]
+        # N_start = sum(N_ranks[:SP_rank])
+        N_ulysses = N // SP
 
         # if torch.distributed.get_rank() == 0:
         #     print(f"input_ids: {input_ids.shape}")
@@ -575,28 +575,26 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         from vllm.forward_context import get_forward_context
         if torch.distributed.get_rank() == 0:
             print(f"numforward {self.numforward} N {N} "
-                  f"N_ranks {N_ranks}")
+                  f"N_ulysses {N_ulysses}")
         if get_forward_context().attn_metadata is not None:
             self.numforward += 1
 
-        input_ids[0:N_ulysses] = input_ids[N_start:N_start + N_ulysses]
-        positions[0:N_ulysses] = positions[N_start:N_start + N_ulysses]
+        input_ids[0:N_ulysses] = input_ids[SP_rank * N_ulysses:(SP_rank + 1) *
+                                           N_ulysses]
+        positions[0:N_ulysses] = positions[SP_rank * N_ulysses:(SP_rank + 1) *
+                                           N_ulysses]
         input_ids = torch.narrow(input_ids, 0, 0, N_ulysses)
         positions = torch.narrow(positions, 0, 0, N_ulysses)
-        model_output = self.model(input_ids, positions, kv_caches,
-                                  attn_metadata, intermediate_tensors,
-                                  inputs_embeds)
+        output = self.model(input_ids, positions, kv_caches, attn_metadata,
+                            intermediate_tensors, inputs_embeds)
         # all-gather model_output
-        model_output_list = [
-            torch.empty((N_ranks[i], self.config.hidden_size),
-                        dtype=model_output.dtype,
-                        device=model_output.device) for i in range(SP)
-        ]
-        torch.distributed.all_gather(model_output_list,
-                                     model_output,
-                                     group=get_sp_group().device_group)
-        model_output = torch.cat(
-            model_output_list)  # .contiguous()  # + hidden_states.sum()
+        model_output = torch.empty((N, self.config.hidden_size),
+                                   dtype=output.dtype,
+                                   device=output.device)
+        torch.distributed.all_gather_into_tensor(
+            model_output, output, group=get_sp_group().device_group)
+        # model_output = torch.cat(
+        #     model_output_list)  # .contiguous()  # + hidden_states.sum()
         # if torch.distributed.get_rank() == 0:
         #     print(f"model_output: {model_output.shape}")
         #     print(f"model_output: {model_output}")

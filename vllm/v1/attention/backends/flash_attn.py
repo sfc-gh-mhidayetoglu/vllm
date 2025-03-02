@@ -196,7 +196,7 @@ class FlashAttentionImpl(AttentionImpl):
         # Whenever making a change in this method, please benchmark the
         # performance to make sure it does not introduce any overhead.
 
-        from vllm.model_executor.models.llama import N, N_ranks, N_ulysses
+        from vllm.model_executor.models.llama import N, N_ulysses
 
         # Ulysses Attention
         # if torch.distributed.get_rank() == 0:
@@ -225,10 +225,11 @@ class FlashAttentionImpl(AttentionImpl):
             (N, (self.num_heads + 2 * self.num_kv_heads) * self.head_size),
             dtype=query.dtype,
             device=query.device)
-        torch.distributed.all_to_all_single(qkv_,
-                                            qkv,
-                                            output_split_sizes=N_ranks,
-                                            group=self.device_group)
+        # torch.distributed.all_to_all_single(qkv_,
+        #                                     qkv,
+        #                                     output_split_sizes=N_ranks,
+        #                                     group=self.device_group)
+        torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
         # unpack
         q_, k_, v_ = qkv_.split([
             self.num_heads * self.head_size, self.num_kv_heads *
@@ -310,10 +311,7 @@ class FlashAttentionImpl(AttentionImpl):
             )
         # Ulysses all-to-all 2/2
         c = output.view(self.SP, N_ulysses, self.num_heads, self.head_size)
-        torch.distributed.all_to_all_single(c,
-                                            c_,
-                                            input_split_sizes=N_ranks,
-                                            group=self.device_group)
+        torch.distributed.all_to_all_single(c, c_, group=self.device_group)
         output = torch.transpose(c, 0, 1).reshape(
             N_ulysses, self.num_heads * self.SP * self.head_size)
         return output
