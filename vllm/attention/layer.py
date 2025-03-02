@@ -15,7 +15,7 @@ from vllm.forward_context import ForwardContext, get_forward_context
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig)
 from vllm.model_executor.layers.quantization.kv_cache import BaseKVCacheMethod
-from vllm.model_executor.models.llama import c
+# from vllm.model_executor.models.llama import c
 from vllm.platforms import _Backend, current_platform
 from vllm.utils import direct_register_custom_op
 
@@ -229,7 +229,8 @@ class Attention(nn.Module):
                     q_, k_, v_, c_, self.layer_name)
 
             # Ulysses all-to-all 2/2
-            global c
+            from vllm.model_executor.models.llama import c
+
             # c = output.view(self.SP, -1, self.num_heads, self.head_size)
             # c = output.view(-1, self.SP, self.num_heads, self.head_size)
             # torch.distributed.all_to_all_single(c, c_,
