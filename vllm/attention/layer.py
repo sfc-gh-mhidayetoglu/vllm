@@ -15,6 +15,7 @@ from vllm.forward_context import ForwardContext, get_forward_context
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig)
 from vllm.model_executor.layers.quantization.kv_cache import BaseKVCacheMethod
+from vllm.model_executor.models.llama import c
 from vllm.platforms import _Backend, current_platform
 from vllm.utils import direct_register_custom_op
 
