@@ -453,6 +453,9 @@ class LlamaModel(nn.Module):
         return loaded_params
 
 
+c = None
+
+
 class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     packed_modules_mapping = {
         "qkv_proj": ["q_proj", "k_proj", "v_proj"],
