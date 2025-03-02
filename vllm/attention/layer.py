@@ -228,7 +228,8 @@ class Attention(nn.Module):
                     q_, k_, v_, c_, self.layer_name)
 
             # Ulysses all-to-all 2/2
-            c = output.view(self.SP, -1, self.num_heads, self.head_size)
+            # c = output.view(self.SP, -1, self.num_heads, self.head_size)
+            c = output.view(-1, self.num_heads, self.head_size)
             # torch.distributed.all_to_all_single(c, c_,
             # group=self.device_group)
             output = torch.transpose(c, 0, 1).contiguous() #.reshape(
