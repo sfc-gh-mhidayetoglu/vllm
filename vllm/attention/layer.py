@@ -148,6 +148,9 @@ class Attention(nn.Module):
         self.k_range = torch.tensor(envs.K_SCALE_CONSTANT, dtype=torch.float32)
         self.v_range = torch.tensor(envs.V_SCALE_CONSTANT, dtype=torch.float32)
 
+        from vllm.distributed import get_sp_group
+        self.SP = get_sp_group().workd_size
+
     def forward(
         self,
         query: torch.Tensor,
@@ -175,20 +178,56 @@ class Attention(nn.Module):
             #     key = key.view(-1, self.num_kv_heads, self.head_size)
             # if value is not None:
             #     value = value.view(-1, self.num_kv_heads, self.head_size)
+
+            # Ulysses all-to-all 1/2
+            # pack
+            qkv = torch.cat(
+                (query.view((-1, self.SP, self.num_heads * self.head_size)),
+                 key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
+                 value.view(
+                     (-1, self.SP, self.num_kv_heads * self.head_size))),
+                dim=-1).transpose(0, 1).contiguous()
+            qkv_ = torch.empty_like(qkv).view(
+                -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+            # all-to-all
+            torch.distributed.all_to_all_single(qkv_,
+                                                qkv,
+                                                group=self.device_group)
+            # unpack
+            q_, k_, v_ = qkv_.split([
+                self.num_heads * self.head_size, self.num_kv_heads *
+                self.head_size, self.num_kv_heads * self.head_size
+            ],
+                                    dim=-1)
+            # prepare
+            q_ = q_.reshape(-1, self.num_heads, self.head_size)
+            k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
+            v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
+            c_ = torch.empty_like(q_)
+
             if self.use_direct_call:
                 forward_context: ForwardContext = get_forward_context()
                 ctx_attn_metadata = forward_context.attn_metadata
                 self_kv_cache = self.kv_cache[forward_context.virtual_engine]
                 self.impl.forward(self,
-                                  query,
-                                  key,
-                                  value,
+                                  q_,
+                                  k_,
+                                  v_,
                                   self_kv_cache,
                                   ctx_attn_metadata,
-                                  output=output)
+                                  output=c_)
             else:
+                # torch.ops.vllm.unified_attention_with_output(
+                #     query, key, value, output, self.layer_name)
                 torch.ops.vllm.unified_attention_with_output(
-                    query, key, value, output, self.layer_name)
+                    q_, k_, v_, c_, self.layer_name)
+
+            # Ulysses all-to-all 2/2
+            c = output.view(self.SP, -1, self.num_heads, self.head_size)
+            torch.distributed.all_to_all_single(c, c_, group=self.device_group)
+            output = torch.transpose(c, 0, 1).reshape(
+                -1, self.num_heads * self.SP * self.head_size)
+
             return output.view(-1, hidden_size)
         else:
             if self.use_direct_call:

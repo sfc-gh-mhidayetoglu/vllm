@@ -212,26 +212,27 @@ class FlashAttentionImpl(AttentionImpl):
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         # pack
-        qkv = torch.cat(
-            (query.view((-1, self.SP, self.num_heads * self.head_size)),
-             key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
-             value.view((-1, self.SP, self.num_kv_heads * self.head_size))),
-            dim=-1).transpose(0, 1).contiguous()
-        qkv_ = torch.empty_like(qkv).view(
-            -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+        # qkv = torch.cat(
+        #     (query.view((-1, self.SP, self.num_heads * self.head_size)),
+        #      key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
+        #      value.view((-1, self.SP, self.num_kv_heads * self.head_size))),
+        #     dim=-1).transpose(0, 1).contiguous()
+        # qkv_ = torch.empty_like(qkv).view(
+        #     -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
         # all-to-all
-        torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
+        # torch.distributed.all_to_all_single(qkv_, qkv,
+        # group=self.device_group)
         # unpack
-        q_, k_, v_ = qkv_.split([
-            self.num_heads * self.head_size, self.num_kv_heads *
-            self.head_size, self.num_kv_heads * self.head_size
-        ],
-                                dim=-1)
+        # q_, k_, v_ = qkv_.split([
+        #     self.num_heads * self.head_size, self.num_kv_heads *
+        #     self.head_size, self.num_kv_heads * self.head_size
+        # ],
+        #                         dim=-1)
         # prepare
-        q_ = q_.reshape(-1, self.num_heads, self.head_size)
-        k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
-        v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
-        c_ = torch.empty_like(q_)
+        # q_ = q_.reshape(-1, self.num_heads, self.head_size)
+        # k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
+        # v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
+        # c_ = torch.empty_like(q_)
 
         # if torch.distributed.get_rank() == 0:
         #     print(f"\n \
@@ -251,8 +252,8 @@ class FlashAttentionImpl(AttentionImpl):
         # the slot_mapping's shape to determine the number of actual tokens.
         key_cache, value_cache = kv_cache.unbind(0)
         torch.ops._C_cache_ops.reshape_and_cache_flash(
-            k_,
-            v_,
+            key,
+            value,
             key_cache,
             value_cache,
             attn_metadata.slot_mapping,
@@ -265,10 +266,10 @@ class FlashAttentionImpl(AttentionImpl):
         if not attn_metadata.use_cascade:
             # Regular attention (common case).
             flash_attn_varlen_func(
-                q=q_[:num_actual_tokens],
+                q=query[:num_actual_tokens],
                 k=key_cache,
                 v=value_cache,
-                out=c_[:num_actual_tokens],
+                out=output[:num_actual_tokens],
                 cu_seqlens_q=attn_metadata.query_start_loc,
                 max_seqlen_q=attn_metadata.max_query_len,
                 seqused_k=attn_metadata.seq_lens,
@@ -284,8 +285,8 @@ class FlashAttentionImpl(AttentionImpl):
         else:
             # Cascade attention (rare case).
             cascade_attention(
-                output=c_[:num_actual_tokens],
-                query=q_[:num_actual_tokens],
+                output=output[:num_actual_tokens],
+                query=query[:num_actual_tokens],
                 key_cache=key_cache,
                 value_cache=value_cache,
                 cu_query_lens=attn_metadata.query_start_loc,
@@ -302,11 +303,6 @@ class FlashAttentionImpl(AttentionImpl):
                 common_prefix_len=attn_metadata.common_prefix_len,
                 fa_version=self.fa_version,
             )
-        # Ulysses all-to-all 2/2
-        c = output.view(self.SP, -1, self.num_heads, self.head_size)
-        torch.distributed.all_to_all_single(c, c_, group=self.device_group)
-        output = torch.transpose(c, 0, 1).reshape(
-            -1, self.num_heads * self.SP * self.head_size)
         return output
 
 
