@@ -149,7 +149,7 @@ class Attention(nn.Module):
         self.v_range = torch.tensor(envs.V_SCALE_CONSTANT, dtype=torch.float32)
 
         from vllm.distributed import get_sp_group
-        self.SP = get_sp_group().workd_size
+        self.SP = get_sp_group().world_size
 
     def forward(
         self,
