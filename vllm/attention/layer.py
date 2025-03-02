@@ -148,7 +148,7 @@ class Attention(nn.Module):
         self.k_range = torch.tensor(envs.K_SCALE_CONSTANT, dtype=torch.float32)
         self.v_range = torch.tensor(envs.V_SCALE_CONSTANT, dtype=torch.float32)
 
-        from vllm.distributed import get_sp_group
+        from vllm.distributed.parallel_state import get_sp_group
         self.SP = get_sp_group().world_size
         self.device_group = get_sp_group().device_group
 

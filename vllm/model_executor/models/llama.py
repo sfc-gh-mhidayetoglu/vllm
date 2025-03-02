@@ -555,7 +555,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         SP = get_sp_group().world_size
         N = input_ids.shape[0]
         N_ulysses = N // SP
-        SP_rank = get_sp_group().rank
+        SP_rank = get_sp_group().rank_in_group
 
         # if torch.distributed.get_rank() == 0:
         #     print(f"input_ids: {input_ids.shape}")
