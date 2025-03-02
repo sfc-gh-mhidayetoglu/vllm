@@ -150,6 +150,7 @@ class Attention(nn.Module):
 
         from vllm.distributed import get_sp_group
         self.SP = get_sp_group().world_size
+        self.device_group = get_sp_group().get_device_group()
 
     def forward(
         self,
