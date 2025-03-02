@@ -196,7 +196,7 @@ class FlashAttentionImpl(AttentionImpl):
         # Whenever making a change in this method, please benchmark the
         # performance to make sure it does not introduce any overhead.
 
-        from vllm.model_executor.models.llama import N
+        # from vllm.model_executor.models.llama import N
 
         # Ulysses Attention
         if torch.distributed.get_rank() == 0:
@@ -206,7 +206,7 @@ class FlashAttentionImpl(AttentionImpl):
             v {value.shape}\n \
             output {output.shape}\n \
             kv_cache {kv_cache.shape} \
-            N {N} SP {self.SP}\n \
+            SP {self.SP}\n \
             self.num_heads {self.num_heads}\n \
             self.num_kv_heads {self.num_kv_heads}\n \
             self.head_size {self.head_size}\n")
@@ -219,10 +219,12 @@ class FlashAttentionImpl(AttentionImpl):
              value.view((-1, self.SP, self.num_kv_heads * self.head_size))),
             dim=-1).transpose(0, 1).contiguous()
         # all-to-all
-        qkv_ = torch.empty(
-            (N, (self.num_heads + 2 * self.num_kv_heads) * self.head_size),
-            dtype=query.dtype,
-            device=query.device)
+        qkv_ = torch.empty_like(qkv).view(
+            -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+        #) torch.empty(
+        # (N, (self.num_heads + 2 * self.num_kv_heads) * self.head_size),
+        # dtype=query.dtype,
+        # device=query.device)
         # torch.distributed.all_to_all_single(qkv_,
         #                                     qkv,
         #                                     output_split_sizes=N_ranks,
