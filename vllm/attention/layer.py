@@ -124,6 +124,9 @@ class Attention(nn.Module):
         self.backend = backend_name_to_enum(attn_backend.get_name())
         self.dtype = dtype
 
+        self.SP = get_sp_group().world_size
+        self.device_group = get_sp_group().device_group
+
         # For cuda-alike (CUDA and ROCM) and cpu platforms, we control how
         # torch.compile works by registering the attention as one giant
         # opaque custom op. For other platforms, we directly call them
@@ -148,9 +151,6 @@ class Attention(nn.Module):
 
         self.k_range = torch.tensor(envs.K_SCALE_CONSTANT, dtype=torch.float32)
         self.v_range = torch.tensor(envs.V_SCALE_CONSTANT, dtype=torch.float32)
-
-        self.SP = get_sp_group().world_size
-        self.device_group = get_sp_group().device_group
 
     def forward(
         self,
@@ -228,8 +228,8 @@ class Attention(nn.Module):
                     q_, k_, v_, c_, self.layer_name)
 
             # Ulysses all-to-all 2/2
-            # c = output.view(self.SP, -1, self.num_heads, self.head_size)
-            c = output.view(-1, self.SP, self.num_heads, self.head_size)
+            c = output.view(self.SP, -1, self.num_heads, self.head_size)
+            # c = output.view(-1, self.SP, self.num_heads, self.head_size)
             # torch.distributed.all_to_all_single(c, c_,
             # group=self.device_group)
             output = torch.transpose(c, 0, 1).contiguous()  #.reshape(
