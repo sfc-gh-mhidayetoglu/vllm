@@ -187,7 +187,8 @@ class Attention(nn.Module):
                  key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
                  value.view(
                      (-1, self.SP, self.num_kv_heads * self.head_size))),
-                dim=-1).transpose(0, 1).contiguous()
+                dim=-1).transpose(0, 1).reshape(
+                    -1, self.num_kv_heads * self.head_size)
             qkv_ = torch.empty_like(qkv).view(
                 -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
             # all-to-all
