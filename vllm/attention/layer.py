@@ -232,8 +232,9 @@ class Attention(nn.Module):
             # from vllm.model_executor.models.llama import c
 
             # c = output.view(self.SP, -1, self.num_heads, self.head_size)
-            c = output.view(-1, self.SP, self.num_heads * self.head_size)
-            c = torch.transpose(c, 0, 1).contiguous()
+            c = output.view(-1, self.SP, self.num_heads, self.head_size)
+            c = torch.transpose(c, 0, 1).reshape(-1, self.num_heads,
+                                                 self.head_size)
             torch.distributed.all_to_all_single(c, c_, group=self.device_group)
             output = torch.transpose(c, 0, 1).contiguous()  #.reshape(
             #     -1, self.num_heads * self.SP * self.head_size)
