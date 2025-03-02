@@ -229,8 +229,9 @@ class Attention(nn.Module):
             # Ulysses all-to-all 2/2
             c = output.view(-1, self.num_heads, self.head_size)
             torch.distributed.all_to_all_single(c, c_, group=self.device_group)
-            output = c.view(self.SP, -1, self.num_heads,
-                            self.head_size).transpose(0, 1).contiguous()
+            output = c.view(self.SP,
+                            -1, self.num_heads * self.head_size).transpose(
+                                0, 1).contiguous()
 
             return output.view(-1, hidden_size)
         else:
