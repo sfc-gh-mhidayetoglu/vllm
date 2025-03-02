@@ -10,6 +10,7 @@ import vllm.envs as envs
 from vllm.attention import AttentionMetadata, AttentionType
 from vllm.attention.selector import backend_name_to_enum, get_attn_backend
 from vllm.config import CacheConfig, get_current_vllm_config
+from vllm.distributed.parallel_state import get_sp_group
 from vllm.forward_context import ForwardContext, get_forward_context
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig)
@@ -148,7 +149,6 @@ class Attention(nn.Module):
         self.k_range = torch.tensor(envs.K_SCALE_CONSTANT, dtype=torch.float32)
         self.v_range = torch.tensor(envs.V_SCALE_CONSTANT, dtype=torch.float32)
 
-        from vllm.distributed.parallel_state import get_sp_group
         self.SP = get_sp_group().world_size
         self.device_group = get_sp_group().device_group
 
@@ -232,7 +232,7 @@ class Attention(nn.Module):
             c = output.view(-1, self.SP, self.num_heads, self.head_size)
             # torch.distributed.all_to_all_single(c, c_,
             # group=self.device_group)
-            output = torch.transpose(c, 0, 1).contiguous() #.reshape(
+            output = torch.transpose(c, 0, 1).contiguous()  #.reshape(
             #     -1, self.num_heads * self.SP * self.head_size)
 
             return output.view(-1, hidden_size)
