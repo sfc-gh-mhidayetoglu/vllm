@@ -242,6 +242,8 @@ class FlashAttentionImpl(AttentionImpl):
 
         if torch.distributed.get_rank() == 0:
             print(f"\n \
+                    qkv {qkv.shape}\n \
+                    qkv_ {qkv_.shape}\n \
                     q_ {q_.shape}\n \
                     k_ {k_.shape}\n \
                     v_ {v_.shape}\n \
