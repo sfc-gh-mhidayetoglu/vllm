@@ -202,10 +202,10 @@ class Attention(nn.Module):
             #     self.head_size, self.num_kv_heads * self.head_size
             # ],
             #                         dim=-1)
-            q_ = torch.empty_like(query)
+            # q_ = torch.empty_like(query)
             k_ = key
             v_ = value
-            torch.distributed.all_to_all_single(q_,
+            torch.distributed.all_to_all_single(output,
                                                 query,
                                                 group=self.device_group)
             # torch.distributed.all_to_all_single(k_,
@@ -215,7 +215,7 @@ class Attention(nn.Module):
             #                                     value,
             #                                     group=self.device_group)
             # prepare
-            q_ = q_.reshape(-1, self.num_heads, self.head_size)
+            q_ = output.reshape(-1, self.num_heads, self.head_size)
             k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
             v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
             c_ = torch.empty_like(q_)
