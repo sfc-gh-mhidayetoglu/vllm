@@ -192,11 +192,11 @@ class Attention(nn.Module):
                     (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
             # all-to-all
             # qkv_ = sequence_all_to_all(qkv)
-            qkv_ = torch.empty_like(qkv).contiguous()
-            # custom_all_to_all(qkv_, qkv)
-            torch.distributed.all_to_all_single(qkv_,
-                                                qkv,
-                                                group=self.device_group)
+            qkv_ = torch.empty_like(qkv)
+            torch.ops.vllm.custom_all_to_all(qkv_, qkv)
+            # torch.distributed.all_to_all_single(qkv_,
+            #                                     qkv,
+            #                                     group=self.device_group)
             # unpack
             q_, k_, v_ = qkv_.split([
                 self.num_heads * self.head_size, self.num_kv_heads *
@@ -407,14 +407,25 @@ direct_register_custom_op(
 )
 
 
+# custom all-to-all op
 def custom_all_to_all(input: torch.Tensor, output: torch.Tensor) -> None:
     output.copy_(input)
+    # torch.distributed.all_to_all_single(output,
+    #                                     input,
+    #                                     group=get_sp_group().device_group)
 
 
-# direct_register_custom_op(
-#     op_name="custom_all_to_all",
-#     op_func=custom_all_to_all,
-#     mutates_args=[],
-#     fake_impl=custom_all_to_all_fake,
-#     dispatch_key=current_platform.dispatch_key,
-# )
+def custom_all_to_all_fake(
+    input: torch.Tensor,
+    output: torch.Tensor,
+) -> None:
+    return None
+
+
+direct_register_custom_op(
+    op_name="custom_all_to_all",
+    op_func=custom_all_to_all,
+    mutates_args=[],
+    fake_impl=custom_all_to_all_fake,
+    dispatch_key=current_platform.dispatch_key,
+)

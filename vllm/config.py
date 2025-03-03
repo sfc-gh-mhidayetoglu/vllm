@@ -2936,6 +2936,7 @@ class CompilationConfig(BaseModel):
                 self.splitting_ops = [
                     "vllm.unified_attention",
                     "vllm.unified_attention_with_output",
+                    "vllm.custom_all_to_all",
                 ]
             else:
                 # v0 uses full graph compilation
