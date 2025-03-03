@@ -203,11 +203,11 @@ class Attention(nn.Module):
             # ],
             #                         dim=-1)
             q_ = torch.empty_like(query)
-            k_ = torch.empty_like(key)
-            v_ = torch.empty_like(value)
-            # torch.distributed.all_to_all_single(q_,
-            #                                     query,
-            #                                     group=self.device_group)
+            k_ = key
+            v_ = value
+            torch.distributed.all_to_all_single(q_,
+                                                query,
+                                                group=self.device_group)
             # torch.distributed.all_to_all_single(k_,
             #                                     key,
             #                                     group=self.device_group)
