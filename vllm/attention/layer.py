@@ -10,7 +10,7 @@ import vllm.envs as envs
 from vllm.attention import AttentionMetadata, AttentionType
 from vllm.attention.selector import backend_name_to_enum, get_attn_backend
 from vllm.config import CacheConfig, get_current_vllm_config
-from vllm.distributed.communication_op import sequence_all_to_all
+# from vllm.distributed.communication_op import sequence_all_to_all
 from vllm.distributed.parallel_state import get_sp_group
 from vllm.forward_context import ForwardContext, get_forward_context
 from vllm.model_executor.layers.quantization.base_config import (
@@ -191,11 +191,12 @@ class Attention(nn.Module):
                     -1,
                     (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
             # all-to-all
-            qkv_ = sequence_all_to_all(qkv)
-            # qkv_ = torch.empty_like(qkv)
-            # torch.distributed.all_to_all_single(qkv_,
-            #                                     qkv,
-            #                                     group=self.device_group)
+            # qkv_ = sequence_all_to_all(qkv)
+            qkv_ = torch.empty_like(qkv).continuous()
+            # custom_all_to_all(qkv_, qkv)
+            torch.distributed.all_to_all_single(qkv_,
+                                                qkv,
+                                                group=self.device_group)
             # unpack
             q_, k_, v_ = qkv_.split([
                 self.num_heads * self.head_size, self.num_kv_heads *
@@ -404,3 +405,14 @@ direct_register_custom_op(
     fake_impl=unified_attention_with_output_fake,
     dispatch_key=current_platform.dispatch_key,
 )
+
+def custom_all_to_all(input: torch.Tensor, output: torch.Tensor) -> None:
+    output.copy_(input)
+
+# direct_register_custom_op(
+#     op_name="custom_all_to_all",
+#     op_func=custom_all_to_all,
+#     mutates_args=[],
+#     fake_impl=custom_all_to_all_fake,
+#     dispatch_key=current_platform.dispatch_key,
+# )
