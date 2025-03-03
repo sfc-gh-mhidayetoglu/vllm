@@ -311,7 +311,8 @@ class GroupCoordinator:
 
     def all_to_all(self, input_: torch.Tensor) -> torch.Tensor:
         output = torch.empty_like(input_)
-        torch.distributed.all_to_all_single(output, input_, self.device_group)
+        # torch.distributed.all_to_all_single(output, input_, self.device_group)
+        torch.distributed.all_reduce(output, input_, group=self.device_group)
         return output
 
     def all_reduce(self, input_: torch.Tensor) -> torch.Tensor:
