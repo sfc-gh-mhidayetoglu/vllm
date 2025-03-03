@@ -10,12 +10,12 @@ import vllm.envs as envs
 from vllm.attention import AttentionMetadata, AttentionType
 from vllm.attention.selector import backend_name_to_enum, get_attn_backend
 from vllm.config import CacheConfig, get_current_vllm_config
+from vllm.distributed.communication_op import all_to_all_sequence
 from vllm.distributed.parallel_state import get_sp_group
 from vllm.forward_context import ForwardContext, get_forward_context
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig)
 from vllm.model_executor.layers.quantization.kv_cache import BaseKVCacheMethod
-# from vllm.model_executor.models.llama import c
 from vllm.platforms import _Backend, current_platform
 from vllm.utils import direct_register_custom_op
 
@@ -190,8 +190,9 @@ class Attention(nn.Module):
                 dim=-1).transpose(0, 1).reshape(
                     -1,
                     (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
-            qkv_ = torch.empty_like(qkv)
+            # qkv_ = torch.empty_like(qkv)
             # all-to-all
+            qkv_ = all_to_all_sequence(qkv)
             # torch.distributed.all_to_all_single(qkv_,
             #                                     qkv,
             #                                     group=self.device_group)
@@ -223,9 +224,10 @@ class Attention(nn.Module):
                     q_, k_, v_, c_, self.layer_name)
 
             # Ulysses all-to-all 2/2
-            c = output.view(-1, self.num_heads, self.head_size)
+            # c = output.view(-1, self.num_heads, self.head_size)
             # torch.distributed.all_to_all_single(c, c_,
             # group=self.device_group)
+            c = all_to_all_sequence(c_)
             output = c.view(self.SP,
                             -1, self.num_heads * self.head_size).transpose(
                                 0, 1).contiguous()
