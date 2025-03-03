@@ -211,9 +211,9 @@ class Attention(nn.Module):
             torch.distributed.all_to_all_single(k_,
                                                 key,
                                                 group=self.device_group)
-            torch.distributed.all_to_all_single(v_,
-                                                value,
-                                                group=self.device_group)
+            # torch.distributed.all_to_all_single(v_,
+            #                                     value,
+            #                                     group=self.device_group)
             # prepare
             q_ = q_.reshape(-1, self.num_heads, self.head_size)
             k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
