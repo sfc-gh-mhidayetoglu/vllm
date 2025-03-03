@@ -309,6 +309,9 @@ class GroupCoordinator:
         with torch.cuda.stream(stream), maybe_ca_context:
             yield graph_capture_context
 
+    def all_to_all(self, input_: torch.Tensor) -> torch.Tensor:
+        return input_
+
     def all_reduce(self, input_: torch.Tensor) -> torch.Tensor:
         """
         User-facing all-reduce function before we actually call the
