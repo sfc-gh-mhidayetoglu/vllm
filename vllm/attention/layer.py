@@ -205,12 +205,12 @@ class Attention(nn.Module):
             q_ = torch.empty_like(query)
             k_ = torch.empty_like(key)
             v_ = torch.empty_like(value)
-            torch.distributed.all_to_all_single(q_,
-                                                query,
-                                                group=self.device_group)
-            torch.distributed.all_to_all_single(k_,
-                                                key,
-                                                group=self.device_group)
+            # torch.distributed.all_to_all_single(q_,
+            #                                     query,
+            #                                     group=self.device_group)
+            # torch.distributed.all_to_all_single(k_,
+            #                                     key,
+            #                                     group=self.device_group)
             # torch.distributed.all_to_all_single(v_,
             #                                     value,
             #                                     group=self.device_group)
