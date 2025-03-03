@@ -190,12 +190,12 @@ class Attention(nn.Module):
                 dim=-1).transpose(0, 1).reshape(
                     -1,
                     (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
-            qkv_ = torch.empty_like(qkv)
             # all-to-all
-            # qkv_ = all_to_all_sequence(qkv)
-            torch.distributed.all_to_all_single(qkv_,
-                                                qkv,
-                                                group=self.device_group)
+            qkv_ = all_to_all_sequence(qkv)
+            #qkv_ = torch.empty_like(qkv)
+            # torch.distributed.all_to_all_single(qkv_,
+            #                                     qkv,
+            #                                     group=self.device_group)
             # unpack
             q_, k_, v_ = qkv_.split([
                 self.num_heads * self.head_size, self.num_kv_heads *
@@ -224,9 +224,9 @@ class Attention(nn.Module):
                     q_, k_, v_, c_, self.layer_name)
 
             # Ulysses all-to-all 2/2
-            c = output.view(-1, self.num_heads, self.head_size)
-            torch.distributed.all_to_all_single(c, c_, group=self.device_group)
-            # c = all_to_all_sequence(c_)
+            c = all_to_all_sequence(c_)
+            # c = output.view(-1, self.num_heads, self.head_size)
+            # torch.distributed.all_to_all_single(c, c_, group=self.device_group)
             output = c.view(self.SP,
                             -1, self.num_heads * self.head_size).transpose(
                                 0, 1).contiguous()
