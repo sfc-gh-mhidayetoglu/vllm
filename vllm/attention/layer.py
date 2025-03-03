@@ -188,19 +188,19 @@ class Attention(nn.Module):
                  key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
                  value.view(
                      (-1, self.SP, self.num_kv_heads * self.head_size))),
-                dim=-1).transpose(0, 1)
-            qkv_ = qkv.view(-1, (self.num_heads + 2 * self.num_kv_heads) *
-                            self.head_size)
+                dim=-1).transpose(0, 1).reshape(
+                    -1,
+                    (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
             # all-to-all
             # torch.distributed.all_to_all_single(qkv_,
             #                                     qkv,
             #                                     group=self.device_group)
             # unpack
-            q_, k_, v_ = qkv_.split([
+            q_, k_, v_ = qkv.split([
                 self.num_heads * self.head_size, self.num_kv_heads *
                 self.head_size, self.num_kv_heads * self.head_size
             ],
-                                    dim=-1)
+                                   dim=-1)
             # prepare
             q_ = q_.reshape(-1, self.num_heads, self.head_size)
             k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
