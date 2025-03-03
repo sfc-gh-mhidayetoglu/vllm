@@ -1116,7 +1116,6 @@ def initialize_model_parallel(
     _SP_TP = init_model_parallel_group(group_ranks,
                                        get_world_group().local_rank,
                                        backend,
-                                       use_message_queue_broadcaster=True,
                                        group_name="sp_tp")
 
 

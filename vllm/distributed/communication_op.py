@@ -35,4 +35,4 @@ def broadcast_tensor_dict(tensor_dict: Optional[Dict[Any, Union[torch.Tensor,
 
 
 def all_to_all_sequence(input_: torch.Tensor) -> torch.Tensor:
-    return get_sp_tp_group().all_reduce(input_)
+    return get_sp_group().all_reduce(input_)
