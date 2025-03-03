@@ -192,7 +192,7 @@ class Attention(nn.Module):
                     (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
             # all-to-all
             # qkv_ = sequence_all_to_all(qkv)
-            qkv_ = torch.empty_like(qkv).continuous()
+            qkv_ = torch.empty_like(qkv).contiguous()
             # custom_all_to_all(qkv_, qkv)
             torch.distributed.all_to_all_single(qkv_,
                                                 qkv,
@@ -406,8 +406,10 @@ direct_register_custom_op(
     dispatch_key=current_platform.dispatch_key,
 )
 
+
 def custom_all_to_all(input: torch.Tensor, output: torch.Tensor) -> None:
     output.copy_(input)
+
 
 # direct_register_custom_op(
 #     op_name="custom_all_to_all",
