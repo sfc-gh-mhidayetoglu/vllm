@@ -202,9 +202,9 @@ class Attention(nn.Module):
             #     self.head_size, self.num_kv_heads * self.head_size
             # ],
             #                         dim=-1)
-            q_ = query
-            k_ = key
-            v_ = value
+            q_ = torch.empty_like(query)
+            k_ = torch.empty_like(key)
+            v_ = torch.empty_like(value)
             # prepare
             q_ = q_.reshape(-1, self.num_heads, self.head_size)
             k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
