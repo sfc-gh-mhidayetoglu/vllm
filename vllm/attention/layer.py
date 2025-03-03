@@ -409,10 +409,10 @@ direct_register_custom_op(
 
 # custom all-to-all op
 def custom_all_to_all(input: torch.Tensor, output: torch.Tensor) -> None:
-    output.copy_(input)
-    # torch.distributed.all_to_all_single(output,
-    #                                     input,
-    #                                     group=get_sp_group().device_group)
+    # output.copy_(input)
+    torch.distributed.all_to_all_single(output,
+                                        input,
+                                        group=get_sp_group().device_group)
 
 
 def custom_all_to_all_fake(
