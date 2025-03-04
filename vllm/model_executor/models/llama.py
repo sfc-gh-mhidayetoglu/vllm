@@ -366,7 +366,6 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-
         # for i in range(0, 1):
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
@@ -567,6 +566,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
             print(f"numforward {self.numforward} N {N}")
         if get_forward_context().attn_metadata is not None:
             self.numforward += 1
+            if torch.distributed.get_rank() == 0:
+                print(f"attn_metadata {get_forward_context().attn_metadata}")
 
         # narrow the input
         input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
@@ -577,8 +578,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                             inputs_embeds)
         # all-gather model_output
         model_output = torch.empty((N, self.config.hidden_size),
-                                    dtype=output.dtype,
-                                    device=output.device)
+                                   dtype=output.dtype,
+                                   device=output.device)
         torch.distributed.all_gather_into_tensor(
             model_output, output, group=get_sp_group().device_group)
         # if torch.distributed.get_rank() == 0:
