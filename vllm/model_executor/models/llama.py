@@ -572,7 +572,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
         # model forward
         output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
-                            intermediate_tensors, inputs_embeds)
+                             kv_caches, attn_metadata, intermediate_tensors,
+                             inputs_embeds)
         # all-gather model_output
         model_output = torch.empty((N, self.config.hidden_size),
                                    dtype=output.dtype,
