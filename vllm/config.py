@@ -2934,9 +2934,9 @@ class CompilationConfig(BaseModel):
                 # v1 must split the graph on attention ops
                 # for piecewise cudagraph
                 self.splitting_ops = [
-                    # "vllm.unified_attention",
+                    "vllm.unified_attention",
                     "vllm.unified_attention_with_output",
-                    "vllm.custom_all_to_all",
+                    # "vllm.custom_all_to_all",
                 ]
             else:
                 # v0 uses full graph compilation
