@@ -427,10 +427,10 @@ def custom_all_to_all_fake(
     return None
 
 
-direct_register_custom_op(
-    op_name="custom_all_to_all",
-    op_func=custom_all_to_all,
-    mutates_args=["output"],
-    fake_impl=custom_all_to_all_fake,
-    dispatch_key=current_platform.dispatch_key,
-)
+# direct_register_custom_op(
+#     op_name="custom_all_to_all",
+#     op_func=custom_all_to_all,
+#     mutates_args=["output"],
+#     fake_impl=custom_all_to_all_fake,
+#     dispatch_key=current_platform.dispatch_key,
+# )
