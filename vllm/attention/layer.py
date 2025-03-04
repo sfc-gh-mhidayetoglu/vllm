@@ -409,23 +409,20 @@ direct_register_custom_op(
     dispatch_key=current_platform.dispatch_key,
 )
 
-
 # custom all-to-all op
-def custom_all_to_all(output: torch.Tensor, input: torch.Tensor) -> None:
-    # output.copy_(input)
-    torch.cuda.synchronize()
-    torch.distributed.all_to_all_single(output,
-                                        input,
-                                        group=get_sp_group().device_group)
-    torch.cuda.synchronize()
+# def custom_all_to_all(output: torch.Tensor, input: torch.Tensor) -> None:
+#     # output.copy_(input)
+#     torch.cuda.synchronize()
+#     torch.distributed.all_to_all_single(output,
+#                                         input,
+#                                         group=get_sp_group().device_group)
+#     torch.cuda.synchronize()
 
-
-def custom_all_to_all_fake(
-    output: torch.Tensor,
-    input: torch.Tensor,
-) -> None:
-    return None
-
+# def custom_all_to_all_fake(
+#     output: torch.Tensor,
+#     input: torch.Tensor,
+# ) -> None:
+#     return None
 
 # direct_register_custom_op(
 #     op_name="custom_all_to_all",
