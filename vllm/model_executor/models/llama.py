@@ -342,7 +342,7 @@ class LlamaModel(nn.Module):
         self.make_empty_intermediate_tensors = (
             make_empty_intermediate_tensors_factory(
                 ["hidden_states", "residual"], config.hidden_size))
-        
+
         self.SP = get_sp_group().world_size
         self.SP_rank = get_sp_group().rank_in_group
 
@@ -370,6 +370,7 @@ class LlamaModel(nn.Module):
             residual = intermediate_tensors["residual"]
 
         hidden_states = torch.chunk(hidden_states, self.SP)[self.SP_rank]
+        positions = torch.chunk(positions, self.SP)[self.SP_rank]
 
         # for i in range(0, 1):
         for i in range(self.start_layer, self.end_layer):
@@ -577,9 +578,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         # positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
         # model forward
         # output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
-        output = self.model(input_ids, positions,
-                            kv_caches, attn_metadata, intermediate_tensors,
-                            inputs_embeds)
+        output = self.model(input_ids, positions, kv_caches, attn_metadata,
+                            intermediate_tensors, inputs_embeds)
         # all-gather model_output
         model_output = torch.empty((N, self.config.hidden_size),
                                    dtype=output.dtype,
