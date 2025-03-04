@@ -409,7 +409,7 @@ direct_register_custom_op(
 
 
 # custom all-to-all op
-def custom_all_to_all(input: torch.Tensor, output: torch.Tensor) -> None:
+def custom_all_to_all(output: torch.Tensor, input: torch.Tensor) -> None:
     # output.copy_(input)
     torch.cuda.synchronize()
     torch.distributed.all_to_all_single(output,
@@ -419,8 +419,8 @@ def custom_all_to_all(input: torch.Tensor, output: torch.Tensor) -> None:
 
 
 def custom_all_to_all_fake(
-    input: torch.Tensor,
     output: torch.Tensor,
+    input: torch.Tensor,
 ) -> None:
     return None
 
