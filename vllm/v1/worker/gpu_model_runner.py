@@ -1036,8 +1036,8 @@ class GPUModelRunner:
             for num_tokens in reversed(self.cudagraph_batch_sizes):
                 for _ in range(self.vllm_config.compilation_config.
                                cudagraph_num_of_warmups):
-                    self._dummy_run(num_tokens)
-                self._dummy_run(num_tokens)
+                    self._dummy_run(num_tokens * SP)
+                self._dummy_run(num_tokens * SP)
 
         end_time = time.perf_counter()
         end_free_gpu_memory = torch.cuda.mem_get_info()[0]
