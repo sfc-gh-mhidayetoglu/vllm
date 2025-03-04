@@ -567,26 +567,19 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         if get_forward_context().attn_metadata is not None:
             self.numforward += 1
 
-        # if capturing
-        if get_forward_context().attn_metadata is not None:
-            # narrow the input
-            input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
-            positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
-            # model forward
-            output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
-                                kv_caches, attn_metadata, intermediate_tensors,
-                                inputs_embeds)
-            # all-gather model_output
-            model_output = torch.empty((N, self.config.hidden_size),
-                                       dtype=output.dtype,
-                                       device=output.device)
-            torch.distributed.all_gather_into_tensor(
-                model_output, output, group=get_sp_group().device_group)
-        else:
-            # model forward
-            model_output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
-                                kv_caches, attn_metadata, intermediate_tensors,
-                                inputs_embeds)
+        # narrow the input
+        input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
+        positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
+        # model forward
+        output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
+                            kv_caches, attn_metadata, intermediate_tensors,
+                            inputs_embeds)
+        # all-gather model_output
+        model_output = torch.empty((N, self.config.hidden_size),
+                                    dtype=output.dtype,
+                                    device=output.device)
+        torch.distributed.all_gather_into_tensor(
+            model_output, output, group=get_sp_group().device_group)
         # if torch.distributed.get_rank() == 0:
         #     print(f"model_output: {model_output.shape}")
         #     print(f"model_output: {model_output}")
