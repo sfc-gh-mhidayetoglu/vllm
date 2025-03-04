@@ -561,13 +561,16 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         #     print(f"input_ids: {input_ids.shape}")
         #     print(f"positions: {positions.shape}")
         #     print(f"N {N}, SP {SP}, N_ranks {N_ranks} sum {sum(N_ranks)}")
-        from vllm.forward_context import get_forward_context
         if torch.distributed.get_rank() == 0:
             print(f"numforward {self.numforward} N {N}")
-        if get_forward_context().attn_metadata is not None:
+        from vllm.forward_context import get_forward_context
+        metadata = get_forward_context().attn_metadata
+        if metadata is not None:
             self.numforward += 1
             if torch.distributed.get_rank() == 0:
-                print(f"attn_metadata {get_forward_context().attn_metadata}")
+                # print(f"attn_metadata {get_forward_context().attn_metadata}")
+                print(f"actual tokens: {metadata.num_actual_tokens} seq. "
+                      f"lens: {list(metadata.seq_lens)}")
 
         # narrow the input
         input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
