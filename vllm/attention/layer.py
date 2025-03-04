@@ -227,9 +227,8 @@ class Attention(nn.Module):
             # Ulysses all-to-all 2/2
             # c = sequence_all_to_all(c_)
             c = output.view(-1, self.num_heads, self.head_size)
-            torch.ops.vllm.custom_all_to_all(c, c_)
-            # torch.distributed.all_to_all_single(c,
-            # c_, group=self.device_group)
+            # torch.ops.vllm.custom_all_to_all(c, c_)
+            torch.distributed.all_to_all_single(c, c_, group=self.device_group)
             output = c.view(self.SP,
                             -1, self.num_heads * self.head_size).transpose(
                                 0, 1).contiguous()
