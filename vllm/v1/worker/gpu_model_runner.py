@@ -1031,13 +1031,13 @@ class GPUModelRunner:
         # Trigger CUDA graph capture for specific shapes.
         # Capture the large shapes first so that the smaller shapes
         # can reuse the memory pool allocated for the large shapes.
-        SP = self.parallel_config.sequence_parallel_size
+        # SP = self.parallel_config.sequence_parallel_size
         with graph_capture(device=self.device):
             for num_tokens in reversed(self.cudagraph_batch_sizes):
                 for _ in range(self.vllm_config.compilation_config.
                                cudagraph_num_of_warmups):
-                    self._dummy_run(num_tokens * SP)
-                self._dummy_run(num_tokens * SP)
+                    self._dummy_run(num_tokens)
+                self._dummy_run(num_tokens)
 
         end_time = time.perf_counter()
         end_free_gpu_memory = torch.cuda.mem_get_info()[0]
