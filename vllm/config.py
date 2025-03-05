@@ -3351,10 +3351,10 @@ class VllmConfig:
                 batch_size_capture_list = [1, 2, 4
                                            ] + [i for i in range(8, 513, 8)]
 
-        # batch_size_capture_list = [
-        #     size for size in batch_size_capture_list
-        #     if size >= self.parallel_config.sequence_parallel_size
-        # ]
+        batch_size_capture_list = [
+            size for size in batch_size_capture_list
+            if size >= self.parallel_config.sequence_parallel_size
+        ]
         # batch_size_capture_list = [17]
 
         self.compilation_config.init_with_cudagraph_sizes(
