@@ -749,18 +749,18 @@ class GPUModelRunner:
         # Prepare the decoder inputs.
         attn_metadata, logits_indices = self._prepare_inputs(scheduler_output)
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
-        if (self.use_cuda_graph
-                and num_scheduled_tokens <= self.cudagraph_batch_sizes[-1]):
-            # Use piecewise CUDA graphs.
-            # Add padding to the batch size.
-            num_input_tokens = self.vllm_config.pad_for_cudagraph(
-                num_scheduled_tokens)
-        else:
-            # Eager mode.
-            num_input_tokens = num_scheduled_tokens
         # add padding to the batch size to make it a multiple of SP
         SP = self.parallel_config.sequence_parallel_size
-        num_input_tokens = (num_input_tokens + SP - 1) // SP * SP
+        num_input_tokens = (num_scheduled_tokens + SP - 1) // SP * SP
+        if (self.use_cuda_graph
+                and num_input_tokens // SP <= self.cudagraph_batch_sizes[-1]):
+            # Use piecewise CUDA graphs.
+            # Add padding to the batch size.
+            num_input_tokens = SP * self.vllm_config.pad_for_cudagraph(
+                num_input_tokens // SP)
+        else:
+            # Eager mode.
+            pass
         attn_metadata.num_input_tokens = num_input_tokens
 
         if self.is_multimodal_model:
