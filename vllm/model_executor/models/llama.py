@@ -571,6 +571,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
             if torch.distributed.get_rank() == 0:
                 # print(f"attn_metadata {get_forward_context().attn_metadata}")
                 print(f"numforward {self.numforward} N {N} "
+                      f"N_ranks {[N_ulysses] * SP} "
                       f"actual tokens: {metadata.num_actual_tokens} "
                       f"seq. lens: {metadata.seq_lens.tolist()}")
 
