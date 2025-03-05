@@ -230,14 +230,10 @@ class FlashAttentionImpl(AttentionImpl):
         # ],
         #                         dim=-1)
         # prepare
-        # q_ = q_.reshape(-1, self.num_heads, self.head_size)
-        # k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
-        # v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
-        # c_ = output.reshape((-1, self.num_heads, self.head_size))
-        q_ = query
-        k_ = key
-        v_ = value
-        c_ = output
+        q_ = query.reshape(-1, self.num_heads, self.head_size)
+        k_ = key.reshape(-1, self.num_kv_heads, self.head_size)
+        v_ = value.reshape(-1, self.num_kv_heads, self.head_size)
+        c_ = output.reshape((-1, self.num_heads, self.head_size))
 
         # if torch.distributed.get_rank() == 0:
         #     print(f"\n \
