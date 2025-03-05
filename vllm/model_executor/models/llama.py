@@ -205,9 +205,8 @@ class LlamaAttention(nn.Module):
         # positional embeddings
         q, k = self.rotary_emb(positions, q, k)
         # attention
-        attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
-        # output projection
-        output, _ = self.o_proj(attn_output)
+        # attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
+        output, _ = self.o_proj(q)
         return output
 
 
