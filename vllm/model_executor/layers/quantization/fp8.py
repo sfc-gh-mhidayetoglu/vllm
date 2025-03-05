@@ -8,7 +8,9 @@ from torch.nn.parameter import Parameter
 
 import vllm.envs as envs
 from vllm import _custom_ops as ops
-from vllm.distributed import get_tensor_model_parallel_world_size
+from vllm.distributed import (get_tensor_model_parallel_world_size,
+                              get_sequence_model_parallel_rank,
+                              get_sequence_model_parallel_world_size)
 from vllm.logger import init_logger
 from vllm.model_executor.layers.fused_moe import (FusedMoE, FusedMoEMethodBase,
                                                   FusedMoeWeightScaleSupported)
@@ -339,7 +341,10 @@ class Fp8LinearMethod(LinearMethodBase):
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
-              bias: Optional[torch.Tensor] = None) -> torch.Tensor:
+              bias: Optional[torch.Tensor] = None,
+              sp_tp_mode: bool = False,
+              column_parallel: bool = False,
+              output_partition_sizes: list = None) -> torch.Tensor:
 
         if self.use_marlin:
             return apply_fp8_marlin_linear(
@@ -366,9 +371,30 @@ class Fp8LinearMethod(LinearMethodBase):
                 cutlass_block_fp8_supported=self.cutlass_block_fp8_supported,
             )
 
+        if sp_tp_mode:
+            sp_size = get_sequence_model_parallel_world_size()
+            sp_rank = get_sequence_model_parallel_rank()
+            if not column_parallel:
+                assert layer.weight.shape[0] % sp_size == 0
+                chunk_size = layer.weight.shape[0] // sp_size
+                weight = layer.weight.split(chunk_size, dim=0)[sp_rank]
+            else:
+                assert layer.weight.shape[1] % sp_size == 0
+                chunk_sizes = []
+                for size in output_partition_sizes:
+                    chunk_size = size // sp_size
+                    chunk_sizes.extend([chunk_size] * sp_size)
+                # FIXME: need to properly concatenate the weights
+                #split = layer.weight.split(chunk_sizes, dim=1)
+                #weight = torch.cat([split[i] for i in range(sp_rank, len(split), sp_size)], dim=1)
+                size = sum(chunk_sizes[i] for i in range(sp_rank, len(chunk_sizes), sp_size))
+                weight = layer.weight[:, :size]
+        else:
+            weight = layer.weight
+
         return apply_fp8_linear(
             input=x,
-            weight=layer.weight,
+            weight=weight,
             weight_scale=layer.weight_scale,
             input_scale=layer.input_scale,
             bias=bias,

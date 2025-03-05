@@ -581,28 +581,27 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         # if get_forward_context().attn_metadata is not None:
         #     self.numforward += 1
 
-        inputs_embeds = self.get_input_embeddings(input_ids) if inputs_embeds is None else inputs_embeds
+        #inputs_embeds = self.get_input_embeddings(input_ids) if inputs_embeds is None else inputs_embeds
 
         # narrow the input
         #print("BATCH SIZE", N)
         if N >= 8:
             input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
             positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
-            inputs_embeds[:N_ulysses] = inputs_embeds[N_offset:N_offset + N_ulysses]
+            #inputs_embeds[:N_ulysses] = inputs_embeds[N_offset:N_offset + N_ulysses]
             vllm.model_executor.layers.linear.SP_TP_MODE = False
         else:
             sp_group = get_sp_group()
             sp_rank = sp_group.rank_in_group
             sp_world_size = sp_group.world_size
-            assert inputs_embeds.size(1) % sp_world_size == 0
+            #assert inputs_embeds.size(1) % sp_world_size == 0
             #chunk_size = inputs_embeds.size(1) // sp_world_size
             #inputs_embeds = inputs_embeds.split(chunk_size, dim=1)[sp_rank]
             vllm.model_executor.layers.linear.SP_TP_MODE = True
             N_ulysses = N
         # model forward
         output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
-                            kv_caches, attn_metadata, intermediate_tensors,
-                            inputs_embeds[:N_ulysses])
+                            kv_caches, attn_metadata, intermediate_tensors)
         # all-gather model_output
         model_output = torch.empty((N, self.config.hidden_size),
                                    dtype=output.dtype,
