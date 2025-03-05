@@ -12,7 +12,7 @@ import torch.nn as nn
 from vllm.attention.backends.abstract import AttentionType
 from vllm.attention.layer import Attention
 from vllm.config import CompilationLevel, VllmConfig
-from vllm.distributed.parallel_state import graph_capture
+# from vllm.distributed.parallel_state import graph_capture
 from vllm.forward_context import set_forward_context
 from vllm.inputs import INPUT_REGISTRY
 from vllm.logger import init_logger
@@ -1032,12 +1032,12 @@ class GPUModelRunner:
         # Capture the large shapes first so that the smaller shapes
         # can reuse the memory pool allocated for the large shapes.
         # SP = self.parallel_config.sequence_parallel_size
-        with graph_capture(device=self.device):
-            for num_tokens in reversed(self.cudagraph_batch_sizes):
-                for _ in range(self.vllm_config.compilation_config.
-                               cudagraph_num_of_warmups):
-                    self._dummy_run(num_tokens)
-                self._dummy_run(num_tokens)
+        # with graph_capture(device=self.device):
+        #     for num_tokens in reversed(self.cudagraph_batch_sizes):
+        #         for _ in range(self.vllm_config.compilation_config.
+        #                        cudagraph_num_of_warmups):
+        #             self._dummy_run(num_tokens * 4)
+        #         self._dummy_run(num_tokens * 4)
 
         end_time = time.perf_counter()
         end_free_gpu_memory = torch.cuda.mem_get_info()[0]
