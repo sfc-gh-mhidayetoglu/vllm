@@ -360,13 +360,12 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        return hidden_states
-
-        for i in range(self.start_layer, self.end_layer):
-            layer = self.layers[i]
-            hidden_states, residual = layer(positions, hidden_states,
-                                            kv_caches[i - self.start_layer],
-                                            attn_metadata, residual)
+        # for i in range(self.start_layer, self.end_layer):
+        #     layer = self.layers[i]
+        #     hidden_states, residual = layer(positions, hidden_states,
+        #                                     kv_caches[i - self.start_layer],
+        #                                     attn_metadata, residual)
+        residual = hidden_states
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
