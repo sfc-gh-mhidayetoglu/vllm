@@ -359,11 +359,7 @@ class LlamaModel(nn.Module):
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
             else:
-                # hidden_states = self.get_input_embeddings(input_ids)
-                hidden_states = torch.empty(
-                    (input_ids.shape[0], self.hidden_size),
-                    dtype=torch.bfloat16,
-                    device=input_ids.device)
+                hidden_states = self.get_input_embeddings(input_ids)
             residual = None
         else:
             assert intermediate_tensors is not None
@@ -584,9 +580,12 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
         positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
         # model forward
-        output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
-                            kv_caches, attn_metadata, intermediate_tensors,
-                            inputs_embeds)
+        # output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
+        #                     kv_caches, attn_metadata, intermediate_tensors,
+        #                     inputs_embeds)
+        output = torch.empty((N_ulysses, self.config.hidden_size),
+                             dtype=torch.bfloat16,
+                             device=input_ids.device)
         # all-gather model_output
         model_output = torch.empty((N, self.config.hidden_size),
                                    dtype=output.dtype,
