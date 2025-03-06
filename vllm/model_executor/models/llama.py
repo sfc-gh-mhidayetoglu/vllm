@@ -359,7 +359,11 @@ class LlamaModel(nn.Module):
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
             else:
-                hidden_states = self.get_input_embeddings(input_ids)
+                # hidden_states = self.get_input_embeddings(input_ids)
+                hidden_states = torch.empty(
+                    (input_ids.shape[0], self.hidden_size),
+                    dtype=torch.bfloat16,
+                    device=input_ids.device)
             residual = None
         else:
             assert intermediate_tensors is not None
@@ -367,12 +371,12 @@ class LlamaModel(nn.Module):
             residual = intermediate_tensors["residual"]
 
         # for i in range(0, 1):
-        for i in range(self.start_layer, self.end_layer):
-            layer = self.layers[i]
-            hidden_states, residual = layer(positions, hidden_states,
-                                            kv_caches[i - self.start_layer],
-                                            attn_metadata, residual)
-        # residual = hidden_states
+        # for i in range(self.start_layer, self.end_layer):
+        #     layer = self.layers[i]
+        #     hidden_states, residual = layer(positions, hidden_states,
+        #                                     kv_caches[i - self.start_layer],
+        #                                     attn_metadata, residual)
+        residual = hidden_states
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
@@ -561,20 +565,20 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         #     print(f"input_ids: {input_ids.shape}")
         #     print(f"positions: {positions.shape}")
         #     print(f"N {N}, SP {SP}, N_ranks {N_ranks} sum {sum(N_ranks)}")
-        from vllm.forward_context import get_forward_context
-        metadata = get_forward_context().attn_metadata
-        if metadata is None:
-            if torch.distributed.get_rank() == 0:
-                print(f"numforward {self.numforward} N {N} "
-                      f"N_ranks {[N_ulysses] * SP}")
-        else:
-            self.numforward += 1
-            if torch.distributed.get_rank() == 0:
-                # print(f"attn_metadata {get_forward_context().attn_metadata}")
-                print(f"numforward {self.numforward} N {N} "
-                      f"N_ranks {[N_ulysses] * SP} "
-                      f"actual tokens: {metadata.num_actual_tokens} "
-                      f"seq. lens: {metadata.seq_lens.tolist()}")
+        # from vllm.forward_context import get_forward_context
+        # metadata = get_forward_context().attn_metadata
+        # if metadata is None:
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP}")
+        # else:
+        #     self.numforward += 1
+        #     if torch.distributed.get_rank() == 0:
+        #       # print(f"attn_metadata {get_forward_context().attn_metadata}")
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP} "
+        #               f"actual tokens: {metadata.num_actual_tokens} "
+        #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
         # narrow the input
         input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
