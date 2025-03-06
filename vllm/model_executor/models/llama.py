@@ -570,18 +570,19 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         N_ulysses = N // SP
         N_offset = N_ulysses * SP_rank
 
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"input_ids: {input_ids.shape}")
-        #     print(f"positions: {positions.shape}")
-        #     print(f"N {N}, SP {SP}, N_ranks {N_ranks} sum {sum(N_ranks)}")
         # from vllm.forward_context import get_forward_context
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"numforward {self.numforward} N {N} "
-        #           f"N_ranks {N_ranks}")
-        # if get_forward_context().attn_metadata is not None:
+        # metadata = get_forward_context().attn_metadata
+        # if metadata is None:
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP}")
+        # else:
         #     self.numforward += 1
-
-        #inputs_embeds = self.get_input_embeddings(input_ids) if inputs_embeds is None else inputs_embeds
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP} "
+        #               f"actual tokens: {metadata.num_actual_tokens} "
+        #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
         # narrow the input
         #print("BATCH SIZE", N)
@@ -613,6 +614,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         else:
             torch.distributed.all_gather_into_tensor(
                 model_output, output, group=get_sp_group().device_group)
+
         # if torch.distributed.get_rank() == 0:
         #     print(f"model_output: {model_output.shape}")
         #     print(f"model_output: {model_output}")
