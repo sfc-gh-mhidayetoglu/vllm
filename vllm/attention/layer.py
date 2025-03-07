@@ -148,6 +148,8 @@ class Attention(nn.Module):
         self.k_range = torch.tensor(envs.K_SCALE_CONSTANT, dtype=torch.float32)
         self.v_range = torch.tensor(envs.V_SCALE_CONSTANT, dtype=torch.float32)
 
+        self.SP = 4
+
     def forward(
         self,
         query: torch.Tensor,
@@ -175,6 +177,21 @@ class Attention(nn.Module):
             #     key = key.view(-1, self.num_kv_heads, self.head_size)
             # if value is not None:
             #     value = value.view(-1, self.num_kv_heads, self.head_size)
+            qkv = torch.cat(
+                (query.view((-1, self.SP, self.num_heads * self.head_size)),
+                 key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
+                 value.view(
+                     (-1, self.SP, self.num_kv_heads * self.head_size))),
+                dim=-1).transpose(0, 1).reshape(
+                    -1,
+                    (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+
+            query, key, value = qkv.split([
+                self.num_heads * self.head_size, self.num_kv_heads *
+                self.head_size, self.num_kv_heads * self.head_size
+            ],
+                                          dim=-1)
+
             if self.use_direct_call:
                 forward_context: ForwardContext = get_forward_context()
                 ctx_attn_metadata = forward_context.attn_metadata
