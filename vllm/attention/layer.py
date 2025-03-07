@@ -179,21 +179,9 @@ class Attention(nn.Module):
             #     key = key.view(-1, self.num_kv_heads, self.head_size)
             # if value is not None:
             #     value = value.view(-1, self.num_kv_heads, self.head_size)
-            qkv = torch.cat(
-                (query.view((-1, self.SP, self.num_heads * self.head_size)),
-                 key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
-                 value.view(
-                     (-1, self.SP, self.num_kv_heads * self.head_size))),
-                dim=-1).transpose(0, 1).reshape(
-                    -1,
-                    (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
-            qkv_ = torch.empty_like(qkv)
-            torch.distributed.all_to_all_single(qkv_, qkv, group=self.sp_group)
-            query, key, value = qkv.split([
-                self.num_heads * self.head_size, self.num_kv_heads *
-                self.head_size, self.num_kv_heads * self.head_size
-            ],
-                                          dim=-1)
+
+            query_ = torch.empty_like(query)
+            torch.distributed.all_to_all(query_, query, self.sp_group)
 
             if self.use_direct_call:
                 forward_context: ForwardContext = get_forward_context()
