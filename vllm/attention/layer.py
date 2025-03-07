@@ -148,7 +148,9 @@ class Attention(nn.Module):
         self.k_range = torch.tensor(envs.K_SCALE_CONSTANT, dtype=torch.float32)
         self.v_range = torch.tensor(envs.V_SCALE_CONSTANT, dtype=torch.float32)
 
+        from vllm.distributed.parallel_state import get_sp_group
         self.SP = 4
+        self.sp_group = get_sp_group()
 
     def forward(
         self,
@@ -185,7 +187,8 @@ class Attention(nn.Module):
                 dim=-1).transpose(0, 1).reshape(
                     -1,
                     (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
-
+            qkv_ = torch.empty_like(qkv)
+            torch.distributed.all_to_all_single(qkv_, qkv, group=self.sp_group)
             query, key, value = qkv.split([
                 self.num_heads * self.head_size, self.num_kv_heads *
                 self.head_size, self.num_kv_heads * self.head_size
