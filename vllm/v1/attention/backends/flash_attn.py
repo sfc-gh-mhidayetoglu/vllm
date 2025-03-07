@@ -247,7 +247,7 @@ class FlashAttentionImpl(AttentionImpl):
             q_ = query.reshape(-1, self.num_heads, self.head_size)
             k_ = key.reshape(-1, self.num_kv_heads, self.head_size)
             v_ = value.reshape(-1, self.num_kv_heads, self.head_size)
-            c_ = output.reshape((-1, self.num_heads, self.head_size))
+            c_ = output.reshape(-1, self.num_heads, self.head_size)
             #print("ATTN", k_.shape, v_.shape, q_.shape, c_.shape)
 
         num_actual_tokens = attn_metadata.num_actual_tokens
@@ -315,6 +315,8 @@ class FlashAttentionImpl(AttentionImpl):
             torch.distributed.all_to_all_single(c, c_, group=self.device_group)
             output = torch.transpose(c, 0, 1).reshape(
                 -1, self.num_heads * self.SP * self.head_size)
+        else:
+            output = c_.reshape(output.shape)
         return output
 
 

@@ -369,6 +369,16 @@ class LlamaModel(nn.Module):
         intermediate_tensors: Optional[IntermediateTensors],
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+        
+        if not vllm.model_executor.layers.linear.SP_TP_MODE:
+            N = input_ids.shape[0]
+            SP = get_sp_group().world_size
+            SP_rank = get_sp_group().rank_in_group
+            N_ulysses = N // SP
+            N_offset = N_ulysses * SP_rank
+            input_ids = input_ids[N_offset:N_offset + N_ulysses]
+            positions = positions[N_offset:N_offset + N_ulysses]
+
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
@@ -380,7 +390,7 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        # for i in range(0, 1):
+        #for i in range(0, 2):
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
             #print("LAYER", i, vllm.model_executor.layers.linear.SP_TP_MODE)
@@ -398,6 +408,14 @@ class LlamaModel(nn.Module):
         hidden_states, _ = self.norm(hidden_states, residual)
 
         # hidden_states.fill_(hidden_states[0][0])
+
+        if not vllm.model_executor.layers.linear.SP_TP_MODE:
+            model_output = torch.empty((N, self.config.hidden_size),
+                                        dtype=hidden_states.dtype,
+                                        device=hidden_states.device)
+            torch.distributed.all_gather_into_tensor(
+                model_output, hidden_states, group=get_sp_group().device_group)
+            return model_output
 
         return hidden_states
 
@@ -468,6 +486,33 @@ class LlamaModel(nn.Module):
         return loaded_params
 
 
+@support_torch_compile
+class LlamaModelTP(nn.Module):
+
+    def __init__(self, *, vllm_config: VllmConfig, model: LlamaModel,
+                 prefix: str = ""):
+        super().__init__()
+        self.config = vllm_config.model_config.hf_config
+        self._model = [model]  # Box it to avoid recursive registration
+
+    @property
+    def model(self) -> LlamaModel:
+        return self._model[0]
+
+    def forward(
+        self,
+        input_ids: Optional[torch.Tensor],
+        positions: torch.Tensor,
+        kv_caches: List[torch.Tensor],
+        attn_metadata: AttentionMetadata,
+        intermediate_tensors: Optional[IntermediateTensors],
+        inputs_embeds: Optional[torch.Tensor] = None,
+    ) -> Union[torch.Tensor, IntermediateTensors]:
+        return self.model.forward(input_ids, positions, kv_caches, attn_metadata,
+                                  intermediate_tensors, inputs_embeds)
+
+
+from vllm.forward_context import get_forward_context
 class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     packed_modules_mapping = {
         "qkv_proj": ["q_proj", "k_proj", "v_proj"],
@@ -515,6 +560,13 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
 
         self.model = self._init_model(vllm_config=vllm_config,
                                       prefix=maybe_prefix(prefix, "model"))
+
+        vllm_config.compilation_config = (
+            vllm_config.compilation_config.model_copy())
+        vllm_config.compilation_config.inductor_compile_config = (
+            vllm_config.compilation_config.inductor_compile_config.copy())
+        self.model_tp = LlamaModelTP(
+            vllm_config=vllm_config, model=self.model)
 
         if get_pp_group().is_last_rank:
             self.unpadded_vocab_size = config.vocab_size
@@ -565,10 +617,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
         N = input_ids.shape[0]
-        SP = get_sp_group().world_size
-        SP_rank = get_sp_group().rank_in_group
-        N_ulysses = N // SP
-        N_offset = N_ulysses * SP_rank
+        #SP = get_sp_group().world_size
+        #SP_rank = get_sp_group().rank_in_group
+        #N_ulysses = N // SP
+        #N_offset = N_ulysses * SP_rank
 
         # from vllm.forward_context import get_forward_context
         # metadata = get_forward_context().attn_metadata
@@ -585,35 +637,27 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
         # narrow the input
-        #print("BATCH SIZE", N)
-        if N >= 8:
-            input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
-            positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
-            #inputs_embeds[:N_ulysses] = inputs_embeds[N_offset:N_offset + N_ulysses]
+        # print("BATCH SIZE", N)
+        threshold = 8
+        metadata = get_forward_context().attn_metadata
+        if N >= threshold: # or metadata is None:
             vllm.model_executor.layers.linear.SP_TP_MODE = False
-        else:
-            sp_group = get_sp_group()
-            sp_rank = sp_group.rank_in_group
-            sp_world_size = sp_group.world_size
-            #assert inputs_embeds.size(1) % sp_world_size == 0
-            #chunk_size = inputs_embeds.size(1) // sp_world_size
-            #inputs_embeds = inputs_embeds.split(chunk_size, dim=1)[sp_rank]
+            model_output = self.model(input_ids, positions, kv_caches,
+                                      attn_metadata, intermediate_tensors)
+        if N < threshold or metadata is None:
             vllm.model_executor.layers.linear.SP_TP_MODE = True
-            N_ulysses = N
-        # model forward
-        output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
-                            kv_caches, attn_metadata, intermediate_tensors)
-        # all-gather model_output
-        model_output = torch.empty((N, self.config.hidden_size),
-                                   dtype=output.dtype,
-                                   device=output.device)
-        if vllm.model_executor.layers.linear.SP_TP_MODE:
-            pass
-            # torch.distributed.all_gather(
-            #     model_output, output, group=get_sp_group().device_group)
-        else:
-            torch.distributed.all_gather_into_tensor(
-                model_output, output, group=get_sp_group().device_group)
+            model_output = self.model_tp(input_ids, positions, kv_caches,
+                                         attn_metadata, intermediate_tensors)
+        
+        # if vllm.model_executor.layers.linear.SP_TP_MODE:
+        #     model_output = output_tp
+        # else:
+        #     # all-gather model_output
+        #     model_output = torch.empty((N, self.config.hidden_size),
+        #                             dtype=output_sp.dtype,
+        #                             device=output_sp.device)
+        #     torch.distributed.all_gather_into_tensor(
+        #         model_output, output_sp, group=get_sp_group().device_group)
 
         # if torch.distributed.get_rank() == 0:
         #     print(f"model_output: {model_output.shape}")
