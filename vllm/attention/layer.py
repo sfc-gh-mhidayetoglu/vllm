@@ -149,8 +149,8 @@ class Attention(nn.Module):
         self.v_range = torch.tensor(envs.V_SCALE_CONSTANT, dtype=torch.float32)
 
         from vllm.distributed.parallel_state import get_sp_group
-        self.SP = 4
-        self.sp_group = get_sp_group()
+        self.SP = get_sp_group().rank_in_group
+        self.sp_group = get_sp_group().device_group
 
     def forward(
         self,
