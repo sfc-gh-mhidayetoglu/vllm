@@ -196,8 +196,6 @@ class FlashAttentionImpl(AttentionImpl):
         # Whenever making a change in this method, please benchmark the
         # performance to make sure it does not introduce any overhead.
 
-        # from vllm.model_executor.models.llama import N, N_ranks, N_ulysses
-
         # Ulysses Attention
         # if torch.distributed.get_rank() == 0:
         #     print(f"FlashAttentionImpl.forward \n \
