@@ -170,7 +170,7 @@ class Attention(nn.Module):
             # NOTE(woosuk): We do this outside the custom op to minimize the
             # CPU overheads from the non-CUDA-graph regions.
             # query = query.view(-1, self.num_heads, self.head_size)
-            # output_ = output_.view(-1, self.num_heads, self.head_size)
+            # output = output.view(-1, self.num_heads, self.head_size)
             # if key is not None:
             #     key = key.view(-1, self.num_kv_heads, self.head_size)
             # if value is not None:

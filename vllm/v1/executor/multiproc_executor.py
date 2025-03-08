@@ -102,16 +102,6 @@ class MultiprocExecutor(Executor):
         start_time = time.monotonic()
         kwargs = kwargs or {}
 
-        # import torch
-        # torch.cuda.synchronize()
-        # torch.distributed.barrier()
-        # for i in range(self.world_size):
-        #     if i == self.rank:
-        #         print(f"rank {i} before rpc call")
-        #     torch.cuda.synchronize()
-        #     torch.distributed.barrier()
-        # exit()
-
         # NOTE: If the args are heterogeneous, then we pack them into a list,
         # and unpack them in the method of every worker, because every worker
         # knows their own rank.
@@ -125,7 +115,6 @@ class MultiprocExecutor(Executor):
 
             responses = [None] * self.world_size
             for w in self.workers:
-                # print(f"rank {w.rank} waiting for response")
                 dequeue_timeout = timeout - (time.monotonic() - start_time
                                              ) if timeout is not None else None
                 status, result = w.worker_response_mq.dequeue(

@@ -30,7 +30,6 @@ from transformers import LlamaConfig
 
 from vllm.attention import Attention, AttentionMetadata
 from vllm.compilation.decorators import support_torch_compile
-# from vllm.config import CacheConfig, LoRAConfig
 from vllm.config import CacheConfig, VllmConfig
 from vllm.distributed import get_pp_group, get_sp_group, get_tp_group
 from vllm.model_executor.layers.activation import SiluAndMul
@@ -199,14 +198,10 @@ class LlamaAttention(nn.Module):
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
-        # qkv projection
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-        # positional embeddings
         q, k = self.rotary_emb(positions, q, k)
-        # attention
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
-        # output projection
         output, _ = self.o_proj(attn_output)
         return output
 
@@ -282,6 +277,7 @@ class LlamaDecoderLayer(nn.Module):
         else:
             hidden_states, residual = self.input_layernorm(
                 hidden_states, residual)
+
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
                                        kv_cache=kv_cache,
@@ -290,7 +286,6 @@ class LlamaDecoderLayer(nn.Module):
         hidden_states, residual = self.post_attention_layernorm(
             hidden_states, residual)
         hidden_states = self.mlp(hidden_states)
-
         return hidden_states, residual
 
 
@@ -366,13 +361,11 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        # for i in range(0, 1):
         for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
             hidden_states, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
-        # residual = hidden_states
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
@@ -381,9 +374,6 @@ class LlamaModel(nn.Module):
             })
 
         hidden_states, _ = self.norm(hidden_states, residual)
-
-        # hidden_states.fill_(hidden_states[0][0])
-
         return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str,
