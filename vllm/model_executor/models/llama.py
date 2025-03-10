@@ -386,6 +386,14 @@ class LlamaModel(nn.Module):
             })
 
         hidden_states, _ = self.norm(hidden_states, residual)
+
+        # all-gather model_output
+        model_output = torch.empty((N, self.config.hidden_size),
+                                   dtype=hidden_states.dtype,
+                                   device=hidden_states.device)
+        torch.distributed.all_gather_into_tensor(
+            model_output, hidden_states, group=get_sp_group().device_group)
+
         return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str,
@@ -551,43 +559,9 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
-        N = input_ids.shape[0]
-        # SP = get_sp_group().world_size
-        # SP_rank = get_sp_group().rank_in_group
-        # N_ulysses = N // SP
-        # N_offset = N_ulysses * SP_rank
-
-        # from vllm.forward_context import get_forward_context
-        # metadata = get_forward_context().attn_metadata
-        # if metadata is None:
-        #     if torch.distributed.get_rank() == 0:
-        #         print(f"numforward {self.numforward} N {N} "
-        #               f"N_ranks {[N_ulysses] * SP}")
-        # else:
-        #     self.numforward += 1
-        #     if torch.distributed.get_rank() == 0:
-        #         print(f"numforward {self.numforward} N {N} "
-        #               f"N_ranks {[N_ulysses] * SP} "
-        #               f"actual tokens: {metadata.num_actual_tokens} "
-        #               f"seq. lens: {metadata.seq_lens.tolist()}")
-
-        # narrow the input
-        # input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
-        # positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
-        # model forward
-        output = self.model(input_ids, positions, kv_caches, attn_metadata,
-                            intermediate_tensors, inputs_embeds)
-        # all-gather model_output
-        model_output = torch.empty((N, self.config.hidden_size),
-                                   dtype=output.dtype,
-                                   device=output.device)
-        torch.distributed.all_gather_into_tensor(
-            model_output, output, group=get_sp_group().device_group)
-
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"model_output: {model_output.shape}")
-        #     print(f"model_output: {model_output}")
-
+        model_output = self.model(input_ids, positions, kv_caches,
+                                  attn_metadata, intermediate_tensors,
+                                  inputs_embeds)
         return model_output
 
     def compute_logits(
