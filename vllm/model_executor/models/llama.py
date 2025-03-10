@@ -350,6 +350,18 @@ class LlamaModel(nn.Module):
         intermediate_tensors: Optional[IntermediateTensors],
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+
+        # sequence parallelism parameters
+        N = input_ids.shape[0]
+        SP = get_sp_group().world_size
+        SP_rank = get_sp_group().rank_in_group
+        N_ulysses = N // SP
+        N_offset = N_ulysses * SP_rank
+
+        # narrow the input
+        input_ids = input_ids.narrow(0, N_offset, N_ulysses)
+        positions = positions.narrow(0, N_offset, N_ulysses)
+
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
@@ -540,10 +552,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
         N = input_ids.shape[0]
-        SP = get_sp_group().world_size
-        SP_rank = get_sp_group().rank_in_group
-        N_ulysses = N // SP
-        N_offset = N_ulysses * SP_rank
+        # SP = get_sp_group().world_size
+        # SP_rank = get_sp_group().rank_in_group
+        # N_ulysses = N // SP
+        # N_offset = N_ulysses * SP_rank
 
         # from vllm.forward_context import get_forward_context
         # metadata = get_forward_context().attn_metadata
@@ -560,12 +572,11 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
         # narrow the input
-        input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
-        positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
+        # input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
+        # positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
         # model forward
-        output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
-                            kv_caches, attn_metadata, intermediate_tensors,
-                            inputs_embeds)
+        output = self.model(input_ids, positions, kv_caches, attn_metadata,
+                            intermediate_tensors, inputs_embeds)
         # all-gather model_output
         model_output = torch.empty((N, self.config.hidden_size),
                                    dtype=output.dtype,
