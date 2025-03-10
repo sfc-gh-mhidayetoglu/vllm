@@ -359,8 +359,8 @@ class LlamaModel(nn.Module):
         N_offset = N_ulysses * SP_rank
 
         # narrow the input
-        input_ids = input_ids[N_offset:N_offset + N_ulysses]
-        positions = positions[N_offset:N_offset + N_ulysses]
+        input_ids = input_ids.narrow(0, N_offset, N_ulysses)
+        positions = positions.narrow(0, N_offset, N_ulysses)
 
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
@@ -394,7 +394,7 @@ class LlamaModel(nn.Module):
         torch.distributed.all_gather_into_tensor(
             model_output, hidden_states, group=get_sp_group().device_group)
 
-        return hidden_states
+        return model_output
 
     def load_weights(self, weights: Iterable[Tuple[str,
                                                    torch.Tensor]]) -> Set[str]:
