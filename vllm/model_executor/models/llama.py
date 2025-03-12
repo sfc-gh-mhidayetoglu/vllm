@@ -549,6 +549,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         global SP_TP_MODE
         threshold = 128
         N = input_ids.shape[0]
+        if torch.distributed.get_rank() == 0:
+            print(f"SP_TP_MODE {SP_TP_MODE}")
         if threshold >= N:
             SP_TP_MODE = True
         SP = get_sp_group().world_size
@@ -592,7 +594,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         #     print(f"model_output: {model_output.shape}")
         #     print(f"model_output: {model_output}")
 
-        SP_TP_MODE = False
+        # SP_TP_MODE = False
 
         return model_output
 

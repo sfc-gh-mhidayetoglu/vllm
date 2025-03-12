@@ -208,6 +208,7 @@ class FlashAttentionImpl(AttentionImpl):
             output {output.shape}\n \
             kv_cache {kv_cache.shape} \
             SP_TP_MODE {SP_TP_MODE}\n")
+        SP_TP_MODE = False
         #     N {N} SP {SP} N_ranks {N_ranks}\n \
         #     self.num_heads {self.num_heads}\n \
         #     self.num_kv_heads {self.num_kv_heads}\n \
