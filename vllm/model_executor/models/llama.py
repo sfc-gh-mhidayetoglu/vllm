@@ -277,11 +277,11 @@ class LlamaDecoderLayer(nn.Module):
         else:
             hidden_states, residual = self.input_layernorm(
                 hidden_states, residual)
+
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
                                        kv_cache=kv_cache,
                                        attn_metadata=attn_metadata)
-
         # Fully Connected
         hidden_states, residual = self.post_attention_layernorm(
             hidden_states, residual)
@@ -357,6 +357,7 @@ class LlamaModel(nn.Module):
         SP_rank = get_sp_group().rank_in_group
         N_ulysses = N // SP
         N_offset = N_ulysses * SP_rank
+
         # narrow the input
         input_ids = input_ids.narrow(0, N_offset, N_ulysses)
         positions = positions.narrow(0, N_offset, N_ulysses)
@@ -392,6 +393,7 @@ class LlamaModel(nn.Module):
                                    device=hidden_states.device)
         torch.distributed.all_gather_into_tensor(
             model_output, hidden_states, group=get_sp_group().device_group)
+
         return model_output
 
     def load_weights(self, weights: Iterable[Tuple[str,
