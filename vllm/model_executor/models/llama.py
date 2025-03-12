@@ -443,6 +443,9 @@ class LlamaModel(nn.Module):
         return loaded_params
 
 
+SP_TP_MODE = False
+
+
 class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     packed_modules_mapping = {
         "qkv_proj": ["q_proj", "k_proj", "v_proj"],
@@ -539,25 +542,34 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+
+        global SP_TP_MODE
+        threshold = 128
         N = input_ids.shape[0]
+        if threshold >= N:
+            SP_TP_MODE = True
         SP = get_sp_group().world_size
         SP_rank = get_sp_group().rank_in_group
         N_ulysses = N // SP
         N_offset = N_ulysses * SP_rank
 
-        # from vllm.forward_context import get_forward_context
-        # metadata = get_forward_context().attn_metadata
-        # if metadata is None:
-        #     if torch.distributed.get_rank() == 0:
-        #         print(f"numforward {self.numforward} N {N} "
-        #               f"N_ranks {[N_ulysses] * SP}")
-        # else:
-        #     self.numforward += 1
-        #     if torch.distributed.get_rank() == 0:
-        #         print(f"numforward {self.numforward} N {N} "
-        #               f"N_ranks {[N_ulysses] * SP} "
-        #               f"actual tokens: {metadata.num_actual_tokens} "
-        #               f"seq. lens: {metadata.seq_lens.tolist()}")
+        from vllm.forward_context import get_forward_context
+        metadata = get_forward_context().attn_metadata
+        if metadata is None:
+            if torch.distributed.get_rank() == 0:
+                print(f"numforward {self.numforward} "
+                      f"N {N} "
+                      f"N_ranks {[N_ulysses] * SP} "
+                      f"SP_TP_MODE {SP_TP_MODE}")
+        else:
+            self.numforward += 1
+            if torch.distributed.get_rank() == 0:
+                print(f"numforward {self.numforward} "
+                      f"N {N} "
+                      f"N_ranks {[N_ulysses] * SP} "
+                      f"SP_TP_MODE {SP_TP_MODE} "
+                      f"actual tokens: {metadata.num_actual_tokens} "
+                      f"seq. lens: {metadata.seq_lens.tolist()}")
 
         # narrow the input
         input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
@@ -576,6 +588,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         # if torch.distributed.get_rank() == 0:
         #     print(f"model_output: {model_output.shape}")
         #     print(f"model_output: {model_output}")
+
+        SP_TP_MODE = False
 
         return model_output
 
