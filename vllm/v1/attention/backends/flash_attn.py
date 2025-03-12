@@ -196,7 +196,7 @@ class FlashAttentionImpl(AttentionImpl):
         # Whenever making a change in this method, please benchmark the
         # performance to make sure it does not introduce any overhead.
 
-        from vllm.model_executor.models.llama import SP_TP_MODE
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
 
         # global SP_TP_MODE
         # Ulysses Attention
@@ -208,7 +208,6 @@ class FlashAttentionImpl(AttentionImpl):
             output {output.shape}\n \
             kv_cache {kv_cache.shape} \
             SP_TP_MODE {SP_TP_MODE}\n")
-        SP_TP_MODE = False
         #     N {N} SP {SP} N_ranks {N_ranks}\n \
         #     self.num_heads {self.num_heads}\n \
         #     self.num_kv_heads {self.num_kv_heads}\n \

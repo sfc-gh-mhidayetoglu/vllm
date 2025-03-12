@@ -39,6 +39,8 @@ if TYPE_CHECKING:
 
 logger = init_logger(__name__)
 
+SP_TP_MODE = None
+
 
 class GPUModelRunner:
 
@@ -762,6 +764,9 @@ class GPUModelRunner:
             # Eager mode.
             pass
         attn_metadata.num_input_tokens = num_input_tokens
+        threshold = 128
+        global TP_SP_MODE
+        TP_SP_MODE = True if threshold >= num_input_tokens else False
 
         if self.is_multimodal_model:
             # NOTE(woosuk): To unify token ids and soft tokens (vision

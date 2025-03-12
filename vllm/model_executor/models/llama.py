@@ -546,19 +546,14 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
 
-        global SP_TP_MODE
-        threshold = 128
         N = input_ids.shape[0]
-        if torch.distributed.get_rank() == 0:
-            print(f"SP_TP_MODE {SP_TP_MODE}")
-        if threshold >= N:
-            SP_TP_MODE = True
         SP = get_sp_group().world_size
         SP_rank = get_sp_group().rank_in_group
         N_ulysses = N // SP
         N_offset = N_ulysses * SP_rank
 
         from vllm.forward_context import get_forward_context
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         metadata = get_forward_context().attn_metadata
         if metadata is None:
             if torch.distributed.get_rank() == 0:
@@ -593,8 +588,6 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         # if torch.distributed.get_rank() == 0:
         #     print(f"model_output: {model_output.shape}")
         #     print(f"model_output: {model_output}")
-
-        # SP_TP_MODE = False
 
         return model_output
 
