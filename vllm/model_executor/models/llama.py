@@ -277,11 +277,11 @@ class LlamaDecoderLayer(nn.Module):
         else:
             hidden_states, residual = self.input_layernorm(
                 hidden_states, residual)
+
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states,
                                        kv_cache=kv_cache,
                                        attn_metadata=attn_metadata)
-
         # Fully Connected
         hidden_states, residual = self.post_attention_layernorm(
             hidden_states, residual)
@@ -350,17 +350,6 @@ class LlamaModel(nn.Module):
         intermediate_tensors: Optional[IntermediateTensors],
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
-
-        # sequence parallelism parameters
-        N = input_ids.shape[0]
-        SP = get_sp_group().world_size
-        SP_rank = get_sp_group().rank_in_group
-        N_ulysses = N // SP
-        N_offset = N_ulysses * SP_rank
-        # narrow the input
-        input_ids = input_ids.narrow(0, N_offset, N_ulysses)
-        positions = positions.narrow(0, N_offset, N_ulysses)
-
         if get_pp_group().is_first_rank:
             if inputs_embeds is not None:
                 hidden_states = inputs_embeds
@@ -385,14 +374,7 @@ class LlamaModel(nn.Module):
             })
 
         hidden_states, _ = self.norm(hidden_states, residual)
-
-        # all-gather model_output
-        model_output = torch.empty((N, self.config.hidden_size),
-                                   dtype=hidden_states.dtype,
-                                   device=hidden_states.device)
-        torch.distributed.all_gather_into_tensor(
-            model_output, hidden_states, group=get_sp_group().device_group)
-        return model_output
+        return hidden_states
 
     def load_weights(self, weights: Iterable[Tuple[str,
                                                    torch.Tensor]]) -> Set[str]:
@@ -557,9 +539,44 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
-        model_output = self.model(input_ids, positions, kv_caches,
-                                  attn_metadata, intermediate_tensors,
-                                  inputs_embeds)
+        N = input_ids.shape[0]
+        SP = get_sp_group().world_size
+        SP_rank = get_sp_group().rank_in_group
+        N_ulysses = N // SP
+        N_offset = N_ulysses * SP_rank
+
+        # from vllm.forward_context import get_forward_context
+        # metadata = get_forward_context().attn_metadata
+        # if metadata is None:
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP}")
+        # else:
+        #     self.numforward += 1
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP} "
+        #               f"actual tokens: {metadata.num_actual_tokens} "
+        #               f"seq. lens: {metadata.seq_lens.tolist()}")
+
+        # narrow the input
+        input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
+        positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
+        # model forward
+        output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
+                            kv_caches, attn_metadata, intermediate_tensors,
+                            inputs_embeds)
+        # all-gather model_output
+        model_output = torch.empty((N, self.config.hidden_size),
+                                   dtype=output.dtype,
+                                   device=output.device)
+        torch.distributed.all_gather_into_tensor(
+            model_output, output, group=get_sp_group().device_group)
+
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"model_output: {model_output.shape}")
+        #     print(f"model_output: {model_output}")
+
         return model_output
 
     def compute_logits(

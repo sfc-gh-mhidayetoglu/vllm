@@ -1107,13 +1107,12 @@ def initialize_model_parallel(
                                     group_name="sp")
     global _SP_TP
     assert _SP_TP is None
-    group_ranks = [[rank for group in group_ranks for rank in group]]
-    # group_ranks = []
-    # for i in range(pipeline_model_parallel_size):
-    #     ranks = list(
-    #         range(i * ulysses_model_parallel_size,
-    #               (i + 1) * ulysses_model_parallel_size))
-    #     group_ranks.append(ranks)
+    group_ranks = []
+    for i in range(pipeline_model_parallel_size):
+        ranks = list(
+            range(i * ulysses_model_parallel_size,
+                  (i + 1) * ulysses_model_parallel_size))
+        group_ranks.append(ranks)
     _SP_TP = init_model_parallel_group(group_ranks,
                                        get_world_group().local_rank,
                                        backend,
