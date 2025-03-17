@@ -1112,8 +1112,17 @@ def initialize_model_parallel(
                                     get_world_group().local_rank,
                                     backend,
                                     group_name="sp")
-    print("test 3")
-    exit()
+
+    torch.cuda.synchronize()
+    torch.distributed.barrier()
+    for i in range(torch.distributed.get_world_size()):
+        if i == torch.distributed.get_rank():
+            print(
+                f"rank: {i}, _TP: {str(_TP)}, _SP: {str(_SP)}, _PP: {str(_PP)}"
+            )
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
+
     global _SP_TP
     assert _SP_TP is None
     group_ranks = []
