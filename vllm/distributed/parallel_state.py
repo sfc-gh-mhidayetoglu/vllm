@@ -1044,6 +1044,7 @@ def initialize_model_parallel(
     backend = backend or torch.distributed.get_backend(
         get_world_group().device_group)
 
+    print("test 1")
     if (world_size != tensor_model_parallel_size *
             sequence_model_parallel_size * pipeline_model_parallel_size):
         raise RuntimeError(
@@ -1074,6 +1075,7 @@ def initialize_model_parallel(
     # Build the pipeline model-parallel groups.
     num_pipeline_model_parallel_groups: int = (world_size //
                                                pipeline_model_parallel_size)
+    print("test 2")
     global _PP
     assert _PP is None, (
         "pipeline model parallel group is already initialized")
@@ -1106,6 +1108,7 @@ def initialize_model_parallel(
                                     get_world_group().local_rank,
                                     backend,
                                     group_name="sp")
+    print("test 3")
     global _SP_TP
     assert _SP_TP is None
     group_ranks = []
@@ -1118,6 +1121,7 @@ def initialize_model_parallel(
                                        get_world_group().local_rank,
                                        backend,
                                        group_name="sp_tp")
+    print("test 4")
 
 
 def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
