@@ -1047,6 +1047,14 @@ def initialize_model_parallel(
     backend = backend or torch.distributed.get_backend(
         get_world_group().device_group)
 
+    torch.cuda.synchronize()
+    _WORLD.barrier()
+    for i in range(torch.distributed.get_world_size()):
+        if i == torch.distributed.get_rank():
+            print(f"hello from rank {i}")
+            torch.cuda.synchronize()
+            _WORLD.barrier()
+
     print("test 1")
     if (world_size != tensor_model_parallel_size *
             sequence_model_parallel_size * pipeline_model_parallel_size):
@@ -1067,14 +1075,6 @@ def initialize_model_parallel(
             range(i * tensor_model_parallel_size,
                   (i + 1) * tensor_model_parallel_size))
         group_ranks.append(ranks)
-
-    torch.cuda.synchronize()
-    _WORLD.barrier()
-    for i in range(torch.distributed.get_world_size()):
-        if i == torch.distributed.get_rank():
-            print(f"hello from rank {i}")
-            torch.cuda.synchronize()
-            _WORLD.barrier()
 
     # message queue broadcaster is only used in tensor model parallel group
     _TP = init_model_parallel_group(group_ranks,
