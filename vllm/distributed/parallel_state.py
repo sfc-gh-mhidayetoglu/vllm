@@ -1114,14 +1114,14 @@ def initialize_model_parallel(
                                     group_name="sp")
 
     torch.cuda.synchronize()
-    torch.distributed.barrier()
+    _WORLD.barrier()
     for i in range(torch.distributed.get_world_size()):
         if i == torch.distributed.get_rank():
             print(
                 f"rank: {i}, _TP: {str(_TP)}, _SP: {str(_SP)}, _PP: {str(_PP)}"
             )
             torch.cuda.synchronize()
-            torch.distributed.barrier()
+            _WORLD.barrier()
 
     global _SP_TP
     assert _SP_TP is None
