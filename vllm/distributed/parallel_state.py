@@ -1067,7 +1067,14 @@ def initialize_model_parallel(
             range(i * tensor_model_parallel_size,
                   (i + 1) * tensor_model_parallel_size))
         group_ranks.append(ranks)
-    print(f"group_ranks: {group_ranks}")
+
+    torch.cuda.synchronize()
+    _WORLD.barrier()
+    for i in range(torch.distributed.get_world_size()):
+        if i == torch.distributed.get_rank():
+            print(f"hello from rank {i}")
+            torch.cuda.synchronize()
+            _WORLD.barrier()
 
     # message queue broadcaster is only used in tensor model parallel group
     _TP = init_model_parallel_group(group_ranks,
@@ -1112,17 +1119,6 @@ def initialize_model_parallel(
                                     get_world_group().local_rank,
                                     backend,
                                     group_name="sp")
-
-    torch.cuda.synchronize()
-    _WORLD.barrier()
-    for i in range(torch.distributed.get_world_size()):
-        if i == torch.distributed.get_rank():
-            print(
-                f"rank: {i}, _TP: {str(_TP)}, _SP: {str(_SP)}, _PP: {str(_PP)}"
-            )
-            torch.cuda.synchronize()
-            _WORLD.barrier()
-
     global _SP_TP
     assert _SP_TP is None
     group_ranks = []
