@@ -1113,6 +1113,7 @@ def initialize_model_parallel(
                                     backend,
                                     group_name="sp")
     print("test 3")
+    exit()
     global _SP_TP
     assert _SP_TP is None
     group_ranks = []
