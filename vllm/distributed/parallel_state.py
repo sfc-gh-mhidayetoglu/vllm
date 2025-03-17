@@ -228,6 +228,8 @@ class GroupCoordinator:
                 device=self.device,
             )
 
+        print("test Group Coordinator")
+
         from vllm.distributed.device_communicators.tpu_communicator import (
             TpuCommunicator)
         self.tpu_communicator: Optional[TpuCommunicator] = None
