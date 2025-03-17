@@ -1009,6 +1009,14 @@ def init_distributed_environment(
         assert _WORLD.world_size == torch.distributed.get_world_size(), (
             "world group already initialized with a different world size")
 
+    torch.cuda.synchronize()
+    _WORLD.barrier()
+    for i in range(torch.distributed.get_world_size()):
+        if i == torch.distributed.get_rank():
+            print(f"hello from rank {i}")
+        torch.cuda.synchronize()
+        _WORLD.barrier()
+
 
 def initialize_model_parallel(
     tensor_model_parallel_size: int = 1,
@@ -1055,14 +1063,6 @@ def initialize_model_parallel(
             f"tensor_model_parallel_size ({tensor_model_parallel_size}) x "
             f"sequence_model_parallel_size ({sequence_model_parallel_size}) x "
             f"pipeline_model_parallel_size ({pipeline_model_parallel_size})")
-
-    torch.cuda.synchronize()
-    _WORLD.barrier()
-    for i in range(torch.distributed.get_world_size()):
-        if i == torch.distributed.get_rank():
-            print(f"hello from rank {i}")
-        torch.cuda.synchronize()
-        _WORLD.barrier()
 
     # Build the tensor model-parallel groups.
     num_tensor_model_parallel_groups: int = (world_size //
