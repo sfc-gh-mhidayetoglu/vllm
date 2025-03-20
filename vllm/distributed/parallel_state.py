@@ -991,6 +991,15 @@ def init_distributed_environment(
             init_method=distributed_init_method,
             world_size=world_size,
             rank=rank)
+
+    torch.cuda.synchronize()
+    _WORLD.barrier()
+    for i in range(torch.distributed.get_world_size()):
+        if i == torch.distributed.get_rank():
+            print(f"hello from rank {i}")
+        torch.cuda.synchronize()
+        _WORLD.barrier()
+
     # set the local rank
     # local_rank is not available in torch ProcessGroup,
     # see https://github.com/pytorch/pytorch/issues/122816
@@ -1008,14 +1017,6 @@ def init_distributed_environment(
     else:
         assert _WORLD.world_size == torch.distributed.get_world_size(), (
             "world group already initialized with a different world size")
-
-    torch.cuda.synchronize()
-    _WORLD.barrier()
-    for i in range(torch.distributed.get_world_size()):
-        if i == torch.distributed.get_rank():
-            print(f"hello from rank {i}")
-        torch.cuda.synchronize()
-        _WORLD.barrier()
 
 
 def initialize_model_parallel(
