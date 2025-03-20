@@ -754,6 +754,7 @@ class PiecewiseBackend:
                 need_to_compile=shape in self.compile_sizes,
                 use_cudagraph=shape in self.cudagraph_capture_sizes,
             )
+        #self.graph.print_readable()
 
     def check_for_ending_compilation(self):
         if self.is_last_graph and not self.to_be_compiled_sizes:

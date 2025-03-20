@@ -27,6 +27,24 @@ def tensor_model_parallel_gather(input_: torch.Tensor,
     return get_tp_group().gather(input_, dst, dim)
 
 
+def sequence_tensor_model_parallel_all_reduce(input_: torch.Tensor) -> torch.Tensor:
+    """All-reduce the input tensor across model parallel group."""
+    return get_sp_tp_group().all_reduce(input_)
+
+
+def sequence_tensor_model_parallel_all_gather(input_: torch.Tensor,
+                                              dim: int = -1) -> torch.Tensor:
+    """All-gather the input tensor across model parallel group."""
+    return get_sp_tp_group().all_gather(input_, dim)
+
+
+def sequence_tensor_model_parallel_gather(input_: torch.Tensor,
+                                          dst: int = 0,
+                                          dim: int = -1) -> Optional[torch.Tensor]:
+    """Gather the input tensor across model parallel group."""
+    return get_sp_tp_group().gather(input_, dst, dim)
+
+
 def broadcast_tensor_dict(tensor_dict: Optional[Dict[Any, Union[torch.Tensor,
                                                                 Any]]] = None,
                           src: int = 0):

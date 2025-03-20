@@ -953,7 +953,7 @@ def graph_capture(device: torch.device):
     """
     context = GraphCaptureContext(torch.cuda.Stream(device=device))
     with get_tp_group().graph_capture(context), get_pp_group().graph_capture(
-            context):
+            context), get_sp_tp_group().graph_capture(context):
         yield context
 
 
@@ -1064,6 +1064,7 @@ def initialize_model_parallel(
         group_ranks.append(ranks)
 
     # message queue broadcaster is only used in tensor model parallel group
+    print("TP", group_ranks)
     _TP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -1081,6 +1082,7 @@ def initialize_model_parallel(
         ranks = list(range(i, world_size, num_pipeline_model_parallel_groups))
         group_ranks.append(ranks)
     # pipeline parallel does not need custom allreduce
+    print("PP", group_ranks)
     _PP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -1101,18 +1103,21 @@ def initialize_model_parallel(
                       (i + 1) * ulysses_model_parallel_size + j,
                       tensor_model_parallel_size))
             group_ranks.append(ranks)
+    print("SP", group_ranks)
     _SP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
                                     group_name="sp")
     global _SP_TP
     assert _SP_TP is None
-    group_ranks = []
-    for i in range(pipeline_model_parallel_size):
-        ranks = list(
-            range(i * ulysses_model_parallel_size,
-                  (i + 1) * ulysses_model_parallel_size))
-        group_ranks.append(ranks)
+    group_ranks = [[rank for group in group_ranks for rank in group]]
+    # group_ranks = []
+    # for i in range(pipeline_model_parallel_size):
+    #     ranks = list(
+    #         range(i * ulysses_model_parallel_size,
+    #               (i + 1) * ulysses_model_parallel_size))
+    #     group_ranks.append(ranks)
+    print("SPTP", group_ranks)
     _SP_TP = init_model_parallel_group(group_ranks,
                                        get_world_group().local_rank,
                                        backend,
@@ -1215,6 +1220,26 @@ def get_tensor_model_parallel_world_size():
 def get_tensor_model_parallel_rank():
     """Return my rank for the tensor model parallel group."""
     return get_tp_group().rank_in_group
+
+
+def get_sequence_model_parallel_world_size():
+    """Return world size for the tensor model parallel group."""
+    return get_sp_group().world_size
+
+
+def get_sequence_model_parallel_rank():
+    """Return my rank for the tensor model parallel group."""
+    return get_sp_group().rank_in_group
+
+
+def get_sequence_tensor_model_parallel_world_size():
+    """Return world size for the tensor model parallel group."""
+    return get_sp_tp_group().world_size
+
+
+def get_sequence_tensor_model_parallel_rank():
+    """Return my rank for the tensor model parallel group."""
+    return get_sp_tp_group().rank_in_group
 
 
 def destroy_model_parallel():

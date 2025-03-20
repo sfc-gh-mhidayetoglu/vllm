@@ -10,9 +10,15 @@ from torch.nn.parameter import Parameter, UninitializedParameter
 
 from vllm.distributed import (divide, get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size,
+                              get_sequence_model_parallel_rank,
+                              get_sequence_model_parallel_world_size,
+                              get_sequence_tensor_model_parallel_rank,
+                              get_sequence_tensor_model_parallel_world_size,
                               split_tensor_along_last_dim,
                               tensor_model_parallel_all_gather,
-                              tensor_model_parallel_all_reduce)
+                              tensor_model_parallel_all_reduce,
+                              sequence_tensor_model_parallel_all_reduce,
+                              sequence_tensor_model_parallel_all_gather)
 from vllm.logger import init_logger
 from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig, QuantizeMethodBase)
@@ -25,6 +31,8 @@ from vllm.model_executor.parameter import (BasevLLMParameter,
                                            RowvLLMParameter)
 # yapf: enable
 from vllm.model_executor.utils import set_weight_attrs
+
+SP_TP_MODE = False  # HACK GLOBAL VARIABLE
 
 logger = init_logger(__name__)
 
@@ -137,9 +145,29 @@ class UnquantizedLinearMethod(LinearMethodBase):
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
-              bias: Optional[torch.Tensor] = None) -> torch.Tensor:
-
-        return F.linear(x, layer.weight, bias)
+              bias: Optional[torch.Tensor] = None,
+              sp_tp_mode: bool = False,
+              column_parallel: bool = False,
+              output_partition_sizes: list = None) -> torch.Tensor:
+        if sp_tp_mode:
+            sp_size = get_sequence_model_parallel_world_size()
+            sp_rank = get_sequence_model_parallel_rank()
+            if not column_parallel:
+                assert layer.weight.shape[1] % sp_size == 0
+                chunk_size = layer.weight.shape[1] // sp_size
+                weight = layer.weight.split(chunk_size, dim=1)[sp_rank]
+            else:
+                assert layer.weight.shape[0] % sp_size == 0
+                chunk_sizes = []
+                for size in output_partition_sizes:
+                    chunk_size = size // sp_size
+                    chunk_sizes.extend([chunk_size] * sp_size)
+                split = layer.weight.split(chunk_sizes, dim=0)
+                weight = torch.cat([split[i] for i in range(sp_rank, len(split), sp_size)])
+            #print("TPSP", (sp_size, chunk_size, layer.weight.shape, weight.shape, x.shape))
+        else:
+            weight = layer.weight
+        return F.linear(x, weight, bias)
 
 
 class LinearBase(torch.nn.Module):
@@ -379,10 +407,17 @@ class ColumnParallelLinear(LinearBase):
 
         # Matrix multiply.
         assert self.quant_method is not None
-        output_parallel = self.quant_method.apply(self, input_, bias)
+        sp_tp_mode = SP_TP_MODE
+        output_parallel = self.quant_method.apply(self, input_, bias,
+                                                  sp_tp_mode=sp_tp_mode,
+                                                  column_parallel=True,
+                                                  output_partition_sizes=self.output_partition_sizes)
         if self.gather_output:
             # All-gather across the partitions.
-            output = tensor_model_parallel_all_gather(output_parallel)
+            if sp_tp_mode:
+                output = sequence_tensor_model_parallel_all_gather(output_parallel)
+            else:
+                output = tensor_model_parallel_all_gather(output_parallel)
         else:
             output = output_parallel
         output_bias = self.bias if self.skip_bias_add else None
@@ -1125,9 +1160,19 @@ class RowParallelLinear(LinearBase):
         param.load_row_parallel_weight(loaded_weight=loaded_weight)
 
     def forward(self, input_) -> tuple[torch.Tensor, Optional[Parameter]]:
+        sp_tp_mode = SP_TP_MODE
+        sp_tp_size = get_sequence_tensor_model_parallel_world_size()
+        sp_tp_rank = get_sequence_tensor_model_parallel_rank()
         if self.input_is_parallel:
+            #print("PARALLEL", input_.shape)
             input_parallel = input_
+        elif sp_tp_mode:
+            #print("SPTPMODE", input_.shape)
+            splitted_input = split_tensor_along_last_dim(
+                input_, num_partitions=sp_tp_size)
+            input_parallel = splitted_input[sp_tp_rank].contiguous()
         else:
+            #print("NOSPTPMODE", input_.shape)
             tp_rank = get_tensor_model_parallel_rank()
             splitted_input = split_tensor_along_last_dim(
                 input_, num_partitions=self.tp_size)
@@ -1137,11 +1182,17 @@ class RowParallelLinear(LinearBase):
         assert self.quant_method is not None
         # Only fuse bias add into GEMM for rank 0 (this ensures that
         # bias will not get added more than once in TP>1 case)
-        bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
+        if sp_tp_mode:
+            bias_ = None if (sp_tp_rank > 0 or self.skip_bias_add) else self.bias
+        else:
+            bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
         output_parallel = self.quant_method.apply(self,
                                                   input_parallel,
-                                                  bias=bias_)
-        if self.reduce_results and self.tp_size > 1:
+                                                  bias=bias_,
+                                                  sp_tp_mode=sp_tp_mode)
+        if self.reduce_results and sp_tp_mode and sp_tp_size > 1:
+            output = sequence_tensor_model_parallel_all_reduce(output_parallel)
+        elif self.reduce_results and not sp_tp_mode and self.tp_size > 1:
             output = tensor_model_parallel_all_reduce(output_parallel)
         else:
             output = output_parallel
