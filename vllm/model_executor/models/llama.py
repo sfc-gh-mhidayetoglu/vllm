@@ -202,8 +202,8 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states)
         sp_size = get_sp_group().world_size
         split_list = [
-            self.q_size, *sp_size, self.kv_size, *sp_size, self.kv_size,
-            *sp_size
+            self.q_size * sp_size, self.kv_size * sp_size,
+            self.kv_size * sp_size
         ]
         q, k, v = qkv.split(split_list, dim=-1)
         q, k = self.rotary_emb(positions, q, k)
