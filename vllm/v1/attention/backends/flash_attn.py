@@ -105,10 +105,13 @@ class FlashAttentionImpl(AttentionImpl):
         if blocksparse_params is not None:
             raise ValueError(
                 "FlashAttention does not support block-sparse attention.")
-        self.num_heads = num_heads
+        self.SP = get_sp_group().world_size
+        self.num_heads = num_heads // self.SP
         self.head_size = head_size
         self.scale = float(scale)
-        self.num_kv_heads = num_kv_heads
+        self.num_kv_heads = num_kv_heads // self.SP
+        if self.num_kv_heads == 0:
+            self.num_kv_heads = 1
         if alibi_slopes is not None:
             alibi_slopes = torch.tensor(alibi_slopes, dtype=torch.float32)
         self.alibi_slopes = alibi_slopes
@@ -123,7 +126,6 @@ class FlashAttentionImpl(AttentionImpl):
         self.logits_soft_cap = logits_soft_cap
 
         assert self.num_heads % self.num_kv_heads == 0
-        self.num_queries_per_kv = self.num_heads // self.num_kv_heads
 
         support_head_sizes = FlashAttentionBackend.get_supported_head_sizes()
         if head_size not in support_head_sizes:
@@ -156,7 +158,6 @@ class FlashAttentionImpl(AttentionImpl):
 
         assert is_fa_version_supported(self.fa_version)
 
-        self.SP = get_sp_group().world_size
         self.SP_rank = get_sp_group().rank_in_group
         self.device_group = get_sp_group().device_group
 
@@ -197,17 +198,16 @@ class FlashAttentionImpl(AttentionImpl):
         # performance to make sure it does not introduce any overhead.
 
         # Ulysses Attention
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"FlashAttentionImpl.forward \n \
-        #     q {query.shape}\n \
-        #     k {key.shape}\n \
-        #     v {value.shape}\n \
-        #     output {output.shape}\n \
-        #     kv_cache {kv_cache.shape} \
-        #     N {N} SP {SP} N_ranks {N_ranks}\n \
-        #     self.num_heads {self.num_heads}\n \
-        #     self.num_kv_heads {self.num_kv_heads}\n \
-        #     self.head_size {self.head_size}\n")
+        if torch.distributed.get_rank() == 0:
+            print(f"FlashAttentionImpl.forward \n \
+            q {query.shape}\n \
+            k {key.shape}\n \
+            v {value.shape}\n \
+            output {output.shape}\n \
+            kv_cache {kv_cache.shape} \
+            self.num_heads {self.num_heads}\n \
+            self.num_kv_heads {self.num_kv_heads}\n \
+            self.head_size {self.head_size}\n")
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         # pack
