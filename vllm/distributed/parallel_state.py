@@ -1029,7 +1029,7 @@ def initialize_model_parallel(
     #     if i == get_world_group().rank_in_group:
     #         print(f"hello from {i}")
     #     get_world_group().barrier()
-    # torch.distributed.barrier(group=get_world_group().device_group)
+    torch.distributed.barrier(group=get_world_group().device_group)
     for i in range(torch.distributed.get_world_size()):
         if i == torch.distributed.get_rank():
             print(f"hello from {i}")
