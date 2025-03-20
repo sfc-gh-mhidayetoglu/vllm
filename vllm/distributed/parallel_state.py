@@ -1043,11 +1043,6 @@ def initialize_model_parallel(
     backend = backend or torch.distributed.get_backend(
         get_world_group().device_group)
 
-    torch.distributed.barrier(group=get_world_group().device_group)
-    for i in range(torch.distributed.get_world_size()):
-        if i == torch.distributed.get_rank():
-            print(f"hello from {i}")
-
     if (world_size != tensor_model_parallel_size *
             sequence_model_parallel_size * pipeline_model_parallel_size):
         raise RuntimeError(
