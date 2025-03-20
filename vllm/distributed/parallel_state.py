@@ -888,12 +888,6 @@ def init_model_parallel_group(
     )
 
 
-get_world_group().barrier()
-for i in get_world_group().ranks:
-    if i == get_world_group().rank_in_group:
-        print(f"hello from {i}")
-    get_world_group().barrier()
-
 _TP: Optional[GroupCoordinator] = None
 
 
@@ -1029,6 +1023,12 @@ def initialize_model_parallel(
     world_size: int = torch.distributed.get_world_size()
     backend = backend or torch.distributed.get_backend(
         get_world_group().device_group)
+
+    get_world_group().barrier()
+    for i in get_world_group().ranks:
+        if i == get_world_group().rank_in_group:
+            print(f"hello from {i}")
+        get_world_group().barrier()
 
     if (world_size
             != tensor_model_parallel_size * pipeline_model_parallel_size):
