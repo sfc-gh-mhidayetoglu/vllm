@@ -200,11 +200,12 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
-        # sp_size = get_sp_group().world_size
-        # split_list = [self.q_size, * get_
-        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size] *
-                            get_sp_group().world_size,
-                            dim=-1)
+        sp_size = get_sp_group().world_size
+        split_list = [
+            self.q_size, *sp_size, self.kv_size, *sp_size, self.kv_size,
+            *sp_size
+        ]
+        q, k, v = qkv.split(split_list, dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         output, _ = self.o_proj(attn_output)
