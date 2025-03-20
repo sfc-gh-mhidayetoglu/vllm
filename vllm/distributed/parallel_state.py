@@ -888,6 +888,12 @@ def init_model_parallel_group(
     )
 
 
+get_world_group().barrier()
+for i in get_world_group().ranks:
+    if i == get_world_group().rank_in_group:
+        print(f"hello from {i}")
+    get_world_group().barrier()
+
 _TP: Optional[GroupCoordinator] = None
 
 
