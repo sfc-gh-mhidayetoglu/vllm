@@ -212,14 +212,14 @@ class FlashAttentionImpl(AttentionImpl):
             if i == torch.distributed.get_rank():
                 print(f"query {query}")
             torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"key {key}")
-            torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"value {value}")
-            torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if i == torch.distributed.get_rank():
+        #         print(f"key {key}")
+        #     torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if i == torch.distributed.get_rank():
+        #         print(f"value {value}")
+        #     torch.distributed.barrier()
         # output.copy_(query)
         # return output
         # traceback.print_stack()
@@ -229,12 +229,12 @@ class FlashAttentionImpl(AttentionImpl):
             (query.view((-1, self.SP, self.num_heads * self.head_size)),
              key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
              value.view((-1, self.SP, self.num_kv_heads * self.head_size))),
-            dim=1).transpose(0, 1).reshape(
+            dim=-1).transpose(0, 1).reshape(
                 -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"qkv {qkv}")
-            torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if i == torch.distributed.get_rank():
+        #         print(f"qkv {qkv}")
+        #     torch.distributed.barrier()
         # all-to-all
         qkv_ = torch.empty_like(qkv)
         torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
@@ -258,6 +258,11 @@ class FlashAttentionImpl(AttentionImpl):
                     v_ {v_.shape}\n \
                     c_ {c_.shape}\n \
                     num_actual_tokens {attn_metadata.num_actual_tokens}")
+
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"q_ {q_}")
+            torch.distributed.barrier()
 
         num_actual_tokens = attn_metadata.num_actual_tokens
         # Reshape the input keys and values and store them in the cache.
