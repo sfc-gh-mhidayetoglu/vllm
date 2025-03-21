@@ -219,8 +219,14 @@ class FlashAttentionImpl(AttentionImpl):
                                              self.num_heads * self.head_size)
             q_ = torch.empty_like(q)
             torch.distributed.all_to_all_single(q_, q, group=self.device_group)
-            k_ = key
-            v_ = value
+            N_ulysses = query.shape[0]
+            k_ = torch.empty(
+                (N_ulysses * self.SP, self.num_kv_heads * self.head_size),
+                device=query.device,
+                dtype=query.dtype)
+            v_ = torch.empty_like(k_)
+            torch.all_gather_into_tensor(k_, key, group=self.device_group)
+            torch.all_gather_into_tensor(v_, value, group=self.device_group)
         else:
             # pack
             qkv = torch.cat(
