@@ -116,6 +116,7 @@ class LlamaAttention(nn.Module):
         self.total_num_heads = num_heads
         assert self.total_num_heads % tp_size == 0
         self.num_heads = num_heads // tp_size
+        num_heads_sp_tp = num_heads // (tp_size * sp_size)
         self.total_num_kv_heads = num_kv_heads
         if self.total_num_kv_heads >= tp_size:
             # Number of KV heads is greater than TP size, so we partition
@@ -128,6 +129,8 @@ class LlamaAttention(nn.Module):
             assert tp_size % self.total_num_kv_heads == 0
             self.isreplicated = True
         self.num_kv_heads = max(1, self.total_num_kv_heads // tp_size)
+        num_kv_heads_sp_tp = max(
+            1, self.total_num_kv_heads // (tp_size * sp_size))
         # MistralConfig has an optional head_dim introduced by Mistral-Nemo
         self.head_dim = getattr(config, "head_dim",
                                 self.hidden_size // self.total_num_heads)
@@ -183,10 +186,10 @@ class LlamaAttention(nn.Module):
             sliding_window = None
 
         self.attn = Attention(
-            self.num_heads // sp_size,
+            num_heads_sp_tp,
             self.head_dim,
             self.scaling,
-            num_kv_heads=self.num_kv_heads // sp_size,
+            num_kv_heads=num_kv_heads_sp_tp,
             cache_config=cache_config,
             quant_config=quant_config,
             per_layer_sliding_window=sliding_window,
