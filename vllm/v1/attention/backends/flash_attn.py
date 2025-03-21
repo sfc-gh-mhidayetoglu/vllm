@@ -360,13 +360,11 @@ class FlashAttentionImpl(AttentionImpl):
                 common_prefix_len=attn_metadata.common_prefix_len,
                 fa_version=self.fa_version,
             )
-        torch.set_printoptions(threshold=10000)
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
                 print(f"c_ {c_}")
                 print(f"shape {c_.shape} sum {c_.sum()}")
             torch.distributed.barrier()
-        torch.set_printoptions(threshold=1000)
 
         # Ulysses all-to-all 2/2
         c_ = c_.reshape(-1, self.num_kv_heads * self.head_size)
@@ -376,7 +374,7 @@ class FlashAttentionImpl(AttentionImpl):
             torch.transpose(
                 c.view(self.SP, -1, self.num_kv_heads * self.head_size), 0,
                 1).reshape(-1, self.num_heads * self.SP * self.head_size))
-        # output.copy_(query)
+        output.copy_(query)
         return output
 
 
