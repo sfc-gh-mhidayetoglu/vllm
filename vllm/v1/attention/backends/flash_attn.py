@@ -360,10 +360,10 @@ class FlashAttentionImpl(AttentionImpl):
                 common_prefix_len=attn_metadata.common_prefix_len,
                 fa_version=self.fa_version,
             )
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"c_ {c_}")
-        #     torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"c_ {c_}")
+            torch.distributed.barrier()
         # Ulysses all-to-all 2/2
         c_ = c_.reshape(-1, self.num_kv_heads * self.head_size)
         c = torch.empty_like(c_)
@@ -372,10 +372,10 @@ class FlashAttentionImpl(AttentionImpl):
             torch.transpose(
                 c.view(self.SP, -1, self.num_kv_heads * self.head_size), 0,
                 1).reshape(-1, self.num_heads * self.SP * self.head_size))
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"output {output}")
-        #     torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"output {output}")
+            torch.distributed.barrier()
         # output.copy_(query)
         return output
 
