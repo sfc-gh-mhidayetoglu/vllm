@@ -189,11 +189,6 @@ class Attention(nn.Module):
             else:
                 torch.ops.vllm.unified_attention_with_output(
                     query, key, value, output, self.layer_name)
-            for i in range(torch.distributed.get_world_size()):
-                if i == torch.distributed.get_rank():
-                    print(f"output {output}")
-                    print(f"shape {output.shape}")
-                torch.distributed.barrier()
             return output.view(-1, hidden_size)
         else:
             if self.use_direct_call:
