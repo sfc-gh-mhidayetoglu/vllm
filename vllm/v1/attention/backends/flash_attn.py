@@ -223,8 +223,8 @@ class FlashAttentionImpl(AttentionImpl):
                 device=query.device,
                 dtype=query.dtype)
             v_ = torch.empty_like(k_)
-            torch.all_gather_into_tensor(k_, key, group=self.device_group)
-            torch.all_gather_into_tensor(v_, value, group=self.device_group)
+            # torch.all_gather_into_tensor(k_, key, group=self.device_group)
+            # torch.all_gather_into_tensor(v_, value, group=self.device_group)
         else:
             # pack
             qkv = torch.cat(
