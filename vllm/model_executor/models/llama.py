@@ -211,6 +211,7 @@ class LlamaAttention(nn.Module):
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
                 print(f"output: {output}")
+                print(f"shape {output.shape}")
             torch.distributed.barrier()
         return output
 
