@@ -211,12 +211,14 @@ class FlashAttentionImpl(AttentionImpl):
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         if vllm.model_executor.models.llama.KV_REPLICATED:
-            q = query.view(-1,
-                           self.SP, self.num_heads * self.head_size).transpose(
-                               0, 1).reshape(-1,
-                                             self.num_heads * self.head_size)
-            q_ = torch.empty_like(q)
-            torch.distributed.all_to_all_single(q_, q, group=self.device_group)
+            # q = query.view(-1,
+            #                self.SP, self.num_heads *
+            # self.head_size).transpose(
+            #                    0, 1).reshape(-1,
+            #                                  self.num_heads * self.head_size)
+            q_ = torch.empty_like(query)
+            # torch.distributed.all_to_all_single(q_, q,
+            # group=self.device_group)
             N_ulysses = query.shape[0]
             k_ = torch.empty(
                 (N_ulysses * self.SP, self.num_kv_heads * self.head_size),
