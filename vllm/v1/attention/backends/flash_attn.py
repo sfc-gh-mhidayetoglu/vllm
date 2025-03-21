@@ -372,10 +372,6 @@ class FlashAttentionImpl(AttentionImpl):
             torch.transpose(
                 c.view(self.SP, -1, self.num_kv_heads * self.head_size), 0,
                 1).reshape(-1, self.num_heads * self.SP * self.head_size))
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"output {output}")
-            torch.distributed.barrier()
         # output.copy_(query)
         return output
 
