@@ -229,7 +229,7 @@ class FlashAttentionImpl(AttentionImpl):
             (query.view((-1, self.SP, self.num_heads * self.head_size)),
              key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
              value.view((-1, self.SP, self.num_kv_heads * self.head_size))),
-            dim=0).transpose(0, 1).reshape(
+            dim=-1).transpose(0, 1).reshape(
                 -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
