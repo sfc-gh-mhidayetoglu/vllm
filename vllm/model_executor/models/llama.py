@@ -198,6 +198,13 @@ class LlamaAttention(nn.Module):
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
+        if torch.distributed.get_rank() == 0:
+            print(f"self.num_heads {self.num_heads} \n"
+                  f"self.num_kv_heads {self.num_kv_heads} \n"
+                  f"self.q_size {self.q_size} \n"
+                  f"self.kv_size {self.kv_size} \n"
+                  f"hidden_states {hidden_states.shape} \n"
+                  f"kv_cache {kv_cache.shape} \n")
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
