@@ -366,11 +366,13 @@ class FlashAttentionImpl(AttentionImpl):
                 print(f"c_ {c_}")
             torch.distributed.barrier()
         # Ulysses all-to-all 2/2
+        c_ = c_.reshape(-1, self.num_kv_heads * self.head_size)
         c = torch.empty_like(c_)
         torch.distributed.all_to_all_single(c, c_, group=self.device_group)
         output.copy_(
-            torch.transpose(c.view(self.SP, -1), 0, 1).reshape(
-                -1, self.num_heads * self.SP * self.head_size))
+            torch.transpose(
+                c.view(self.SP, -1, self.num_kv_heads * self.head_size), 0,
+                1).reshape(-1, self.num_heads * self.SP * self.head_size))
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
                 print(f"output {output}")
