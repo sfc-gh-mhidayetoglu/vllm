@@ -210,13 +210,13 @@ class FlashAttentionImpl(AttentionImpl):
         # output.copy_(query)
         # return output
         # traceback.print_stack()
-        N = query.shape[0] * self.SP
+        N_ulysses = query.shape[0]
         # Ulysses all-to-all 1/2
         # pack
         qkv = torch.cat(
-            (query.view(N, -1, self.num_heads * self.head_size),
-             key.view(N, -1, self.num_kv_heads * self.head_size),
-             value.view(N, -1, self.num_kv_heads * self.head_size)),
+            (query.view(N_ulysses, -1, self.num_heads * self.head_size),
+             key.view(N_ulysses, -1, self.num_kv_heads * self.head_size),
+             value.view(N_ulysses, -1, self.num_kv_heads * self.head_size)),
             dim=-1).transpose(0, 1).reshape(
                 -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
         # all-to-all
