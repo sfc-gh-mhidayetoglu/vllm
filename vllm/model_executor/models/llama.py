@@ -113,19 +113,20 @@ class LlamaAttention(nn.Module):
         self.hidden_size = hidden_size
         tp_size = get_tp_group().world_size
         sp_size = get_sp_group().world_size
+        sp_tp_size = tp_size * sp_size
         self.total_num_heads = num_heads
-        assert self.total_num_heads % tp_size == 0
-        self.num_heads = num_heads // tp_size
+        assert self.total_num_heads % sp_tp_size == 0
+        self.num_heads = num_heads // sp_tp_size
         self.total_num_kv_heads = num_kv_heads
-        if self.total_num_kv_heads >= tp_size:
+        if self.total_num_kv_heads >= sp_tp_size:
             # Number of KV heads is greater than TP size, so we partition
             # the KV heads across multiple tensor parallel GPUs.
-            assert self.total_num_kv_heads % tp_size == 0
+            assert self.total_num_kv_heads % sp_tp_size == 0
         else:
             # Number of KV heads is less than TP size, so we replicate
             # the KV heads across multiple tensor parallel GPUs.
-            assert tp_size % self.total_num_kv_heads == 0
-        self.num_kv_heads = max(1, self.total_num_kv_heads // tp_size)
+            assert sp_tp_size % self.total_num_kv_heads == 0
+        self.num_kv_heads = max(1, self.total_num_kv_heads // sp_tp_size)
         # MistralConfig has an optional head_dim introduced by Mistral-Nemo
         self.head_dim = getattr(config, "head_dim",
                                 self.hidden_size // self.total_num_heads)
@@ -181,10 +182,10 @@ class LlamaAttention(nn.Module):
             sliding_window = None
 
         self.attn = Attention(
-            self.num_heads // sp_size,
+            self.num_heads,
             self.head_dim,
             self.scaling,
-            num_kv_heads=self.num_kv_heads // sp_size,
+            num_kv_heads=self.num_kv_heads,
             cache_config=cache_config,
             quant_config=quant_config,
             per_layer_sliding_window=sliding_window,
@@ -205,8 +206,10 @@ class LlamaAttention(nn.Module):
                   f"self.kv_size {self.kv_size} \n"
                   f"hidden_states {hidden_states.shape} \n"
                   f"kv_cache {kv_cache.shape} \n")
+        SP = get_sp_group().world_size
         qkv, _ = self.qkv_proj(hidden_states)
-        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        q, k, v = qkv.split(
+            [self.q_size * SP, self.kv_size * SP, self.kv_size * SP], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         output, _ = self.o_proj(attn_output)
