@@ -361,6 +361,10 @@ class FlashAttentionImpl(AttentionImpl):
                 common_prefix_len=attn_metadata.common_prefix_len,
                 fa_version=self.fa_version,
             )
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"c_ {c_}")
+            torch.distributed.barrier()
         # Ulysses all-to-all 2/2
         c = torch.empty_like(c_)
         torch.distributed.all_to_all_single(c, c_, group=self.device_group)
