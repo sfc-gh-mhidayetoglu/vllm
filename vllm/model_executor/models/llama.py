@@ -571,7 +571,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                 print(f"numforward {self.numforward} N {N} "
                       f"N_ranks {[N_ulysses] * SP} "
                       f"actual tokens: {metadata.num_actual_tokens} "
-                      f"seq. lens: {metadata.seq_lens.tolist()}"
+                      f"seq. lens: {metadata.seq_lens.tolist()} "
                       f"input_ids: {input_ids}")
 
         # narrow the input
@@ -588,9 +588,9 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.distributed.all_gather_into_tensor(
             model_output, output, group=get_sp_group().device_group)
 
-        if metadata is not None and torch.distributed.get_rank() == 0:
-            print(f"model_output: {model_output.shape}")
-            print(f"model_output: {model_output}")
+        # if metadata is not None and torch.distributed.get_rank() == 0:
+        #     print(f"model_output: {model_output.shape}")
+        #     print(f"model_output: {model_output}")
 
         return model_output
 
