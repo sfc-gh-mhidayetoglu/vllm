@@ -250,6 +250,12 @@ class FlashAttentionImpl(AttentionImpl):
         q = query.reshape(-1, self.SP, self.num_heads,
                           self.head_size).transpose(0, 1).reshape(
                               -1, self.num_heads * self.head_size)
+
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"q {q}")
+            torch.distributed.barrier()
+
         k = key.reshape(-1, self.SP, self.num_kv_heads,
                         self.head_size).transpose(0, 1).reshape(
                             -1, self.num_kv_heads * self.head_size)
