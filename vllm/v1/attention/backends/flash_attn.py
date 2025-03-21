@@ -329,6 +329,7 @@ class FlashAttentionImpl(AttentionImpl):
         output.copy_(
             torch.transpose(c, 0, 1).reshape(
                 -1, self.num_heads * self.SP * self.head_size))
+        output.copy_(query)
         return output
 
 
