@@ -374,7 +374,7 @@ class FlashAttentionImpl(AttentionImpl):
             torch.transpose(
                 c.view(self.SP, -1, self.num_kv_heads * self.head_size), 0,
                 1).reshape(-1, self.num_heads * self.SP * self.head_size))
-        output.copy_(query)
+        # output.copy_(query)
         return output
 
 
