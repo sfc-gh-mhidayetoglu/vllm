@@ -201,6 +201,7 @@ class LlamaAttention(nn.Module):
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
+        qkv, _ = self.qkv_proj(hidden_states)
         torch.distributed.barrier()
         if torch.distributed.get_rank() == 0:
             print(f"self.num_heads {self.num_heads} \n"
@@ -208,10 +209,11 @@ class LlamaAttention(nn.Module):
                   f"self.q_size {self.q_size} \n"
                   f"self.kv_size {self.kv_size} \n"
                   f"hidden_states {hidden_states.shape} \n"
-                  f"kv_cache {kv_cache.shape} \n")
+                  f"kv_cache {kv_cache.shape} \n"
+                  f"qkv {qkv.shape} \n")
         torch.distributed.barrier()
+        return hidden_states
         SP = get_sp_group().world_size
-        qkv, _ = self.qkv_proj(hidden_states)
         if self.isreplicated:
             q, k, v = qkv.split([self.q_size * SP, self.kv_size, self.kv_size],
                                 dim=-1)
