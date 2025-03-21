@@ -203,6 +203,7 @@ class LlamaAttention(nn.Module):
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         output, _ = self.o_proj(attn_output)
+        torch.cuda.synchronize()
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
                 print(f"output: {output}")
