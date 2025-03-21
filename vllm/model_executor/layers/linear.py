@@ -1159,8 +1159,8 @@ class RowParallelLinear(LinearBase):
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
                 print(f"output {output} "
-                      f"output_bias {output_bias if output_bias \
-                                       is not None else None}")
+                      f"output_bias "
+                      f"{output_bias if output_bias is not None else None}")
             torch.distributed.barrier()
 
         return output, output_bias
