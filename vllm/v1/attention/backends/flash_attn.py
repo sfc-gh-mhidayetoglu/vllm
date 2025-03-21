@@ -369,7 +369,7 @@ class FlashAttentionImpl(AttentionImpl):
         c = torch.empty_like(c_)
         torch.distributed.all_to_all_single(c, c_, group=self.device_group)
         output.copy_(
-            torch.transpose(c, 0, 1).reshape(
+            torch.transpose(c.view(self.SP, -1), 0, 1).reshape(
                 -1, self.num_heads * self.SP * self.head_size))
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
