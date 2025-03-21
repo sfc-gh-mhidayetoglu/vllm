@@ -8,6 +8,7 @@ import torch
 import triton
 import triton.language as tl
 
+import vllm.model_executor.models.llama
 from vllm.attention.backends.abstract import (AttentionBackend, AttentionImpl,
                                               AttentionMetadata, AttentionType)
 from vllm.distributed.parallel_state import get_sp_group
@@ -212,7 +213,10 @@ class FlashAttentionImpl(AttentionImpl):
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         if vllm.model_executor.models.llama.KV_REPLICATED:
-            q = query.view(-1, self.SP, self.num_heads * self.head_size).transpose(0, 1).reshape(-1, self.num_heads * self.head_size)
+            q = query.view(-1,
+                           self.SP, self.num_heads * self.head_size).transpose(
+                               0, 1).reshape(-1,
+                                             self.num_heads * self.head_size)
             q_ = torch.empty_like(q)
             torch.distributed.all_to_all_single(q_, q, group=self.device_group)
             k_ = key
@@ -221,13 +225,16 @@ class FlashAttentionImpl(AttentionImpl):
             # pack
             qkv = torch.cat(
                 (query.view(-1, self.SP, self.num_heads * self.head_size),
-                key.view(-1, self.SP, self.num_kv_heads * self.head_size),
-                value.view(-1, self.SP, self.num_kv_heads * self.head_size)),
+                 key.view(-1, self.SP, self.num_kv_heads * self.head_size),
+                 value.view(-1, self.SP, self.num_kv_heads * self.head_size)),
                 dim=-1).transpose(0, 1).reshape(
-                    -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+                    -1,
+                    (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
             # all-to-all
             qkv_ = torch.empty_like(qkv)
-            torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
+            torch.distributed.all_to_all_single(qkv_,
+                                                qkv,
+                                                group=self.device_group)
             # unpack
             q_, k_, v_ = qkv_.split([
                 self.num_heads * self.head_size, self.num_kv_heads *
