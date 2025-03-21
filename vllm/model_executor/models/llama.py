@@ -202,17 +202,17 @@ class LlamaAttention(nn.Module):
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"attn_output {attn_output}")
-                print(f"shape {attn_output.shape}")
-            torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if i == torch.distributed.get_rank():
+        #         print(f"attn_output {attn_output}")
+        #         print(f"shape {attn_output.shape}")
+        #     torch.distributed.barrier()
         output, _ = self.o_proj(attn_output)
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"output: {output}")
-                print(f"shape {output.shape}")
-            torch.distributed.barrier()
+        # for i in range(torch.distributed.get_world_size()):
+        #     if i == torch.distributed.get_rank():
+        #         print(f"output: {output}")
+        #         print(f"shape {output.shape}")
+        #     torch.distributed.barrier()
         return output
 
 
@@ -371,8 +371,8 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        # for i in range(self.start_layer, self.end_layer):
-        for i in range(0, 1):
+        for i in range(self.start_layer, self.end_layer):
+            # for i in range(0, 1):
             layer = self.layers[i]
             hidden_states, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
