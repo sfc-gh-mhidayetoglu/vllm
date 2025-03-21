@@ -1142,7 +1142,8 @@ class RowParallelLinear(LinearBase):
             if i == torch.distributed.get_rank():
                 print(f"input_parallel {input_parallel}")
                 print(f"shape {input_parallel.shape} "
-                      f"bias {bias_ if bias_ is not None else None}")
+                      f"bias {bias_ if bias_ is not None else None} "
+                      f"self.input_is_parallel {self.input_is_parallel}")
             torch.distributed.barrier()
         output_parallel = self.quant_method.apply(self,
                                                   input_parallel,
