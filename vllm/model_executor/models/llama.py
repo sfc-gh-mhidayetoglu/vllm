@@ -211,7 +211,7 @@ class LlamaAttention(nn.Module):
         SP = get_sp_group().world_size
         qkv, _ = self.qkv_proj(hidden_states)
         if self.isreplicated:
-            q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size],
+            q, k, v = qkv.split([self.q_size * SP, self.kv_size, self.kv_size],
                                 dim=-1)
         else:
             q, k, v = qkv.split(
