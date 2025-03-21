@@ -230,14 +230,11 @@ class FlashAttentionImpl(AttentionImpl):
         qkv_ = torch.empty_like(qkv)
         torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
         # unpack
-        # q_, k_, v_ = qkv_.split([
-        #     self.num_heads * self.head_size, self.num_kv_heads *
-        #     self.head_size, self.num_kv_heads * self.head_size
-        # ],
-        q_, k_, v_ = qkv_.split(
-            [self.num_heads, self.num_kv_heads, self.num_kv_heads] *
-            self.head_size,
-            dim=-1)
+        q_, k_, v_ = qkv_.split([
+            self.num_heads * self.head_size, self.num_kv_heads *
+            self.head_size, self.num_kv_heads * self.head_size
+        ],
+                                dim=-1)
 
         # prepare
         q_ = q_.reshape(-1, self.num_heads, self.head_size)
