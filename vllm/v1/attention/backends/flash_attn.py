@@ -247,13 +247,15 @@ class FlashAttentionImpl(AttentionImpl):
                 print(f"query {query}")
             torch.distributed.barrier()
 
-        q = query.view(-1, self.SP, self.num_heads, self.head_size).transpose(
-            0, 1).reshape(-1, self.num_heads * self.head_size)
-        k = key.view(-1, self.SP, self.num_kv_heads, self.head_size).transpose(
-            0, 1).reshape(-1, self.num_kv_heads * self.head_size)
-        v = value.view(-1, self.SP, self.num_kv_heads,
-                       self.head_size).transpose(0, 1).reshape(
-                           -1, self.num_kv_heads * self.head_size)
+        q = query.reshape(-1, self.SP, self.num_heads,
+                          self.head_size).transpose(0, 1).reshape(
+                              -1, self.num_heads * self.head_size)
+        k = key.reshape(-1, self.SP, self.num_kv_heads,
+                        self.head_size).transpose(0, 1).reshape(
+                            -1, self.num_kv_heads * self.head_size)
+        v = value.reshape(-1, self.SP, self.num_kv_heads,
+                          self.head_size).transpose(0, 1).reshape(
+                              -1, self.num_kv_heads * self.head_size)
 
         q_ = torch.empty_like(q)
         k_ = torch.empty_like(k)
