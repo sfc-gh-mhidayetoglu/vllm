@@ -203,11 +203,12 @@ class FlashAttentionImpl(AttentionImpl):
         #     k {key.shape}\n \
         #     v {value.shape}\n \
         #     output {output.shape}\n \
-        #     kv_cache {kv_cache.shape} \
-        #     N {N} SP {SP} N_ranks {N_ranks}\n \
+        #     kv_cache {kv_cache.shape}\n \
         #     self.num_heads {self.num_heads}\n \
         #     self.num_kv_heads {self.num_kv_heads}\n \
         #     self.head_size {self.head_size}\n")
+        # output.copy_(query)
+        # return output
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         # pack
@@ -230,7 +231,7 @@ class FlashAttentionImpl(AttentionImpl):
         q_ = q_.reshape(-1, self.num_heads, self.head_size)
         k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
         v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
-        c_ = output.reshape((-1, self.num_heads, self.head_size))
+        c_ = output.view((-1, self.num_heads, self.head_size))
 
         # if torch.distributed.get_rank() == 0:
         #     print(f"\n \
@@ -302,8 +303,10 @@ class FlashAttentionImpl(AttentionImpl):
         # Ulysses all-to-all 2/2
         c = torch.empty_like(c_)
         torch.distributed.all_to_all_single(c, c_, group=self.device_group)
-        output = torch.transpose(c, 0, 1).reshape(
-            -1, self.num_heads * self.SP * self.head_size)
+        output.copy_(
+            torch.transpose(
+                c.view(self.SP, -1, self.num_heads * self.head_size), 0,
+                1).reshape(-1, self.num_heads * self.SP * self.head_size))
         return output
 
 
