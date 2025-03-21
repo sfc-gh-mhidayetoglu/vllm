@@ -92,6 +92,7 @@ class LlamaMLP(nn.Module):
         x, _ = self.down_proj(x)
         return x
 
+KV_REPLICATED = False
 
 class LlamaAttention(nn.Module):
 
@@ -131,6 +132,11 @@ class LlamaAttention(nn.Module):
         self.num_kv_heads = max(1, self.total_num_kv_heads // tp_size)
         num_kv_heads_sp_tp = max(
             1, self.total_num_kv_heads // (tp_size * sp_size))
+        global KV_REPLICATED
+        if self.total_num_kv_heads < (sp_size * tp_size):
+            KV_REPLICATED = True
+        else:
+            KV_REPLICATED = False
         # MistralConfig has an optional head_dim introduced by Mistral-Nemo
         self.head_dim = getattr(config, "head_dim",
                                 self.hidden_size // self.total_num_heads)
