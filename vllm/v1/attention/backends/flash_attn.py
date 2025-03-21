@@ -197,16 +197,16 @@ class FlashAttentionImpl(AttentionImpl):
         # performance to make sure it does not introduce any overhead.
 
         # Ulysses Attention
-        if torch.distributed.get_rank() == 0:
-            print(f"FlashAttentionImpl.forward \n \
-            q {query.shape}\n \
-            k {key.shape}\n \
-            v {value.shape}\n \
-            output {output.shape}\n \
-            kv_cache {kv_cache.shape}\n \
-            self.num_heads {self.num_heads}\n \
-            self.num_kv_heads {self.num_kv_heads}\n \
-            self.head_size {self.head_size}\n")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"FlashAttentionImpl.forward \n \
+        #     q {query.shape}\n \
+        #     k {key.shape}\n \
+        #     v {value.shape}\n \
+        #     output {output.shape}\n \
+        #     kv_cache {kv_cache.shape}\n \
+        #     self.num_heads {self.num_heads}\n \
+        #     self.num_kv_heads {self.num_kv_heads}\n \
+        #     self.head_size {self.head_size}\n")
         # for i in range(torch.distributed.get_world_size()):
         #     if i == torch.distributed.get_rank():
         #         print(f"key {key}")
@@ -220,27 +220,26 @@ class FlashAttentionImpl(AttentionImpl):
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         # pack
-        # qkv = torch.cat(
-        #     (query.view((-1, self.SP, self.num_heads * self.head_size)),
-        #      key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
-        #      value.view((-1, self.SP, self.num_kv_heads * self.head_size))),
-        #     dim=-1).transpose(0, 1).reshape(
-        #         -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+        qkv = torch.cat(
+            (query.view((-1, self.SP, self.num_heads * self.head_size)),
+             key.view((-1, self.SP, self.num_kv_heads * self.head_size)),
+             value.view((-1, self.SP, self.num_kv_heads * self.head_size))),
+            dim=-1).transpose(0, 1).reshape(
+                -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
 
         # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
+        #      if i == torch.distributed.get_rank():
         #         print(f"qkv {qkv}")
         #     torch.distributed.barrier()
         # all-to-all
-        # qkv_ = torch.empty_like(qkv)
-        # torch.distributed.all_to_all_single(qkv_, qkv,
-        # group=self.device_group)
+        qkv_ = torch.empty_like(qkv)
+        torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
         # unpack
-        # q_, k_, v_ = qkv_.split([
-        #     self.num_heads * self.head_size, self.num_kv_heads *
-        #     self.head_size, self.num_kv_heads * self.head_size
-        # ],
-        #                         dim=-1)
+        q_, k_, v_ = qkv_.split([
+            self.num_heads * self.head_size, self.num_kv_heads *
+            self.head_size, self.num_kv_heads * self.head_size
+        ],
+                                dim=-1)
 
         # for i in range(torch.distributed.get_world_size()):
         #     if i == torch.distributed.get_rank():
@@ -255,25 +254,25 @@ class FlashAttentionImpl(AttentionImpl):
         #         print(f"v {value}")
         #     torch.distributed.barrier()
 
-        q = query.reshape(-1, self.SP, self.num_heads,
-                          self.head_size).transpose(0, 1).reshape(
-                              -1,
-                              self.num_heads * self.head_size).contiguous()
-        k = key.reshape(-1, self.SP, self.num_kv_heads,
-                        self.head_size).transpose(0, 1).reshape(
-                            -1,
-                            self.num_kv_heads * self.head_size).contiguous()
-        v = value.reshape(-1, self.SP, self.num_kv_heads,
-                          self.head_size).transpose(0, 1).reshape(
-                              -1,
-                              self.num_kv_heads * self.head_size).contiguous()
+        # q = query.reshape(-1, self.SP, self.num_heads,
+        #                   self.head_size).transpose(0, 1).reshape(
+        #                       -1,
+        #                       self.num_heads * self.head_size).contiguous()
+        # k = key.reshape(-1, self.SP, self.num_kv_heads,
+        #                 self.head_size).transpose(0, 1).reshape(
+        #                     -1,
+        #                     self.num_kv_heads * self.head_size).contiguous()
+        # v = value.reshape(-1, self.SP, self.num_kv_heads,
+        #                   self.head_size).transpose(0, 1).reshape(
+        #                       -1,
+        #                       self.num_kv_heads * self.head_size).contiguous()
 
-        q_ = torch.empty_like(q)
-        k_ = torch.empty_like(k)
-        v_ = torch.empty_like(v)
-        torch.distributed.all_to_all_single(q_, q, group=self.device_group)
-        torch.distributed.all_to_all_single(k_, k, group=self.device_group)
-        torch.distributed.all_to_all_single(v_, v, group=self.device_group)
+        # q_ = torch.empty_like(q)
+        # k_ = torch.empty_like(k)
+        # v_ = torch.empty_like(v)
+        # torch.distributed.all_to_all_single(q_, q, group=self.device_group)
+        # torch.distributed.all_to_all_single(k_, k, group=self.device_group)
+        # torch.distributed.all_to_all_single(v_, v, group=self.device_group)
 
         # prepare
         q_ = q_.reshape(-1, self.num_heads, self.head_size)
@@ -282,13 +281,13 @@ class FlashAttentionImpl(AttentionImpl):
         # c_ = output.reshape((-1, self.num_heads, self.head_size))
         c_ = torch.empty_like(q_)
 
-        if torch.distributed.get_rank() == 0:
-            print(f"\n \
-                    q_ {q_.shape}\n \
-                    k_ {k_.shape}\n \
-                    v_ {v_.shape}\n \
-                    c_ {c_.shape}\n \
-                    num_actual_tokens {attn_metadata.num_actual_tokens}")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"\n \
+        #             q_ {q_.shape}\n \
+        #             k_ {k_.shape}\n \
+        #             v_ {v_.shape}\n \
+        #             c_ {c_.shape}\n \
+        #             num_actual_tokens {attn_metadata.num_actual_tokens}")
 
         # for i in range(torch.distributed.get_world_size()):
         #     if i == torch.distributed.get_rank():
