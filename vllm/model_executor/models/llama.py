@@ -203,6 +203,10 @@ class LlamaAttention(nn.Module):
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         output, _ = self.o_proj(attn_output)
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"output: {output}")
+            torch.distributed.barrier()
         return output
 
 
@@ -367,15 +371,6 @@ class LlamaModel(nn.Module):
             hidden_states, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
                                             attn_metadata, residual)
-
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"hidden_states: {hidden_states}")
-            torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"residual: {residual}")
-            torch.distributed.barrier()
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
