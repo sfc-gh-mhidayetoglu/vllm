@@ -241,7 +241,8 @@ class FlashAttentionImpl(AttentionImpl):
         k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
         v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
         # c_ = output.reshape((-1, self.num_heads, self.head_size))
-        c_ = torch.empty_like(q_)
+        # c_ = torch.empty_like(q_)
+        c_ = output.view((-1, self.num_heads, self.head_size))
 
         # if torch.distributed.get_rank() == 0:
         #     print(f"\n \
