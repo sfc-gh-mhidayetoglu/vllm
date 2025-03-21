@@ -244,19 +244,21 @@ class FlashAttentionImpl(AttentionImpl):
 
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
-                print(f"query {query}")
+                print(f"q {query}")
+            torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"k {key}")
+            torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"v {value}")
             torch.distributed.barrier()
 
         q = query.reshape(-1, self.SP, self.num_heads,
                           self.head_size).transpose(0, 1).reshape(
                               -1,
                               self.num_heads * self.head_size).contiguous()
-
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"q {q}")
-            torch.distributed.barrier()
-
         k = key.reshape(-1, self.SP, self.num_kv_heads,
                         self.head_size).transpose(0, 1).reshape(
                             -1,
@@ -272,11 +274,6 @@ class FlashAttentionImpl(AttentionImpl):
         torch.distributed.all_to_all_single(q_, q, group=self.device_group)
         torch.distributed.all_to_all_single(k_, k, group=self.device_group)
         torch.distributed.all_to_all_single(v_, v, group=self.device_group)
-
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"q_ {query}")
-            torch.distributed.barrier()
 
         # prepare
         q_ = q_.reshape(-1, self.num_heads, self.head_size)
@@ -297,6 +294,13 @@ class FlashAttentionImpl(AttentionImpl):
             if i == torch.distributed.get_rank():
                 print(f"q_ {q_}")
             torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"k_ {k_}")
+            torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"v_ {v_}")
 
         num_actual_tokens = attn_metadata.num_actual_tokens
         # Reshape the input keys and values and store them in the cache.
