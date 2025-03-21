@@ -201,7 +201,13 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
-        attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
+        attn_output = self.attn(q.contiguous(), k, v, kv_cache, attn_metadata)
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"attn_output {attn_output} is contiguous {attn_output.is_contiguous()}")
+            torch.distributed.barrier()
+        # attn_output = q.contiguous()
         output, _ = self.o_proj(attn_output)
         return output
 
@@ -361,7 +367,14 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        for i in range(self.start_layer, self.end_layer):
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"hidden states {hidden_states}")
+            torch.distributed.barrier()
+
+        # for i in range(self.start_layer, self.end_layer):
+        for i in range(0, 1):
             layer = self.layers[i]
             hidden_states, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
@@ -524,6 +537,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
 
+        self.numforward = 0
+
     def _init_model(self, vllm_config: VllmConfig, prefix: str = ""):
         return LlamaModel(vllm_config=vllm_config, prefix=prefix)
 
@@ -545,19 +560,21 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         N_ulysses = N // SP
         N_offset = N_ulysses * SP_rank
 
-        # from vllm.forward_context import get_forward_context
-        # metadata = get_forward_context().attn_metadata
-        # if metadata is None:
-        #     if torch.distributed.get_rank() == 0:
-        #         print(f"numforward {self.numforward} N {N} "
-        #               f"N_ranks {[N_ulysses] * SP}")
-        # else:
-        #     self.numforward += 1
-        #     if torch.distributed.get_rank() == 0:
-        #         print(f"numforward {self.numforward} N {N} "
-        #               f"N_ranks {[N_ulysses] * SP} "
-        #               f"actual tokens: {metadata.num_actual_tokens} "
-        #               f"seq. lens: {metadata.seq_lens.tolist()}")
+        torch.set_printoptions(linewidth=120, sci_mode=True)
+        from vllm.forward_context import get_forward_context
+        metadata = get_forward_context().attn_metadata
+        if metadata is None:
+            if torch.distributed.get_rank() == 0:
+                print(f"numforward {self.numforward} N {N} "
+                      f"N_ranks {[N_ulysses] * SP}")
+        else:
+            self.numforward += 1
+            if torch.distributed.get_rank() == 0:
+                print(f"numforward {self.numforward} N {N} "
+                      f"N_ranks {[N_ulysses] * SP} "
+                      f"actual tokens: {metadata.num_actual_tokens} "
+                      f"seq. lens: {metadata.seq_lens.tolist()}"
+                      f"input_ids: {input_ids}")
 
         # narrow the input
         input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
@@ -573,9 +590,9 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.distributed.all_gather_into_tensor(
             model_output, output, group=get_sp_group().device_group)
 
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"model_output: {model_output.shape}")
-        #     print(f"model_output: {model_output}")
+        if metadata is not None and torch.distributed.get_rank() == 0:
+            print(f"model_output: {model_output.shape}")
+            print(f"model_output: {model_output}")
 
         return model_output
 

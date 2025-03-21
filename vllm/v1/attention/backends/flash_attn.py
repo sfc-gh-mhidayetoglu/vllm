@@ -197,17 +197,23 @@ class FlashAttentionImpl(AttentionImpl):
         # performance to make sure it does not introduce any overhead.
 
         # Ulysses Attention
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"FlashAttentionImpl.forward \n \
-        #     q {query.shape}\n \
-        #     k {key.shape}\n \
-        #     v {value.shape}\n \
-        #     output {output.shape}\n \
-        #     kv_cache {kv_cache.shape} \
-        #     N {N} SP {SP} N_ranks {N_ranks}\n \
-        #     self.num_heads {self.num_heads}\n \
-        #     self.num_kv_heads {self.num_kv_heads}\n \
-        #     self.head_size {self.head_size}\n")
+        if torch.distributed.get_rank() == 0:
+            print(f"FlashAttentionImpl.forward \n \
+            q {query.shape}\n \
+            k {key.shape}\n \
+            v {value.shape}\n \
+            output {output.shape}\n \
+            kv_cache {kv_cache.shape}\n \
+            self.num_heads {self.num_heads}\n \
+            self.num_kv_heads {self.num_kv_heads}\n \
+            self.head_size {self.head_size}\n")
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"query {query}")
+            torch.distributed.barrier()
+        # output.copy_(query)
+        # return output
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         # pack
@@ -230,15 +236,16 @@ class FlashAttentionImpl(AttentionImpl):
         q_ = q_.reshape(-1, self.num_heads, self.head_size)
         k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
         v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
-        c_ = output.reshape((-1, self.num_heads, self.head_size))
+        # c_ = output.reshape((-1, self.num_heads, self.head_size))
+        c_ = torch.empty_like(q_)
 
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"\n \
-        #             q_ {q_.shape}\n \
-        #             k_ {k_.shape}\n \
-        #             v_ {v_.shape}\n \
-        #             c_ {c_.shape}\n \
-        #             num_actual_tokens {attn_metadata.num_actual_tokens}")
+        if torch.distributed.get_rank() == 0:
+            print(f"\n \
+                    q_ {q_.shape}\n \
+                    k_ {k_.shape}\n \
+                    v_ {v_.shape}\n \
+                    c_ {c_.shape}\n \
+                    num_actual_tokens {attn_metadata.num_actual_tokens}")
 
         num_actual_tokens = attn_metadata.num_actual_tokens
         # Reshape the input keys and values and store them in the cache.
@@ -302,8 +309,8 @@ class FlashAttentionImpl(AttentionImpl):
         # Ulysses all-to-all 2/2
         c = torch.empty_like(c_)
         torch.distributed.all_to_all_single(c, c_, group=self.device_group)
-        output = torch.transpose(c, 0, 1).reshape(
-            -1, self.num_heads * self.SP * self.head_size)
+        output.copy_(torch.transpose(c, 0, 1).reshape(
+            -1, self.num_heads * self.SP * self.head_size))
         return output
 
 
