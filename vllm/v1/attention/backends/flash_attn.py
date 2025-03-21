@@ -363,6 +363,7 @@ class FlashAttentionImpl(AttentionImpl):
         for i in range(torch.distributed.get_world_size()):
             if i == torch.distributed.get_rank():
                 print(f"c_ {c_}")
+                print(f"shape {c_.shape} sum {c_.sum()}")
             torch.distributed.barrier()
         # Ulysses all-to-all 2/2
         c_ = c_.reshape(-1, self.num_kv_heads * self.head_size)
