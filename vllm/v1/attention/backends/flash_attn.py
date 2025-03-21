@@ -208,8 +208,8 @@ class FlashAttentionImpl(AttentionImpl):
             self.num_heads {self.num_heads}\n \
             self.num_kv_heads {self.num_kv_heads}\n \
             self.head_size {self.head_size}\n")
-        # output.copy_(query)
-        # return output
+        output.copy_(query)
+        return output
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         if vllm.model_executor.models.llama.KV_REPLICATED:
