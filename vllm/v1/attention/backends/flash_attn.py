@@ -368,11 +368,11 @@ class FlashAttentionImpl(AttentionImpl):
         c_ = c_.reshape(-1, self.num_kv_heads * self.head_size)
         c = torch.empty_like(c_)
         torch.distributed.all_to_all_single(c, c_, group=self.device_group)
-        # output.copy_(
-        #     torch.transpose(
-        #         c.view(self.SP, -1, self.num_kv_heads * self.head_size), 0,
-        #         1).reshape(-1, self.num_heads * self.SP * self.head_size))
-        output.copy_(query)
+        output.copy_(
+            torch.transpose(
+                c.view(self.SP, -1, self.num_kv_heads * self.head_size), 0,
+                1).reshape(-1, self.num_heads * self.SP * self.head_size))
+        # output.copy_(query)
         return output
 
 
