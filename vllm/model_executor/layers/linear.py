@@ -1149,16 +1149,19 @@ class RowParallelLinear(LinearBase):
         output_parallel = self.quant_method.apply(self,
                                                   input_parallel,
                                                   bias=bias_)
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"output_parallel {output_parallel}")
-            torch.distributed.barrier()
         if self.reduce_results and self.tp_size > 1:
             output = tensor_model_parallel_all_reduce(output_parallel)
         else:
             output = output_parallel
 
         output_bias = self.bias if self.skip_bias_add else None
+
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"output {output} "
+                      f"output_bias {output_bias if output_bias \
+                                       is not None else None}")
+            torch.distributed.barrier()
 
         return output, output_bias
 
