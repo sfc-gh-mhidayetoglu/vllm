@@ -227,10 +227,6 @@ class FlashAttentionImpl(AttentionImpl):
             dim=-1).transpose(0, 1).reshape(
                 -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
 
-        # for i in range(torch.distributed.get_world_size()):
-        #      if i == torch.distributed.get_rank():
-        #         print(f"qkv {qkv}")
-        #     torch.distributed.barrier()
         # all-to-all
         qkv_ = torch.empty_like(qkv)
         torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
@@ -240,39 +236,6 @@ class FlashAttentionImpl(AttentionImpl):
             self.head_size, self.num_kv_heads * self.head_size
         ],
                                 dim=-1)
-
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"q {query}")
-        #     torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"k {key}")
-        #     torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"v {value}")
-        #     torch.distributed.barrier()
-
-        # q = query.reshape(-1, self.SP, self.num_heads,
-        #                   self.head_size).transpose(0, 1).reshape(
-        #                       -1,
-        #                       self.num_heads * self.head_size).contiguous()
-        # k = key.reshape(-1, self.SP, self.num_kv_heads,
-        #                 self.head_size).transpose(0, 1).reshape(
-        #                     -1,
-        #                     self.num_kv_heads * self.head_size).contiguous()
-        # v = value.reshape(-1, self.SP, self.num_kv_heads,
-        #                   self.head_size).transpose(0, 1).reshape(
-        #                       -1,
-        #                       self.num_kv_heads * self.head_size).contiguous()
-
-        # q_ = torch.empty_like(q)
-        # k_ = torch.empty_like(k)
-        # v_ = torch.empty_like(v)
-        # torch.distributed.all_to_all_single(q_, q, group=self.device_group)
-        # torch.distributed.all_to_all_single(k_, k, group=self.device_group)
-        # torch.distributed.all_to_all_single(v_, v, group=self.device_group)
 
         # prepare
         q_ = q_.reshape(-1, self.num_heads, self.head_size)
@@ -288,18 +251,6 @@ class FlashAttentionImpl(AttentionImpl):
         #             v_ {v_.shape}\n \
         #             c_ {c_.shape}\n \
         #             num_actual_tokens {attn_metadata.num_actual_tokens}")
-
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"q_ {q_}")
-        #     torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"k_ {k_}")
-        #     torch.distributed.barrier()
-        # for i in range(torch.distributed.get_world_size()):
-        #     if i == torch.distributed.get_rank():
-        #         print(f"v_ {v_}")
 
         num_actual_tokens = attn_metadata.num_actual_tokens
         # Reshape the input keys and values and store them in the cache.
@@ -360,12 +311,6 @@ class FlashAttentionImpl(AttentionImpl):
                 common_prefix_len=attn_metadata.common_prefix_len,
                 fa_version=self.fa_version,
             )
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"c_ {c_}")
-                print(f"shape {c_.shape} sum {c_.sum()}")
-            torch.distributed.barrier()
-
         # Ulysses all-to-all 2/2
         c_ = c_.reshape(-1, self.num_heads * self.head_size)
         c = torch.empty_like(c_)
@@ -374,7 +319,6 @@ class FlashAttentionImpl(AttentionImpl):
             torch.transpose(
                 c.view(self.SP, -1, self.num_heads * self.head_size), 0,
                 1).reshape(-1, self.num_heads * self.SP * self.head_size))
-        # output.copy_(query)
         return output
 
 

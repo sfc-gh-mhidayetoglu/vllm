@@ -1138,14 +1138,6 @@ class RowParallelLinear(LinearBase):
         # Only fuse bias add into GEMM for rank 0 (this ensures that
         # bias will not get added more than once in TP>1 case)
         bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"input_parallel {input_parallel}")
-                print(f"shape {input_parallel.shape} "
-                      f"bias {bias_ if bias_ is not None else None} "
-                      f"self.input_is_parallel {self.input_is_parallel} "
-                      f"self.reduce_results {self.reduce_results}")
-            torch.distributed.barrier()
         output_parallel = self.quant_method.apply(self,
                                                   input_parallel,
                                                   bias=bias_)
@@ -1155,13 +1147,6 @@ class RowParallelLinear(LinearBase):
             output = output_parallel
 
         output_bias = self.bias if self.skip_bias_add else None
-
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"output {output} "
-                      f"output_bias "
-                      f"{output_bias if output_bias is not None else None}")
-            torch.distributed.barrier()
 
         return output, output_bias
 
