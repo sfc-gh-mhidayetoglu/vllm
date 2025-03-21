@@ -201,13 +201,7 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
-        attn_output = self.attn(q.contiguous(), k, v, kv_cache, attn_metadata)
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"attn_output {attn_output} is contiguous {attn_output.is_contiguous()}")
-            torch.distributed.barrier()
-        # attn_output = q.contiguous()
+        attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         output, _ = self.o_proj(attn_output)
         return output
 
@@ -367,14 +361,7 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if i == torch.distributed.get_rank():
-                print(f"hidden states {hidden_states}")
-            torch.distributed.barrier()
-
-        # for i in range(self.start_layer, self.end_layer):
-        for i in range(0, 1):
+        for i in range(self.start_layer, self.end_layer):
             layer = self.layers[i]
             hidden_states, residual = layer(positions, hidden_states,
                                             kv_caches[i - self.start_layer],
