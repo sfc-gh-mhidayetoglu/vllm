@@ -204,25 +204,17 @@ class LlamaAttention(nn.Module):
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
-        torch.distributed.barrier()
-        if torch.distributed.get_rank() == 0:
-            print(f"self.num_heads {self.num_heads} \n"
-                  f"self.num_kv_heads {self.num_kv_heads} \n"
-                  f"self.q_size {self.q_size} \n"
-                  f"self.kv_size {self.kv_size} \n"
-                  f"hidden_states {hidden_states.shape} \n"
-                  f"kv_cache {kv_cache.shape} \n"
-                  f"qkv {qkv.shape} \n")
-        torch.distributed.barrier()
-        return hidden_states
-        SP = get_sp_group().world_size
-        if self.isreplicated:
-            q, k, v = qkv.split([self.q_size * SP, self.kv_size, self.kv_size],
-                                dim=-1)
-        else:
-            q, k, v = qkv.split(
-                [self.q_size * SP, self.kv_size * SP, self.kv_size * SP],
-                dim=-1)
+        # torch.distributed.barrier()
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"self.num_heads {self.num_heads} \n"
+        #           f"self.num_kv_heads {self.num_kv_heads} \n"
+        #           f"self.q_size {self.q_size} \n"
+        #           f"self.kv_size {self.kv_size} \n"
+        #           f"hidden_states {hidden_states.shape} \n"
+        #           f"kv_cache {kv_cache.shape} \n"
+        #           f"qkv {qkv.shape} \n")
+        # torch.distributed.barrier()
+        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)
         output, _ = self.o_proj(attn_output)
