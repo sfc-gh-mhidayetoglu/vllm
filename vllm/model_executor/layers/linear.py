@@ -1133,6 +1133,12 @@ class RowParallelLinear(LinearBase):
                 input_, num_partitions=self.tp_size)
             input_parallel = splitted_input[tp_rank].contiguous()
 
+        for i in range(torch.distributed.get_world_size()):
+            if i == torch.distributed.get_rank():
+                print(f"input_parallel {input_parallel}")
+                print(f"shape {input_parallel.shape}")
+            torch.distributed.barrier()
+
         # Matrix multiply.
         assert self.quant_method is not None
         # Only fuse bias add into GEMM for rank 0 (this ensures that
