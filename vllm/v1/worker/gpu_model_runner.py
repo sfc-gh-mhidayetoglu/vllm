@@ -799,7 +799,8 @@ class GPUModelRunner:
                 inputs_embeds=inputs_embeds,
             )
         print("test")
-        torch.distributed.barrier()
+        from vllm.distributed.parallel_state import get_world_group
+        get_world_group().barrier()
         exit()
         hidden_states = hidden_states[:num_scheduled_tokens]
         hidden_states = hidden_states[logits_indices]
