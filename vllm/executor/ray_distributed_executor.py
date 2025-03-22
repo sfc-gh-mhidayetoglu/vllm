@@ -357,6 +357,8 @@ class RayDistributedExecutor(DistributedExecutorBase):
                           max_concurrent_workers=self.parallel_config.
                           max_parallel_loading_workers)
 
+        print(f"Ray workers are ready: {self.workers} "
+              f"self.use_ray_spmd_worker: {self.use_ray_spmd_worker}")
         if self.use_ray_spmd_worker:
             for pp_rank in range(self.parallel_config.pipeline_parallel_size):
                 self.pp_tp_workers.append([])
