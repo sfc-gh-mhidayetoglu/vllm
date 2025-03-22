@@ -8,7 +8,7 @@ import torch
 import triton
 import triton.language as tl
 
-# import vllm.model_executor.models.llama
+import vllm.model_executor.models.llama
 from vllm.attention.backends.abstract import (AttentionBackend, AttentionImpl,
                                               AttentionMetadata, AttentionType)
 from vllm.distributed.parallel_state import get_sp_group
@@ -210,40 +210,56 @@ class FlashAttentionImpl(AttentionImpl):
             self.head_size {self.head_size}\n")
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
-        # if vllm.model_executor.models.llama.KV_REPLICATED:
-        # q = query.view(-1,
-        #                self.SP, self.num_heads *
-        # self.head_size).transpose(
-        #                    0, 1).reshape(-1,
-        #                                  self.num_heads * self.head_size)
-        #     q_ = torch.empty_like(query)
-        # torch.distributed.all_to_all_single(q_, q,
-        # group=self.device_group)
-        #     N_ulysses = query.shape[0]
-        #     k_ = torch.empty(
-        #         (N_ulysses * self.SP, self.num_kv_heads * self.head_size),
-        #         device=query.device,
-        #         dtype=query.dtype)
-        #     v_ = torch.empty_like(k_)
-        # torch.all_gather_into_tensor(k_, key, group=self.device_group)
-        # torch.all_gather_into_tensor(v_, value, group=self.device_group)
-        # else:
-        # pack
-        qkv = torch.cat(
-            (query.view(-1, self.SP, self.num_heads * self.head_size),
-             key.view(-1, self.SP, self.num_kv_heads * self.head_size),
-             value.view(-1, self.SP, self.num_kv_heads * self.head_size)),
-            dim=-1).transpose(0, 1).reshape(
-                -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
-        # all-to-all
-        qkv_ = torch.empty_like(qkv)
-        torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
-        # unpack
-        q_, k_, v_ = qkv_.split([
-            self.num_heads * self.head_size, self.num_kv_heads *
-            self.head_size, self.num_kv_heads * self.head_size
-        ],
-                                dim=-1)
+        N_ulysses = query.shape[0]
+        if vllm.model_executor.models.llama.KV_REPLICATED:
+            if torch.distributed.get_rank() == 0:
+                print("KV_REPLICATED")
+            q_ = torch.empty(
+                (N_ulysses * self.SP, self.num_heads * self.head_size),
+                device=query.device,
+                dtype=query.dtype)
+            k_ = torch.empty(
+                (N_ulysses * self.SP, self.num_kv_heads * self.head_size),
+                device=key.device,
+                dtype=key.dtype)
+            v_ = torch.empty_like(k_)
+        else:
+            # q = query.view(-1,
+            #                self.SP, self.num_heads *
+            # self.head_size).transpose(
+            #                    0, 1).reshape(-1,
+            #                                  self.num_heads * self.head_size)
+            #     q_ = torch.empty_like(query)
+            # torch.distributed.all_to_all_single(q_, q,
+            # group=self.device_group)
+            #     N_ulysses = query.shape[0]
+            #     k_ = torch.empty(
+            #         (N_ulysses * self.SP, self.num_kv_heads * self.head_size),
+            #         device=query.device,
+            #         dtype=query.dtype)
+            #     v_ = torch.empty_like(k_)
+            # torch.all_gather_into_tensor(k_, key, group=self.device_group)
+            # torch.all_gather_into_tensor(v_, value, group=self.device_group)
+            # else:
+            # pack
+            qkv = torch.cat(
+                (query.view(-1, self.SP, self.num_heads * self.head_size),
+                 key.view(-1, self.SP, self.num_kv_heads * self.head_size),
+                 value.view(-1, self.SP, self.num_kv_heads * self.head_size)),
+                dim=-1).transpose(0, 1).reshape(
+                    -1,
+                    (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+            # all-to-all
+            qkv_ = torch.empty_like(qkv)
+            torch.distributed.all_to_all_single(qkv_,
+                                                qkv,
+                                                group=self.device_group)
+            # unpack
+            q_, k_, v_ = qkv_.split([
+                self.num_heads * self.head_size, self.num_kv_heads *
+                self.head_size, self.num_kv_heads * self.head_size
+            ],
+                                    dim=-1)
         # prepare
         q_ = q_.reshape(-1, self.num_heads, self.head_size)
         k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
