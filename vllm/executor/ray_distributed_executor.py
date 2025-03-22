@@ -347,7 +347,8 @@ class RayDistributedExecutor(DistributedExecutorBase):
                 rank=rank,
                 distributed_init_method=distributed_init_method,
                 is_driver_worker=(not self.parallel_config)
-                or (rank % self.parallel_config.tensor_parallel_size == 0),
+                or (rank % (self.parallel_config.tensor_parallel_size *
+                            self.parallel_config.sequence_parallel_size) == 0),
             )
             all_kwargs.append(kwargs)
         self._run_workers("init_worker", all_kwargs)
@@ -363,10 +364,13 @@ class RayDistributedExecutor(DistributedExecutorBase):
             for pp_rank in range(self.parallel_config.pipeline_parallel_size):
                 self.pp_tp_workers.append([])
                 for tp_rank in range(
-                        self.parallel_config.tensor_parallel_size):
+                        self.parallel_config.tensor_parallel_size *
+                        self.parallel_config.sequence_parallel_size):
                     # PP=2, TP=4
                     # pp_tp_workers = [[0, 1, 2, 3], [4, 5, 6, 7]]
-                    rank = (pp_rank * self.parallel_config.tensor_parallel_size
+                    rank = (pp_rank *
+                            (self.parallel_config.tensor_parallel_size *
+                             self.parallel_config.sequence_parallel_size)
                             ) + tp_rank
                     assert len(self.pp_tp_workers[pp_rank]) == tp_rank
                     assert pp_rank < len(self.pp_tp_workers)
@@ -385,7 +389,8 @@ class RayDistributedExecutor(DistributedExecutorBase):
         for index, worker in enumerate(self.workers):
             # The driver worker is rank 0 and not in self.workers.
             rank = index + 1
-            if rank % self.parallel_config.tensor_parallel_size == 0:
+            if rank % (self.parallel_config.tensor_parallel_size *
+                       self.parallel_config.sequence_parallel_size) == 0:
                 self.tp_driver_workers.append(worker)
             else:
                 self.non_driver_workers.append(worker)
