@@ -224,7 +224,7 @@ class FlashAttentionImpl(AttentionImpl):
                 dtype=key.dtype)
             v_ = torch.empty_like(k_)
             torch.distributed.all_gather_into_tensor(k_,
-                                                     key,
+                                                     key.contiguous(),
                                                      group=self.device_group)
         else:
             # q = query.view(-1,
