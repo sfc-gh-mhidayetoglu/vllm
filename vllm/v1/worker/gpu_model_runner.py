@@ -739,12 +739,6 @@ class GPUModelRunner:
     ) -> ModelRunnerOutput:
         batch_changed = self._update_states(scheduler_output)
 
-        print("test 0")
-        import traceback
-        traceback.print_stack()
-        from vllm.distributed.parallel_state import get_world_group
-        get_world_group().barrier()
-
         if self.is_multimodal_model:
             # Run the multimodal encoder if any.
             self._execute_encoder(scheduler_output)
@@ -791,10 +785,6 @@ class GPUModelRunner:
             input_ids = self.input_ids[:num_input_tokens]
             inputs_embeds = None
 
-        print("test 1")
-        from vllm.distributed.parallel_state import get_world_group
-        get_world_group().barrier()
-
         # Run the decoder.
         # Use persistent buffers for CUDA graphs.
         with set_forward_context(attn_metadata, self.vllm_config):
@@ -808,9 +798,6 @@ class GPUModelRunner:
                 attn_metadata=None,
                 inputs_embeds=inputs_embeds,
             )
-        print("test 2")
-        from vllm.distributed.parallel_state import get_world_group
-        get_world_group().barrier()
         hidden_states = hidden_states[:num_scheduled_tokens]
         hidden_states = hidden_states[logits_indices]
         logits = self.model.compute_logits(hidden_states, None)
