@@ -210,7 +210,7 @@ class FlashAttentionImpl(AttentionImpl):
             self.head_size {self.head_size}\n")
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
-        N_ulysses = query.shape[0]
+        N_ulysses = 128  # query.shape[0]
         if vllm.model_executor.models.llama.KV_REPLICATED:
             if torch.distributed.get_rank() == 0:
                 print("KV_REPLICATED")
