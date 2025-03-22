@@ -158,6 +158,10 @@ class Worker:
         torch.cuda.empty_cache()
         torch.cuda.reset_peak_memory_stats()
 
+        print("test profile run")
+        from vllm.distributed.parallel_state import get_world_group
+        get_world_group().barrier()
+
         _, total_gpu_memory = torch.cuda.mem_get_info()
         # Execute a forward pass with dummy inputs to profile the memory usage
         # of the model.
