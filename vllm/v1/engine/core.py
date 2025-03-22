@@ -56,6 +56,7 @@ class EngineCore:
         vllm_config.cache_config.num_gpu_blocks = num_gpu_blocks
         vllm_config.cache_config.num_cpu_blocks = num_cpu_blocks
 
+        print("setup scheduler")
         # Setup scheduler.
         self.scheduler = Scheduler(
             scheduler_config=vllm_config.scheduler_config,
@@ -63,6 +64,7 @@ class EngineCore:
             cache_config=vllm_config.cache_config,
             lora_config=vllm_config.lora_config,
         )
+        print("after setup scheduler")
 
         self.mm_input_mapper_server = MMInputMapperServer(
             vllm_config.model_config)
@@ -79,8 +81,8 @@ class EngineCore:
         availble_gpu_memory = self.model_executor.determine_available_memory()
 
         print("test engine")
-        from vllm.distributed.parallel_state import get_world_group
-        get_world_group().barrier()
+        # from vllm.distributed.parallel_state import get_world_group
+        # get_world_group().barrier()
 
         # Get the kv cache tensor size
         kv_cache_config = get_kv_cache_config(vllm_config, kv_cache_spec,
