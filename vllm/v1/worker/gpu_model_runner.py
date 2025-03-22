@@ -739,6 +739,10 @@ class GPUModelRunner:
     ) -> ModelRunnerOutput:
         batch_changed = self._update_states(scheduler_output)
 
+        print("test 0")
+        from vllm.distributed.parallel_state import get_world_group
+        get_world_group().barrier()
+
         if self.is_multimodal_model:
             # Run the multimodal encoder if any.
             self._execute_encoder(scheduler_output)
