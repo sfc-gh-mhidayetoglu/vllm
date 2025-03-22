@@ -276,7 +276,6 @@ class FlashAttentionImpl(AttentionImpl):
                     v_ {v_.shape}\n \
                     c_ {c_.shape}\n \
                     num_actual_tokens {attn_metadata.num_actual_tokens}")
-        output.copy_(query)
         return output
 
         num_actual_tokens = attn_metadata.num_actual_tokens
