@@ -740,6 +740,8 @@ class GPUModelRunner:
         batch_changed = self._update_states(scheduler_output)
 
         print("test 0")
+        import traceback
+        traceback.print_stack()
         from vllm.distributed.parallel_state import get_world_group
         get_world_group().barrier()
 
