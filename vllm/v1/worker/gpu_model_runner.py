@@ -785,6 +785,10 @@ class GPUModelRunner:
             input_ids = self.input_ids[:num_input_tokens]
             inputs_embeds = None
 
+        print("test 1")
+        from vllm.distributed.parallel_state import get_world_group
+        get_world_group().barrier()
+
         # Run the decoder.
         # Use persistent buffers for CUDA graphs.
         with set_forward_context(attn_metadata, self.vllm_config):
@@ -798,7 +802,7 @@ class GPUModelRunner:
                 attn_metadata=None,
                 inputs_embeds=inputs_embeds,
             )
-        print("test")
+        print("test 2")
         from vllm.distributed.parallel_state import get_world_group
         get_world_group().barrier()
         exit()
