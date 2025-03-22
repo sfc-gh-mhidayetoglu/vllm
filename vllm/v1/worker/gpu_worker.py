@@ -163,10 +163,6 @@ class Worker:
         # of the model.
         self.model_runner.profile_run()
 
-        print("test profile run")
-        from vllm.distributed.parallel_state import get_world_group
-        get_world_group().barrier()
-
         free_gpu_memory, _ = torch.cuda.mem_get_info()
         # NOTE(woosuk): Here we assume that the other processes using the same
         # GPU did not change their memory usage during the profiling.

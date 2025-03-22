@@ -78,6 +78,10 @@ class EngineCore:
         # memory can be allocated for kv cache.
         availble_gpu_memory = self.model_executor.determine_available_memory()
 
+        print("test profile run")
+        from vllm.distributed.parallel_state import get_world_group
+        get_world_group().barrier()
+
         # Get the kv cache tensor size
         kv_cache_config = get_kv_cache_config(vllm_config, kv_cache_spec,
                                               availble_gpu_memory)
