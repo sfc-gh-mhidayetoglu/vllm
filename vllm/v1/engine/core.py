@@ -79,8 +79,8 @@ class EngineCore:
         availble_gpu_memory = self.model_executor.determine_available_memory()
 
         print("test engine")
-        # from vllm.distributed.parallel_state import get_world_group
-        # get_world_group().barrier()
+        from vllm.distributed.parallel_state import get_world_group
+        get_world_group().barrier()
 
         # Get the kv cache tensor size
         kv_cache_config = get_kv_cache_config(vllm_config, kv_cache_spec,
