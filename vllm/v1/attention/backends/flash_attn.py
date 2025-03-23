@@ -226,7 +226,7 @@ class FlashAttentionImpl(AttentionImpl):
                              dtype=key.dtype)
             v_ = torch.empty_like(k_)
             torch.distributed.all_to_all_single(q_, q, group=self.device_group)
-            torch.distributed.all_gather_into_single(k_,
+            torch.distributed.all_gather_into_tensor(k_,
                                                      k,
                                                      group=self.device_group)
             torch.distributed.all_gather_into_tensor(v_,
