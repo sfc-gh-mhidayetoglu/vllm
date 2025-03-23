@@ -177,23 +177,27 @@ class LlamaAttention(nn.Module):
                     f"SP_AG = 2: [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]\n"
                     f"--------------------------------------------\n")
 
-            def create_sp_groups(tp_size, sp_size):
-                sp_aa = []
-                sp_ag = []
-                for sp_rank in range(sp_size):
-                    sp_ag.append([
-                        sp_rank + sp_size * tp_rank
-                        for tp_rank in range(tp_size)
-                    ])
-                    for tp_rank in range(tp_size):
-                        sp_aa.append([sp_rank + sp_size * tp_rank])
-                return sp_aa, sp_ag
+            sp_ranks = get_sp_group().ranks
+            sp_aa_size = self.num_kv_heads
+            sp_ag_size = sp_size // self.num_kv_heads
 
-            # assumes PP = 1
-            sp_aa_ranks, sp_ag_ranks = create_sp_groups(tp_size, sp_size)
-            if get_sp_group().rank == 0:
-                print(f"sp_aa_ranks {sp_aa_ranks}")
-                print(f"sp_ag_ranks {sp_ag_ranks}")
+            sp_ranks = get_sp_group().ranks
+            sp_aa_size = self.num_kv_heads
+            sp_ag_size = sp_size // self.num_kv_heads
+
+            sp_aa_ranks = []
+            sp_ag_ranks = [[] for _ in range(sp_ag_size)]
+
+            for i, rank in enumerate(sp_ranks):
+                sp_aa_group = i % sp_aa_size
+                sp_ag_group = i // sp_aa_size
+                if len(sp_aa_ranks) <= sp_aa_group:
+                    sp_aa_ranks.append([])
+                sp_aa_ranks[sp_aa_group].append(rank)
+                sp_ag_ranks[sp_ag_group].append(rank)
+
+            print(f"sp_aa_ranks {sp_aa_ranks}")
+            print(f"sp_ag_ranks {sp_ag_ranks}")
 
             global _SP_AA
             if _SP_AA is None:
