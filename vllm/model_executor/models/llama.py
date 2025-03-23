@@ -32,6 +32,8 @@ from vllm.attention import Attention, AttentionMetadata
 from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, VllmConfig
 from vllm.distributed import get_pp_group, get_sp_group, get_tp_group
+from vllm.distributed.parallel_state import (GroupCoordinator,
+                                             init_model_parallel_group)
 from vllm.model_executor.layers.activation import SiluAndMul
 from vllm.model_executor.layers.layernorm import RMSNorm
 from vllm.model_executor.layers.linear import (MergedColumnParallelLinear,
@@ -93,7 +95,23 @@ class LlamaMLP(nn.Module):
         return x
 
 
-KV_REPLICATED = False
+KV_REPLICATED = None
+# this is for all-to-all portion if KV is replicated
+_SP_AA: Optional[GroupCoordinator] = None
+
+
+def get_sp_aa_group() -> GroupCoordinator:
+    assert _SP_AA is not None
+    return _SP_AA
+
+
+# this is for all-gather portion if KV is replicated
+_SP_AG: Optional[GroupCoordinator] = None
+
+
+def get_sp_ag_group() -> GroupCoordinator:
+    assert _SP_AG is not None
+    return _SP_AG
 
 
 class LlamaAttention(nn.Module):
@@ -137,6 +155,62 @@ class LlamaAttention(nn.Module):
         global KV_REPLICATED
         if self.total_num_kv_heads < (sp_size * tp_size):
             KV_REPLICATED = True
+            if get_sp_group().rank == 0:
+                print(
+                    f"--------------------------------------------\n"
+                    f"TP = 8: [[0, 1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14, 15]]\n"
+                    f"SP = 2: [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]\n"
+                    f"SP_TP = 16: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]\n"
+                    f"SP_AA = 1: [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14], [15]]\n"
+                    f"SP_AG = 2: [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]\n"
+                    f"--------------------------------------------\n"
+                    f"TP = 4: [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]\n"
+                    f"SP = 4: [[0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15]]\n"
+                    f"SP_TP = 16: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]\n"
+                    f"SP_AA = 2: [[0, 4], [1, 5], [2, 6], [3, 7], [8, 12], [9, 13], [10, 14], [11, 15]]\n"
+                    f"SP_AG = 2: [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]\n"
+                    f"--------------------------------------------\n"
+                    f"TP = 2: [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13], [14, 15]]\n"
+                    f"SP = 8: [[0, 2, 4, 6, 8, 10, 12, 14], [1, 3, 5, 7, 9, 11, 13, 15]]\n"
+                    f"SP_TP = 16: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]\n"
+                    f"SP_AA = 4: [[0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15]]\n"
+                    f"SP_AG = 2: [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]\n"
+                    f"--------------------------------------------\n")
+
+            def create_sp_groups(tp_size, sp_size):
+                sp_aa = []
+                sp_ag = []
+                for sp_rank in range(sp_size):
+                    sp_ag.append([
+                        sp_rank + sp_size * tp_rank
+                        for tp_rank in range(tp_size)
+                    ])
+                    for tp_rank in range(tp_size):
+                        sp_aa.append([sp_rank + sp_size * tp_rank])
+                return sp_aa, sp_ag
+
+            # assumes PP = 1
+            sp_aa_ranks, sp_ag_ranks = create_sp_groups(tp_size, sp_size)
+            if get_sp_group().rank == 0:
+                print(f"sp_aa_ranks {sp_aa_ranks}")
+                print(f"sp_ag_ranks {sp_ag_ranks}")
+
+            global _SP_AA
+            if _SP_AA is None:
+                group_ranks = sp_aa_ranks
+                _SP_AA = init_model_parallel_group(group_ranks,
+                                                   get_sp_group().rank,
+                                                   backend="nccl",
+                                                   use_custom_allreduce=False,
+                                                   group_name="sp_aa")
+            global _SP_AG
+            if _SP_AG is None:
+                group_ranks = sp_ag_ranks
+                _SP_AG = init_model_parallel_group(group_ranks,
+                                                   get_sp_group().rank,
+                                                   backend="nccl",
+                                                   use_custom_allreduce=False,
+                                                   group_name="sp_ag")
         else:
             KV_REPLICATED = False
         # MistralConfig has an optional head_dim introduced by Mistral-Nemo
