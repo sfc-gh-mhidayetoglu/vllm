@@ -233,23 +233,6 @@ class FlashAttentionImpl(AttentionImpl):
                                                      key.contiguous(),
                                                      group=self.device_group)
         else:
-            # q = query.view(-1,
-            #                self.SP, self.num_heads *
-            # self.head_size).transpose(
-            #                    0, 1).reshape(-1,
-            #                                  self.num_heads * self.head_size)
-            #     q_ = torch.empty_like(query)
-            # torch.distributed.all_to_all_single(q_, q,
-            # group=self.device_group)
-            #     N_ulysses = query.shape[0]
-            #     k_ = torch.empty(
-            #         (N_ulysses * self.SP, self.num_kv_heads * self.head_size),
-            #         device=query.device,
-            #         dtype=query.dtype)
-            #     v_ = torch.empty_like(k_)
-            # torch.all_gather_into_tensor(k_, key, group=self.device_group)
-            # torch.all_gather_into_tensor(v_, value, group=self.device_group)
-            # else:
             # pack
             qkv = torch.cat(
                 (query.view(-1, self.SP, self.num_heads * self.head_size),
@@ -282,7 +265,6 @@ class FlashAttentionImpl(AttentionImpl):
                     v_ {v_.shape}\n \
                     c_ {c_.shape}\n \
                     num_actual_tokens {attn_metadata.num_actual_tokens}")
-        return output
 
         num_actual_tokens = attn_metadata.num_actual_tokens
         # Reshape the input keys and values and store them in the cache.
