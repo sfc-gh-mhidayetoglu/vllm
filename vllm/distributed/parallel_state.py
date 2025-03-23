@@ -1101,12 +1101,11 @@ def initialize_model_parallel(
                       (i + 1) * ulysses_model_parallel_size + j,
                       tensor_model_parallel_size))
             group_ranks.append(ranks)
-    _SP = init_model_parallel_group(
-        group_ranks,
-        get_world_group().local_rank,
-        backend,
-        # use_custom_allreduce=False,
-        group_name="sp")
+    _SP = init_model_parallel_group(group_ranks,
+                                    get_world_group().local_rank,
+                                    backend,
+                                    use_custom_allreduce=False,
+                                    group_name="sp")
     global _SP_TP
     assert _SP_TP is None
     group_ranks = [[rank for group in group_ranks for rank in group]]
@@ -1116,12 +1115,11 @@ def initialize_model_parallel(
     #         range(i * ulysses_model_parallel_size,
     #               (i + 1) * ulysses_model_parallel_size))
     #     group_ranks.append(ranks)
-    _SP_TP = init_model_parallel_group(
-        group_ranks,
-        get_world_group().local_rank,
-        backend,
-        # use_custom_allreduce=False,
-        group_name="sp_tp")
+    _SP_TP = init_model_parallel_group(group_ranks,
+                                       get_world_group().local_rank,
+                                       backend,
+                                       use_custom_allreduce=False,
+                                       group_name="sp_tp")
 
 
 def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
