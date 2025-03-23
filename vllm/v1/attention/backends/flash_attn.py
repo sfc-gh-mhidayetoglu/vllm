@@ -198,16 +198,16 @@ class FlashAttentionImpl(AttentionImpl):
         # performance to make sure it does not introduce any overhead.
 
         # Ulysses Attention
-        if torch.distributed.get_rank() == 0:
-            print(f"FlashAttentionImpl.forward \n \
-            q {query.shape}\n \
-            k {key.shape}\n \
-            v {value.shape}\n \
-            output {output.shape}\n \
-            kv_cache {kv_cache.shape}\n \
-            self.num_heads {self.num_heads}\n \
-            self.num_kv_heads {self.num_kv_heads}\n \
-            self.head_size {self.head_size}\n")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"FlashAttentionImpl.forward \n \
+        #     q {query.shape}\n \
+        #     k {key.shape}\n \
+        #     v {value.shape}\n \
+        #     output {output.shape}\n \
+        #     kv_cache {kv_cache.shape}\n \
+        #     self.num_heads {self.num_heads}\n \
+        #     self.num_kv_heads {self.num_kv_heads}\n \
+        #     self.head_size {self.head_size}\n")
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         N = attn_metadata.num_input_tokens
@@ -218,14 +218,14 @@ class FlashAttentionImpl(AttentionImpl):
                            self.SP, self.num_heads * self.head_size).transpose(
                                0, 1).reshape(-1,
                                              self.num_heads * self.head_size)
+            q_ = torch.empty_like(q)
+            torch.distributed.all_to_all_single(q_, q, group=self.device_group)
             k = key.contiguous()
             v = value.contiguous()
-            q_ = torch.empty_like(q)
             k_ = torch.empty((N, self.num_kv_heads * self.head_size),
                              device=key.device,
                              dtype=key.dtype)
             v_ = torch.empty_like(k_)
-            torch.distributed.all_to_all_single(q_, q, group=self.device_group)
             torch.distributed.all_gather_into_tensor(k_,
                                                      k,
                                                      group=self.device_group)
