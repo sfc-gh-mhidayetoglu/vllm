@@ -212,16 +212,22 @@ class FlashAttentionImpl(AttentionImpl):
         # Ulysses all-to-all 1/2
         N_ulysses = query.shape[0]
         if vllm.model_executor.models.llama.KV_REPLICATED:
-            if torch.distributed.get_rank() == 0:
-                print("KV_REPLICATED")
+            # if torch.distributed.get_rank() == 0:
+            #     print("KV_REPLICATED")
             q_ = torch.empty(
                 (N_ulysses * self.SP, self.num_heads * self.head_size),
                 device=query.device,
                 dtype=query.dtype)
+            torch.distributed.all_to_all_single(q_,
+                                                query.contiguous(),
+                                                group=self.device_group)
             k_ = torch.empty(
                 (N_ulysses * self.SP, self.num_kv_heads * self.head_size),
                 device=key.device,
                 dtype=key.dtype)
+            torch.distributed.all_to_all_single(k_,
+                                                key.contiguous(),
+                                                group=self.device_group)
             v_ = torch.empty_like(k_)
             torch.distributed.all_gather_into_tensor(k_,
                                                      key.contiguous(),
