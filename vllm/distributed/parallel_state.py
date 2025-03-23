@@ -1065,11 +1065,12 @@ def initialize_model_parallel(
     if get_world_group().local_rank == 0:
         print(f"TP group ranks: {group_ranks}")
     # message queue broadcaster is only used in tensor model parallel group
-    _TP = init_model_parallel_group(group_ranks,
-                                    get_world_group().local_rank,
-                                    backend,
-                                    use_message_queue_broadcaster=True,
-                                    group_name="tp")
+    _TP = init_model_parallel_group(
+        group_ranks,
+        get_world_group().local_rank,
+        backend,
+        # use_message_queue_broadcaster=True,
+        group_name="tp")
 
     # Build the pipeline model-parallel groups.
     num_pipeline_model_parallel_groups: int = (world_size //
@@ -1126,6 +1127,7 @@ def initialize_model_parallel(
                                        get_world_group().local_rank,
                                        backend,
                                        use_custom_allreduce=False,
+                                       use_message_queue_broadcaster=True,
                                        group_name="sp_tp")
 
 
