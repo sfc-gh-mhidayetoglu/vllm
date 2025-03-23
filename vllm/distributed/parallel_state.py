@@ -1062,7 +1062,7 @@ def initialize_model_parallel(
             range(i * tensor_model_parallel_size,
                   (i + 1) * tensor_model_parallel_size))
         group_ranks.append(ranks)
-
+    logger.debug("TP group ranks: %s", group_ranks)
     # message queue broadcaster is only used in tensor model parallel group
     _TP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
@@ -1080,6 +1080,7 @@ def initialize_model_parallel(
     for i in range(num_pipeline_model_parallel_groups):
         ranks = list(range(i, world_size, num_pipeline_model_parallel_groups))
         group_ranks.append(ranks)
+    logger.debug("PP group ranks: %s", group_ranks)
     # pipeline parallel does not need custom allreduce
     _PP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
@@ -1101,21 +1102,26 @@ def initialize_model_parallel(
                       (i + 1) * ulysses_model_parallel_size + j,
                       tensor_model_parallel_size))
             group_ranks.append(ranks)
+    logger.debug("SP group ranks: %s", group_ranks)
     _SP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
+                                    use_custom_allreduce=False,
                                     group_name="sp")
     global _SP_TP
     assert _SP_TP is None
-    group_ranks = []
-    for i in range(pipeline_model_parallel_size):
-        ranks = list(
-            range(i * ulysses_model_parallel_size,
-                  (i + 1) * ulysses_model_parallel_size))
-        group_ranks.append(ranks)
+    group_ranks = [[rank for group in group_ranks for rank in group]]
+    # group_ranks = []
+    # for i in range(pipeline_model_parallel_size):
+    #     ranks = list(
+    #         range(i * ulysses_model_parallel_size,
+    #               (i + 1) * ulysses_model_parallel_size))
+    #     group_ranks.append(ranks)
+    logger.debug("SP_TP group ranks: %s", group_ranks)
     _SP_TP = init_model_parallel_group(group_ranks,
                                        get_world_group().local_rank,
                                        backend,
+                                       use_custom_allreduce=False,
                                        group_name="sp_tp")
 
 
