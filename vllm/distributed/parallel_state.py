@@ -1104,6 +1104,7 @@ def initialize_model_parallel(
     _SP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
+                                    use_custom_allreduce=False,
                                     group_name="sp")
     global _SP_TP
     assert _SP_TP is None
@@ -1117,6 +1118,7 @@ def initialize_model_parallel(
     _SP_TP = init_model_parallel_group(group_ranks,
                                        get_world_group().local_rank,
                                        backend,
+                                       use_custom_allreduce=False,
                                        group_name="sp_tp")
 
 

@@ -571,19 +571,19 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         N_ulysses = N // SP
         N_offset = N_ulysses * SP_rank
 
-        from vllm.forward_context import get_forward_context
-        metadata = get_forward_context().attn_metadata
-        if metadata is None:
-            if torch.distributed.get_rank() == 0:
-                print(f"numforward {self.numforward} N {N} "
-                      f"N_ranks {[N_ulysses] * SP}")
-        else:
-            self.numforward += 1
-            if torch.distributed.get_rank() == 0:
-                print(f"numforward {self.numforward} N {N} "
-                      f"N_ranks {[N_ulysses] * SP} "
-                      f"actual tokens: {metadata.num_actual_tokens} "
-                      f"seq. lens: {metadata.seq_lens.tolist()}")
+        # from vllm.forward_context import get_forward_context
+        # metadata = get_forward_context().attn_metadata
+        # if metadata is None:
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP}")
+        # else:
+        #     self.numforward += 1
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP} "
+        #               f"actual tokens: {metadata.num_actual_tokens} "
+        #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
         # narrow the input
         input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
