@@ -1062,7 +1062,8 @@ def initialize_model_parallel(
             range(i * tensor_model_parallel_size,
                   (i + 1) * tensor_model_parallel_size))
         group_ranks.append(ranks)
-    logger.debug("TP group ranks: %s", group_ranks)
+    if get_world_group().local_rank == 0:
+        print(f"TP group ranks: {group_ranks}")
     # message queue broadcaster is only used in tensor model parallel group
     _TP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
@@ -1080,7 +1081,8 @@ def initialize_model_parallel(
     for i in range(num_pipeline_model_parallel_groups):
         ranks = list(range(i, world_size, num_pipeline_model_parallel_groups))
         group_ranks.append(ranks)
-    logger.debug("PP group ranks: %s", group_ranks)
+    if get_world_group().local_rank == 0:
+        print(f"PP group ranks: {group_ranks}")
     # pipeline parallel does not need custom allreduce
     _PP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
@@ -1102,7 +1104,8 @@ def initialize_model_parallel(
                       (i + 1) * ulysses_model_parallel_size + j,
                       tensor_model_parallel_size))
             group_ranks.append(ranks)
-    logger.debug("SP group ranks: %s", group_ranks)
+    if get_world_group().local_rank == 0:
+        print(f"SP group ranks: {group_ranks}")
     _SP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -1117,7 +1120,8 @@ def initialize_model_parallel(
             range(i * ulysses_model_parallel_size,
                   (i + 1) * ulysses_model_parallel_size))
         group_ranks.append(ranks)
-    logger.debug("SP_TP group ranks: %s", group_ranks)
+    if get_world_group().local_rank == 0:
+        print(f"SP_TP group ranks: {group_ranks}")
     _SP_TP = init_model_parallel_group(group_ranks,
                                        get_world_group().local_rank,
                                        backend,
