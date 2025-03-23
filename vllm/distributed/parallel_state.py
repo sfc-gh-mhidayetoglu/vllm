@@ -1129,9 +1129,6 @@ def initialize_model_parallel(
                                        use_custom_allreduce=False,
                                        use_message_queue_broadcaster=True,
                                        group_name="sp_tp")
-    from vllm.config import get_num_kv_heads
-    if get_world_group().local_rank == 0:
-        print(f"Number of KV heads: {get_num_kv_heads()}")
 
 
 def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
