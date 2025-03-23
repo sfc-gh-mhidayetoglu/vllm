@@ -210,27 +210,27 @@ class FlashAttentionImpl(AttentionImpl):
             self.head_size {self.head_size}\n")
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
-        N_ulysses = query.shape[0]
+        N = attn_metadata.num_input_tokens
         if vllm.model_executor.models.llama.KV_REPLICATED:
             # if torch.distributed.get_rank() == 0:
             #     print("KV_REPLICATED")
-            q_ = torch.empty(
-                (N_ulysses * self.SP, self.num_heads * self.head_size),
-                device=query.device,
-                dtype=query.dtype)
-            torch.distributed.all_to_all_single(q_,
-                                                query.contiguous(),
-                                                group=self.device_group)
-            k_ = torch.empty(
-                (N_ulysses * self.SP, self.num_kv_heads * self.head_size),
-                device=key.device,
-                dtype=key.dtype)
-            torch.distributed.all_to_all_single(k_,
-                                                key.contiguous(),
-                                                group=self.device_group)
+            q = query.view(-1,
+                           self.SP, self.num_heads * self.head_size).transpose(
+                               0, 1).reshape(-1,
+                                             self.num_heads * self.head_size)
+            k = key.contiguous()
+            v = value.contiguous()
+            q_ = torch.empty_like(q)
+            k_ = torch.empty((N, self.num_kv_heads * self.head_size),
+                             device=key.device,
+                             dtype=key.dtype)
             v_ = torch.empty_like(k_)
-            torch.distributed.all_gather_into_tensor(k_,
-                                                     key.contiguous(),
+            torch.distributed.all_to_all_single(q_, q, group=self.device_group)
+            torch.distributed.all_gather_into_single(k_,
+                                                     k,
+                                                     group=self.device_group)
+            torch.distributed.all_gather_into_tensor(v_,
+                                                     v,
                                                      group=self.device_group)
         else:
             # pack
