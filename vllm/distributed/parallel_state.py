@@ -1064,7 +1064,7 @@ def initialize_model_parallel(
         group_ranks.append(ranks)
     if get_world_group().local_rank == 0:
         print(f"TP group ranks: {group_ranks}")
-    # message queue broadcaster is only used in tensor model parallel group
+    # move message queue broadcaster to SP_TP group
     _TP = init_model_parallel_group(
         group_ranks,
         get_world_group().local_rank,
@@ -1129,6 +1129,9 @@ def initialize_model_parallel(
                                        use_custom_allreduce=False,
                                        use_message_queue_broadcaster=True,
                                        group_name="sp_tp")
+    from vllm.config import get_num_kv_heads
+    if get_world_group().local_rank == 0:
+        print(f"Number of KV heads: {get_num_kv_heads()}")
 
 
 def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
