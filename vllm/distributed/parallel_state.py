@@ -1062,11 +1062,9 @@ def initialize_model_parallel(
             range(i * tensor_model_parallel_size,
                   (i + 1) * tensor_model_parallel_size))
         group_ranks.append(ranks)
-    # message queue broadcaster is only used in tensor model parallel group
     _TP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
-                                    use_message_queue_broadcaster=True,
                                     group_name="tp")
 
     # Build the pipeline model-parallel groups.
@@ -1114,10 +1112,12 @@ def initialize_model_parallel(
             range(i * ulysses_model_parallel_size,
                   (i + 1) * ulysses_model_parallel_size))
         group_ranks.append(ranks)
+    # message queue broadcaster is only used in SP_TP group
     _SP_TP = init_model_parallel_group(group_ranks,
                                        get_world_group().local_rank,
                                        backend,
                                        use_custom_allreduce=False,
+                                       use_message_queue_broadcaster=True,
                                        group_name="sp_tp")
 
 
