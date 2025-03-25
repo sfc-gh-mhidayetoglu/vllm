@@ -155,66 +155,64 @@ class LlamaAttention(nn.Module):
         global KV_REPLICATED
         if self.total_num_kv_heads < (sp_size * tp_size):
             KV_REPLICATED = True
-            if get_sp_group().rank == 0:
-                print(
-                    f"--------------------------------------------\n"
-                    f"TP = 8: [[0, 1, 2, 3, 4, 5, 6, 7], [8, 9, 10, 11, 12, 13, 14, 15]]\n"
-                    f"SP = 2: [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]\n"
-                    f"SP_TP = 16: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]\n"
-                    f"SP_AA = 1: [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14], [15]]\n"
-                    f"SP_AG = 2: [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]\n"
-                    f"--------------------------------------------\n"
-                    f"TP = 4: [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]\n"
-                    f"SP = 4: [[0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15]]\n"
-                    f"SP_TP = 16: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]\n"
-                    f"SP_AA = 2: [[0, 4], [1, 5], [2, 6], [3, 7], [8, 12], [9, 13], [10, 14], [11, 15]]\n"
-                    f"SP_AG = 2: [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]\n"
-                    f"--------------------------------------------\n"
-                    f"TP = 2: [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9], [10, 11], [12, 13], [14, 15]]\n"
-                    f"SP = 8: [[0, 2, 4, 6, 8, 10, 12, 14], [1, 3, 5, 7, 9, 11, 13, 15]]\n"
-                    f"SP_TP = 16: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]]\n"
-                    f"SP_AA = 4: [[0, 4, 8, 12], [1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15]]\n"
-                    f"SP_AG = 2: [[0, 8], [1, 9], [2, 10], [3, 11], [4, 12], [5, 13], [6, 14], [7, 15]]\n"
-                    f"--------------------------------------------\n")
 
-            sp_ranks = get_sp_group().ranks
-            sp_aa_size = self.num_kv_heads
-            sp_ag_size = sp_size // self.num_kv_heads
-
-            sp_ranks = get_sp_group().ranks
-            sp_aa_size = self.num_kv_heads
-            sp_ag_size = sp_size // self.num_kv_heads
-
-            sp_aa_ranks = []
-            sp_ag_ranks = [[] for _ in range(sp_ag_size)]
-
-            for i, rank in enumerate(sp_ranks):
-                sp_aa_group = i % sp_aa_size
-                sp_ag_group = i // sp_aa_size
-                if len(sp_aa_ranks) <= sp_aa_group:
-                    sp_aa_ranks.append([])
-                sp_aa_ranks[sp_aa_group].append(rank)
-                sp_ag_ranks[sp_ag_group].append(rank)
-
-            print(f"sp_aa_ranks {sp_aa_ranks}")
-            print(f"sp_ag_ranks {sp_ag_ranks}")
+            PP = get_pp_group().world_size
+            TP = tp_size
+            SP = sp_size
+            SP_TP = SP * TP
+            TP_heads = num_kv_heads
 
             global _SP_AA
             if _SP_AA is None:
-                group_ranks = sp_aa_ranks
-                _SP_AA = init_model_parallel_group(group_ranks,
-                                                   get_sp_group().rank,
-                                                   backend="nccl",
-                                                   use_custom_allreduce=False,
-                                                   group_name="sp_aa")
+                group_ranks = []
+                for i in range(PP):
+                    # print("************** PP ****************")
+                    for j in range(TP):
+                        # print("-------------- SP ------------------")
+                        for jj_1 in range(SP // TP_heads):
+                            # print("``````````````` SP_AA `````````````````")
+                            ranks = []
+                            for jj in range(jj_1 * TP_heads,
+                                            (jj_1 + 1) * TP_heads):
+                                for k in range(i * SP_TP + jj * TP + j,
+                                               i * SP_TP + (jj + 1) * TP + j,
+                                               TP):
+                                    # print(f"{k}")
+                                    ranks.append(k)
+                            group_ranks.append(ranks)
+                if torch.distributed.get_rank() == 0:
+                    print(f"SP all-reduce group_ranks {group_ranks}")
+                _SP_AA = init_model_parallel_group(
+                    group_ranks,
+                    get_sp_group().rank_in_group,
+                    backend="nccl",
+                    use_custom_allreduce=False,
+                    group_name="sp_aa")
             global _SP_AG
             if _SP_AG is None:
-                group_ranks = sp_ag_ranks
-                _SP_AG = init_model_parallel_group(group_ranks,
-                                                   get_sp_group().rank,
-                                                   backend="nccl",
-                                                   use_custom_allreduce=False,
-                                                   group_name="sp_ag")
+                group_ranks = []
+                for i in range(PP):
+                    # print("************** PP ****************")
+                    for j in range(TP):
+                        # print("-------------- SP ------------------")
+                        for jj_1 in range(TP_heads):
+                            # print("``````````````` SP_AG `````````````````")
+                            ranks = []
+                            for jj in range(SP // TP_heads):
+                                k = jj * TP_heads * TP + jj_1 * TP + j
+                                k += i * SP_TP
+                                # print(f"PP {i} TP {j} SP {jj_1}
+                                # SP_AG {jj} k {k}")
+                                ranks.append(k)
+                            group_ranks.append(ranks)
+                if torch.distributed.get_rank() == 0:
+                    print(f"SP all-gather group_ranks {group_ranks}")
+                _SP_AG = init_model_parallel_group(
+                    group_ranks,
+                    get_sp_group().rank_in_group,
+                    backend="nccl",
+                    use_custom_allreduce=False,
+                    group_name="sp_ag")
         else:
             KV_REPLICATED = False
         # MistralConfig has an optional head_dim introduced by Mistral-Nemo

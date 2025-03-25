@@ -1063,14 +1063,11 @@ def initialize_model_parallel(
                   (i + 1) * tensor_model_parallel_size))
         group_ranks.append(ranks)
     if get_world_group().local_rank == 0:
-        print(f"TP group ranks: {group_ranks}")
-    # move message queue broadcaster to SP_TP group
-    _TP = init_model_parallel_group(
-        group_ranks,
-        get_world_group().local_rank,
-        backend,
-        # use_message_queue_broadcaster=True,
-        group_name="tp")
+        print(f"TP groups: {group_ranks}")
+    _TP = init_model_parallel_group(group_ranks,
+                                    get_world_group().local_rank,
+                                    backend,
+                                    group_name="tp")
 
     # Build the pipeline model-parallel groups.
     num_pipeline_model_parallel_groups: int = (world_size //
@@ -1083,7 +1080,7 @@ def initialize_model_parallel(
         ranks = list(range(i, world_size, num_pipeline_model_parallel_groups))
         group_ranks.append(ranks)
     if get_world_group().local_rank == 0:
-        print(f"PP group ranks: {group_ranks}")
+        print(f"PP groups: {group_ranks}")
     # pipeline parallel does not need custom allreduce
     _PP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
@@ -1106,7 +1103,7 @@ def initialize_model_parallel(
                       tensor_model_parallel_size))
             group_ranks.append(ranks)
     if get_world_group().local_rank == 0:
-        print(f"SP group ranks: {group_ranks}")
+        print(f"SP groups: {group_ranks}")
     _SP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
@@ -1122,7 +1119,8 @@ def initialize_model_parallel(
                   (i + 1) * ulysses_model_parallel_size))
         group_ranks.append(ranks)
     if get_world_group().local_rank == 0:
-        print(f"SP_TP group ranks: {group_ranks}")
+        print(f"SP_TP groups: {group_ranks}")
+    # message queue broadcaster is only used in SP_TP group
     _SP_TP = init_model_parallel_group(group_ranks,
                                        get_world_group().local_rank,
                                        backend,
