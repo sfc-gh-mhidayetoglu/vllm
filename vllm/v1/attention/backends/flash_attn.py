@@ -201,16 +201,16 @@ class FlashAttentionImpl(AttentionImpl):
         # performance to make sure it does not introduce any overhead.
 
         # Ulysses Attention
-        if torch.distributed.get_rank() == 0:
-            print(f"FlashAttentionImpl.forward \n \
-            q {query.shape}\n \
-            k {key.shape}\n \
-            v {value.shape}\n \
-            output {output.shape}\n \
-            kv_cache {kv_cache.shape}\n \
-            self.num_heads {self.num_heads}\n \
-            self.num_kv_heads {self.num_kv_heads}\n \
-            self.head_size {self.head_size}\n")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"FlashAttentionImpl.forward \n \
+        #     q {query.shape}\n \
+        #     k {key.shape}\n \
+        #     v {value.shape}\n \
+        #     output {output.shape}\n \
+        #     kv_cache {kv_cache.shape}\n \
+        #     self.num_heads {self.num_heads}\n \
+        #     self.num_kv_heads {self.num_kv_heads}\n \
+        #     self.head_size {self.head_size}\n")
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         N = attn_metadata.num_input_tokens
@@ -239,18 +239,18 @@ class FlashAttentionImpl(AttentionImpl):
             v__ = torch.empty_like(v)
             torch.distributed.all_to_all_single(k__,
                                                 k,
-                                                group=self.SP_AG_device_group)
+                                                group=self.SP_AA_device_group)
             torch.distributed.all_to_all_single(v__,
                                                 v,
-                                                group=self.SP_AG_device_group)
+                                                group=self.SP_AA_device_group)
             k_ = torch.empty((N, self.num_kv_heads * self.head_size),
                              device=key.device,
                              dtype=key.dtype)
             v_ = torch.empty_like(k_)
             torch.distributed.all_gather_into_tensor(
-                k_, k__, group=self.SP_AA_device_group)
+                k_, k__, group=self.SP_AG_device_group)
             torch.distributed.all_gather_into_tensor(
-                v_, v__, group=self.SP_AA_device_group)
+                v_, v__, group=self.SP_AG_device_group)
         else:
             # pack
             qkv = torch.cat(
@@ -277,15 +277,15 @@ class FlashAttentionImpl(AttentionImpl):
         v_ = v_.reshape(N, self.num_kv_heads, self.head_size)
         c_ = output.view(N, self.num_heads, self.head_size)
 
-        if torch.distributed.get_rank() == 0:
-            print(f"\n \
-                    N {N}\n \
-                    N_ulysses {N_ulysses}\n \
-                    q_ {q_.shape}\n \
-                    k_ {k_.shape}\n \
-                    v_ {v_.shape}\n \
-                    c_ {c_.shape}\n \
-                    num_actual_tokens {attn_metadata.num_actual_tokens}")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"\n \
+        #             N {N}\n \
+        #             N_ulysses {N_ulysses}\n \
+        #             q_ {q_.shape}\n \
+        #             k_ {k_.shape}\n \
+        #             v_ {v_.shape}\n \
+        #             c_ {c_.shape}\n \
+        #             num_actual_tokens {attn_metadata.num_actual_tokens}")
 
         num_actual_tokens = attn_metadata.num_actual_tokens
         # Reshape the input keys and values and store them in the cache.
