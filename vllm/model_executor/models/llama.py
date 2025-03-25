@@ -160,7 +160,7 @@ class LlamaAttention(nn.Module):
             TP = tp_size
             SP = sp_size
             SP_TP = SP * TP
-            TP_heads = num_kv_heads
+            TP_heads = self.num_kv_heads
 
             global _SP_AA
             if _SP_AA is None:
@@ -181,7 +181,7 @@ class LlamaAttention(nn.Module):
                                     ranks.append(k)
                             group_ranks.append(ranks)
                 if torch.distributed.get_rank() == 0:
-                    print(f"SP all-reduce group_ranks {group_ranks}")
+                    print(f"SP all-to-all group_ranks {group_ranks}")
                 _SP_AA = init_model_parallel_group(
                     group_ranks,
                     get_sp_group().rank_in_group,
