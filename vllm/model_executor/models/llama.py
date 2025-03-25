@@ -173,13 +173,10 @@ class LlamaAttention(nn.Module):
                         for jj_1 in range(SP // TP_heads):
                             # print("``````````````` SP_AA `````````````````")
                             ranks = []
-                            for jj in range(jj_1 * TP_heads,
-                                            (jj_1 + 1) * TP_heads):
-                                for k in range(i * SP_TP + jj * TP + j,
-                                               i * SP_TP + (jj + 1) * TP + j,
-                                               TP):
-                                    # print(f"{k}")
-                                    ranks.append(k)
+                            for jj in range(TP_heads):
+                                k = jj * SP_TP // TP_heads + jj_1 * TP + j
+                                # print(f"{k}")
+                                ranks.append(k)
                             group_ranks.append(ranks)
                 if torch.distributed.get_rank() == 0:
                     print(f"SP all-to-all group_ranks {group_ranks}")
@@ -200,7 +197,7 @@ class LlamaAttention(nn.Module):
                             # print("``````````````` SP_AG `````````````````")
                             ranks = []
                             for jj in range(SP // TP_heads):
-                                k = jj * TP_heads * TP + jj_1 * TP + j
+                                k = jj * TP + jj_1 * SP_TP // TP_heads + j
                                 k += i * SP_TP
                                 # print(f"PP {i} TP {j} SP {jj_1}
                                 # SP_AG {jj} k {k}")
