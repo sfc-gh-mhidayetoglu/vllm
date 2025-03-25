@@ -31,7 +31,8 @@ from transformers import LlamaConfig
 from vllm.attention import Attention, AttentionMetadata
 from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, VllmConfig
-from vllm.distributed import get_pp_group, get_sp_group, get_tp_group
+from vllm.distributed import (get_pp_group, get_sp_group, get_tp_group,
+                              get_world_group)
 from vllm.distributed.parallel_state import (GroupCoordinator,
                                              init_model_parallel_group)
 from vllm.model_executor.layers.activation import SiluAndMul
@@ -184,7 +185,7 @@ class LlamaAttention(nn.Module):
                     print(f"SP all-to-all group_ranks {group_ranks}")
                 _SP_AA = init_model_parallel_group(
                     group_ranks,
-                    get_sp_group().rank_in_group,
+                    get_world_group().local_rank,
                     backend="nccl",
                     use_custom_allreduce=False,
                     group_name="sp_aa")
@@ -209,7 +210,7 @@ class LlamaAttention(nn.Module):
                     print(f"SP all-gather group_ranks {group_ranks}")
                 _SP_AG = init_model_parallel_group(
                     group_ranks,
-                    get_sp_group().rank_in_group,
+                    get_world_group().local_rank,
                     backend="nccl",
                     use_custom_allreduce=False,
                     group_name="sp_ag")
