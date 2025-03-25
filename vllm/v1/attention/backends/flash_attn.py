@@ -159,10 +159,11 @@ class FlashAttentionImpl(AttentionImpl):
         assert is_fa_version_supported(self.fa_version)
 
         self.SP = get_sp_group().world_size
-        self.SP_AA = get_sp_aa_group().world_size
         self.SP_device_group = get_sp_group().device_group
-        self.SP_AA_device_group = get_sp_aa_group().device_group
-        self.SP_AG_device_group = get_sp_ag_group().device_group
+        if vllm.model_executor.models.llama.KV_REPLICATED:
+            self.SP_AA = get_sp_aa_group().world_size
+            self.SP_AA_device_group = get_sp_aa_group().device_group
+            self.SP_AG_device_group = get_sp_ag_group().device_group
 
     def forward(
         self,
