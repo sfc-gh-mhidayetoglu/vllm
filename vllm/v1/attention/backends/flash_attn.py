@@ -159,6 +159,7 @@ class FlashAttentionImpl(AttentionImpl):
         assert is_fa_version_supported(self.fa_version)
 
         self.SP = get_sp_group().world_size
+        self.SP_AA = get_sp_aa_group().world_size
         self.SP_device_group = get_sp_group().device_group
         self.SP_AA_device_group = get_sp_aa_group().device_group
         self.SP_AG_device_group = get_sp_ag_group().device_group
@@ -213,19 +214,27 @@ class FlashAttentionImpl(AttentionImpl):
         # traceback.print_stack()
         # Ulysses all-to-all 1/2
         N = attn_metadata.num_input_tokens
+        N_ulysses = N // self.SP
         if vllm.model_executor.models.llama.KV_REPLICATED:
             # if torch.distributed.get_rank() == 0:
             #     print("KV_REPLICATED")
-            q = query.view(-1,
+            q = query.view(N_ulysses,
                            self.SP, self.num_heads * self.head_size).transpose(
-                               0, 1).reshape(-1,
+                               0, 1).reshape(N,
                                              self.num_heads * self.head_size)
             q_ = torch.empty_like(q)
             torch.distributed.all_to_all_single(q_,
                                                 q,
                                                 group=self.SP_device_group)
-            k = key.contiguous()
-            v = value.contiguous()
+            k = key.view(N_ulysses, self.SP_AA,
+                         self.num_kv_heads * self.head_size).transpose(
+                             0, 1).reshape(N_ulysses * self.SP_AA,
+                                           self.num_kv_heads * self.head_size)
+            v = value.view(N_ulysses, self.SP_AA,
+                           self.num_kv_heads * self.head_size).transpose(
+                               0,
+                               1).reshape(N_ulysses * self.SP_AA,
+                                          self.num_kv_heads * self.head_size)
             k_ = torch.empty((N, self.num_kv_heads * self.head_size),
                              device=key.device,
                              dtype=key.dtype)
