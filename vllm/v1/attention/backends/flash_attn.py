@@ -14,6 +14,7 @@ from vllm.attention.backends.abstract import (AttentionBackend, AttentionImpl,
 from vllm.distributed.parallel_state import get_sp_group
 from vllm.envs import VLLM_FLASH_ATTN_VERSION
 from vllm.logger import init_logger
+from vllm.model_executor.models.llama import get_sp_aa_group, get_sp_ag_group
 from vllm.platforms import current_platform
 from vllm.utils import cdiv
 from vllm.vllm_flash_attn import (fa_version_unsupported_reason,
@@ -158,8 +159,9 @@ class FlashAttentionImpl(AttentionImpl):
         assert is_fa_version_supported(self.fa_version)
 
         self.SP = get_sp_group().world_size
-        self.SP_rank = get_sp_group().rank_in_group
-        self.device_group = get_sp_group().device_group
+        self.SP_device_group = get_sp_group().device_group
+        self.SP_AA_device_group = get_sp_aa_group().device_group
+        self.SP_AG_device_group = get_sp_ag_group().device_group
 
     def forward(
         self,
@@ -219,19 +221,19 @@ class FlashAttentionImpl(AttentionImpl):
                                0, 1).reshape(-1,
                                              self.num_heads * self.head_size)
             q_ = torch.empty_like(q)
-            torch.distributed.all_to_all_single(q_, q, group=self.device_group)
+            torch.distributed.all_to_all_single(q_,
+                                                q,
+                                                group=self.SP_device_group)
             k = key.contiguous()
             v = value.contiguous()
             k_ = torch.empty((N, self.num_kv_heads * self.head_size),
                              device=key.device,
                              dtype=key.dtype)
             v_ = torch.empty_like(k_)
-            torch.distributed.all_gather_into_tensor(k_,
-                                                     k,
-                                                     group=self.device_group)
-            torch.distributed.all_gather_into_tensor(v_,
-                                                     v,
-                                                     group=self.device_group)
+            torch.distributed.all_gather_into_tensor(
+                k_, k, group=self.SP_AG_device_group)
+            torch.distributed.all_gather_into_tensor(
+                v_, v, group=self.SP_AG_device_group)
         else:
             # pack
             qkv = torch.cat(
@@ -245,7 +247,7 @@ class FlashAttentionImpl(AttentionImpl):
             qkv_ = torch.empty_like(qkv)
             torch.distributed.all_to_all_single(qkv_,
                                                 qkv,
-                                                group=self.device_group)
+                                                group=self.SP_device_group)
             # unpack
             q_, k_, v_ = qkv_.split([
                 self.num_heads * self.head_size, self.num_kv_heads *
@@ -327,7 +329,7 @@ class FlashAttentionImpl(AttentionImpl):
             )
         # Ulysses all-to-all 2/2
         c = torch.empty_like(c_)
-        torch.distributed.all_to_all_single(c, c_, group=self.device_group)
+        torch.distributed.all_to_all_single(c, c_, group=self.SP_device_group)
         output.copy_(
             torch.transpose(
                 c.view(self.SP, -1, self.num_heads * self.head_size), 0,
