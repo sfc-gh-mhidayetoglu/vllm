@@ -1062,7 +1062,7 @@ def initialize_model_parallel(
             range(i * tensor_model_parallel_size,
                   (i + 1) * tensor_model_parallel_size))
         group_ranks.append(ranks)
-    if get_world_group().local_rank == 0:
+    if get_world_group().rank_in_group == 0:
         print(f"TP groups: {group_ranks}")
     _TP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
@@ -1079,7 +1079,7 @@ def initialize_model_parallel(
     for i in range(num_pipeline_model_parallel_groups):
         ranks = list(range(i, world_size, num_pipeline_model_parallel_groups))
         group_ranks.append(ranks)
-    if get_world_group().local_rank == 0:
+    if get_world_group().rank_in_group == 0:
         print(f"PP groups: {group_ranks}")
     # pipeline parallel does not need custom allreduce
     _PP = init_model_parallel_group(group_ranks,
@@ -1102,7 +1102,7 @@ def initialize_model_parallel(
                       (i + 1) * ulysses_model_parallel_size + j,
                       tensor_model_parallel_size))
             group_ranks.append(ranks)
-    if get_world_group().local_rank == 0:
+    if get_world_group().rank_in_group == 0:
         print(f"SP groups: {group_ranks}")
     _SP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
@@ -1118,7 +1118,7 @@ def initialize_model_parallel(
             range(i * ulysses_model_parallel_size,
                   (i + 1) * ulysses_model_parallel_size))
         group_ranks.append(ranks)
-    if get_world_group().local_rank == 0:
+    if get_world_group().rank_in_group == 0:
         print(f"SP_TP groups: {group_ranks}")
     # message queue broadcaster is only used in SP_TP group
     _SP_TP = init_model_parallel_group(group_ranks,
