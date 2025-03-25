@@ -240,18 +240,18 @@ class FlashAttentionImpl(AttentionImpl):
             v__ = torch.empty_like(v)
             torch.distributed.all_to_all_single(k__,
                                                 k,
-                                                group=self.SP_AA_device_group)
+                                                group=self.SP_AG_device_group)
             torch.distributed.all_to_all_single(v__,
                                                 v,
-                                                group=self.SP_AA_device_group)
+                                                group=self.SP_AG_device_group)
             k_ = torch.empty((N, self.num_kv_heads * self.head_size),
                              device=key.device,
                              dtype=key.dtype)
             v_ = torch.empty_like(k_)
             torch.distributed.all_gather_into_tensor(
-                k_, k__, group=self.SP_AG_device_group)
+                k_, k__, group=self.SP_AA_device_group)
             torch.distributed.all_gather_into_tensor(
-                v_, v__, group=self.SP_AG_device_group)
+                v_, v__, group=self.SP_AA_device_group)
         else:
             # pack
             qkv = torch.cat(
