@@ -240,9 +240,9 @@ class FlashAttentionImpl(AttentionImpl):
                              dtype=key.dtype)
             v_ = torch.empty_like(k_)
             torch.distributed.all_gather_into_tensor(
-                k_, k, group=self.SP_AG_device_group)
+                k_, k.contiguous(), group=self.SP_AG_device_group)
             torch.distributed.all_gather_into_tensor(
-                v_, v, group=self.SP_AG_device_group)
+                v_, v.contiguous(), group=self.SP_AG_device_group)
         else:
             # pack
             qkv = torch.cat(
