@@ -892,13 +892,15 @@ class ModelConfig:
         # the tensor parallel size. We will replicate the KV heads in the
         # case where the number of KV heads is smaller than the tensor
         # parallel size so each GPU has at least one KV head.
-        return max(1,
-                   total_num_kv_heads // parallel_config.tensor_parallel_size)
+        return max(
+            1, total_num_kv_heads // (parallel_config.tensor_parallel_size *
+                                      parallel_config.sequence_parallel_size))
 
     def get_num_attention_heads(self,
                                 parallel_config: "ParallelConfig") -> int:
         num_heads = getattr(self.hf_text_config, "num_attention_heads", 0)
-        return num_heads // parallel_config.tensor_parallel_size
+        return num_heads // (parallel_config.tensor_parallel_size *
+                             parallel_config.sequence_parallel_size)
 
     def get_layers_start_end_indices(
             self, parallel_config: "ParallelConfig") -> tuple[int, int]:
@@ -909,8 +911,10 @@ class ModelConfig:
         else:
             total_num_hidden_layers = getattr(self.hf_text_config,
                                               "num_hidden_layers", 0)
-        # the layout order is: DP x PP x TP
-        pp_rank = (parallel_config.rank // parallel_config.tensor_parallel_size
+        # the layout order is: DP x PP x SP x TP
+        pp_rank = (parallel_config.rank // (
+                   parallel_config.tensor_parallel_size *
+                   parallel_config.sequence_parallel_size)
                    ) % parallel_config.pipeline_parallel_size
         pp_size = parallel_config.pipeline_parallel_size
         start, end = get_pp_indices(total_num_hidden_layers, pp_rank, pp_size)
@@ -1356,6 +1360,7 @@ class ParallelConfig:
 
     pipeline_parallel_size: int = 1  # Number of pipeline parallel groups.
     tensor_parallel_size: int = 1  # Number of tensor parallel groups.
+    sequence_parallel_size: int = 1  # Number of sequence parallel groups.
     data_parallel_size: int = 1  # Number of data parallel groups.
     data_parallel_rank: int = 0  # Rank of the data parallel group.
     # IP of the data parallel master.
@@ -1456,11 +1461,13 @@ class ParallelConfig:
         factors: list[Any] = []
         factors.append(self.pipeline_parallel_size)
         factors.append(self.tensor_parallel_size)
+        factors.append(self.sequence_parallel_size)
         return hashlib.sha256(str(factors).encode()).hexdigest()
 
     def __post_init__(self) -> None:
         self.world_size = self.pipeline_parallel_size * \
-            self.tensor_parallel_size
+            self.tensor_parallel_size * \
+            self.sequence_parallel_size
 
         self.data_parallel_size = envs.VLLM_DP_SIZE
         self.data_parallel_rank = envs.VLLM_DP_RANK
@@ -1850,7 +1857,8 @@ class SpeculativeConfig:
     @staticmethod
     def maybe_create_spec_config(
         target_model_config: ModelConfig,
-        target_parallel_config: ParallelConfig,
+        target_parallel_config: 
+      ,
         target_dtype: str,
         speculative_model: Optional[str],
         speculative_model_quantization: Optional[str],
@@ -3614,7 +3622,8 @@ class VllmConfig:
             f" download_dir={self.load_config.download_dir!r}, "
             f"load_format={self.load_config.load_format}, "
             f"tensor_parallel_size={self.parallel_config.tensor_parallel_size},"
-            f" pipeline_parallel_size={self.parallel_config.pipeline_parallel_size}, "  # noqa
+            f" sequence_parallel_size={self.parallel_config.sequence_parallel_size}, "  # noqa
+            f"pipeline_parallel_size={self.parallel_config.pipeline_parallel_size}, "  # noqa
             f"disable_custom_all_reduce={self.parallel_config.disable_custom_all_reduce}, "  # noqa
             f"quantization={self.model_config.quantization}, "
             f"enforce_eager={self.model_config.enforce_eager}, "

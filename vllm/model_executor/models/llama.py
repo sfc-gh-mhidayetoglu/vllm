@@ -31,7 +31,7 @@ from transformers import LlamaConfig
 from vllm.attention import Attention
 from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, VllmConfig
-from vllm.distributed import get_pp_group, get_tensor_model_parallel_world_size
+from vllm.distributed import get_pp_group, get_sp_group, get_tp_group
 from vllm.model_executor.layers.activation import SiluAndMul
 from vllm.model_executor.layers.layernorm import RMSNorm
 from vllm.model_executor.layers.linear import (MergedColumnParallelLinear,
@@ -111,10 +111,11 @@ class LlamaAttention(nn.Module):
         super().__init__()
         layer_idx = extract_layer_index(prefix)
         self.hidden_size = hidden_size
-        tp_size = get_tensor_model_parallel_world_size()
+        tp_size = get_tp_group().world_size
+        sp_size = get_sp_group().world_size
         self.total_num_heads = num_heads
         assert self.total_num_heads % tp_size == 0
-        self.num_heads = self.total_num_heads // tp_size
+        self.num_heads = num_heads // tp_size
         self.total_num_kv_heads = num_kv_heads
         if self.total_num_kv_heads >= tp_size:
             # Number of KV heads is greater than TP size, so we partition
@@ -183,10 +184,10 @@ class LlamaAttention(nn.Module):
             sliding_window = None
 
         self.attn = Attention(
-            self.num_heads,
+            self.num_heads // sp_size,
             self.head_dim,
             self.scaling,
-            num_kv_heads=self.num_kv_heads,
+            num_kv_heads=self.num_kv_heads // sp_size,
             cache_config=cache_config,
             quant_config=quant_config,
             per_layer_sliding_window=sliding_window,
@@ -275,6 +276,7 @@ class LlamaDecoderLayer(nn.Module):
         else:
             hidden_states, residual = self.input_layernorm(
                 hidden_states, residual)
+
         hidden_states = self.self_attn(positions=positions,
                                        hidden_states=hidden_states)
 
@@ -526,8 +528,46 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
-        model_output = self.model(input_ids, positions, intermediate_tensors,
-                                  inputs_embeds)
+      
+        # Ulysses
+        N = input_ids.shape[0]
+        SP = get_sp_group().world_size
+        SP_rank = get_sp_group().rank_in_group
+        N_ulysses = N // SP
+        N_offset = N_ulysses * SP_rank
+
+        # from vllm.forward_context import get_forward_context
+        # metadata = get_forward_context().attn_metadata
+        # if metadata is None:
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP}")
+        # else:
+        #     self.numforward += 1
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP} "
+        #               f"actual tokens: {metadata.num_actual_tokens} "
+        #               f"seq. lens: {metadata.seq_lens.tolist()}")
+
+        # narrow the input
+        input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
+        positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
+        # model forward
+        output = self.model(input_ids[:N_ulysses], positions[:N_ulysses],
+                            kv_caches, attn_metadata, intermediate_tensors,
+                            inputs_embeds)
+        # all-gather model_output
+        model_output = torch.empty((N, self.config.hidden_size),
+                                   dtype=output.dtype,
+                                   device=output.device)
+        torch.distributed.all_gather_into_tensor(
+            model_output, output, group=get_sp_group().device_group)
+
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"model_output: {model_output.shape}")
+        #     print(f"model_output: {model_output}")
+
         return model_output
 
     def compute_logits(

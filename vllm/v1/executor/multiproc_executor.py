@@ -57,9 +57,12 @@ class MultiprocExecutor(Executor):
 
         self.world_size = self.parallel_config.world_size
         tensor_parallel_size = self.parallel_config.tensor_parallel_size
-        assert self.world_size == tensor_parallel_size, (
+        sequence_parallel_size = self.parallel_config.sequence_parallel_size
+        assert self.world_size == tensor_parallel_size \
+            * sequence_parallel_size, (
             f"world_size ({self.world_size}) must be equal to the "
-            f"tensor_parallel_size ({tensor_parallel_size}). "
+            f"tensor_parallel_size * sequence_parallel_size "
+            f"({tensor_parallel_size * sequence_parallel_size}). "
             f"Pipeline parallelism is not yet implemented in v1")
 
         # Set multiprocessing envs that are common to V0 and V1

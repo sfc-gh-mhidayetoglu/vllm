@@ -748,6 +748,22 @@ def get_tp_group() -> GroupCoordinator:
 # kept for backward compatibility
 get_tensor_model_parallel_group = get_tp_group
 
+_SP: Optional[GroupCoordinator] = None
+
+
+def get_sp_group() -> GroupCoordinator:
+    assert _SP is not None
+    return _SP
+
+
+_SP_TP: Optional[GroupCoordinator] = None
+
+
+def get_sp_tp_group() -> GroupCoordinator:
+    assert _SP_TP is not None
+    return _SP_TP
+
+
 _PP: Optional[GroupCoordinator] = None
 
 _DP: Optional[GroupCoordinator] = None
@@ -864,6 +880,7 @@ def init_distributed_environment(
 
 def initialize_model_parallel(
     tensor_model_parallel_size: int = 1,
+    sequence_model_parallel_size: int = 1,
     pipeline_model_parallel_size: int = 1,
     backend: Optional[str] = None,
 ) -> None:
@@ -872,6 +889,8 @@ def initialize_model_parallel(
 
     Arguments:
         tensor_model_parallel_size: number of GPUs used for tensor model
+            parallelism.
+        sequence_model_parallel_size: number of GPUs used for sequence model
             parallelism.
         pipeline_model_parallel_size: number of GPUs used for pipeline model
             parallelism.
@@ -910,6 +929,7 @@ def initialize_model_parallel(
             # in that case, we treat the rest dimensions as if they are
             # data parallel, and create a dummy dp group that is not used.
             data_parallel_size = world_size // (pipeline_model_parallel_size *
+                                                sequence_model_parallel_size *
                                                 tensor_model_parallel_size)
             has_external_dp = True
         else:
@@ -919,20 +939,21 @@ def initialize_model_parallel(
     # to get group_ranks for each dimension, transpose that dimension to the
     # last dimension, then reshape to 2D, then unbind the last dimension
     all_ranks = torch.arange(world_size).reshape(
-        data_parallel_size, pipeline_model_parallel_size,
+        data_parallel_size, pipeline_model_parallel_size, sequence_model_parallel_size,
         tensor_model_parallel_size)  # noqa
 
     # Build the tensor model-parallel groups.
     global _TP
     assert _TP is None, ("tensor model parallel group is already initialized")
-    group_ranks = all_ranks.view(-1, tensor_model_parallel_size).unbind(0)
-    group_ranks = [x.tolist() for x in group_ranks]
-
-    # message queue broadcaster is only used in tensor model parallel group
+    group_ranks = []
+    for i in range(num_tensor_model_parallel_groups):
+        ranks = list(
+            range(i * tensor_model_parallel_size,
+                  (i + 1) * tensor_model_parallel_size))
+        group_ranks.append(ranks)
     _TP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
-                                    use_message_queue_broadcaster=True,
                                     group_name="tp")
 
     # Build the pipeline model-parallel groups.
@@ -946,6 +967,40 @@ def initialize_model_parallel(
                                     get_world_group().local_rank,
                                     backend,
                                     group_name="pp")
+
+    # Build the sequence model-parallel groups.
+    ulysses_model_parallel_size = tensor_model_parallel_size \
+        * sequence_model_parallel_size
+    global _SP
+    assert _SP is None, (
+        "sequence model parallel group is already initialized")
+    group_ranks = []
+    for i in range(pipeline_model_parallel_size):
+        for j in range(tensor_model_parallel_size):
+            ranks = list(
+                range(i * ulysses_model_parallel_size + j,
+                      (i + 1) * ulysses_model_parallel_size + j,
+                      tensor_model_parallel_size))
+            group_ranks.append(ranks)
+    _SP = init_model_parallel_group(group_ranks,
+                                    get_world_group().local_rank,
+                                    backend,
+                                    group_name="sp")
+    global _SP_TP
+    assert _SP_TP is None
+    # group_ranks = [[rank for group in group_ranks for rank in group]]
+    group_ranks = []
+    for i in range(pipeline_model_parallel_size):
+        ranks = list(
+            range(i * ulysses_model_parallel_size,
+                  (i + 1) * ulysses_model_parallel_size))
+        group_ranks.append(ranks)
+    # message queue broadcaster is only used in SP_TP group
+    _SP_TP = init_model_parallel_group(group_ranks,
+                                       get_world_group().local_rank,
+                                       backend,
+                                       use_message_queue_broadcaster=True,
+                                       group_name="sp_tp")
 
     global _DP
     assert _DP is None, ("data parallel group is already initialized")
@@ -966,8 +1021,8 @@ def initialize_model_parallel(
 
     logger.info(
         "rank %s in world size %s is assigned as "
-        "DP rank %s, PP rank %s, TP rank %s", rank, world_size,
-        _DP.rank_in_group, _PP.rank_in_group, _TP.rank_in_group)
+        "DP rank %s, PP rank %s, SP_TP rank %s SP rank %s, TP rank %s", rank, world_size,
+        _DP.rank_in_group, _PP.rank_in_group, _SP_TP.rank_in_group, _SP.rank_in_group, _TP.rank_in_group)
 
 
 def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
@@ -992,6 +1047,7 @@ def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
 
 def ensure_model_parallel_initialized(
     tensor_model_parallel_size: int,
+    sequence_model_parallel_size: int,
     pipeline_model_parallel_size: int,
     backend: Optional[str] = None,
 ) -> None:
@@ -1003,6 +1059,7 @@ def ensure_model_parallel_initialized(
         get_world_group().device_group)
     if not model_parallel_is_initialized():
         initialize_model_parallel(tensor_model_parallel_size,
+                                  sequence_model_parallel_size,
                                   pipeline_model_parallel_size, backend)
         return
 
@@ -1011,6 +1068,11 @@ def ensure_model_parallel_initialized(
     ), ("tensor parallel group already initialized, but of unexpected size: "
         f"{get_tensor_model_parallel_world_size()=} vs. "
         f"{tensor_model_parallel_size=}")
+    sp_world_size = get_sp_group().world_size
+    assert (sp_world_size == sequence_model_parallel_size), (
+        "sequence parallel group already initialized, but of unexpected size: "
+        f"{sp_world_size=} vs. "
+        f"{sequence_model_parallel_size=}")
     pp_world_size = get_pp_group().world_size
     assert (pp_world_size == pipeline_model_parallel_size), (
         "pipeline parallel group already initialized, but of unexpected size: "
@@ -1067,6 +1129,16 @@ def destroy_model_parallel():
     if _TP:
         _TP.destroy()
     _TP = None
+
+    global _SP
+    if _SP:
+        _SP.destroy()
+    _SP = None
+    
+    global _SP_TP
+    if _SP_TP:
+        _SP_TP.destroy()
+    _SP_TP = None
 
     global _PP
     if _PP:
