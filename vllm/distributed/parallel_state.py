@@ -935,7 +935,7 @@ def initialize_model_parallel(
         else:
             data_parallel_size = config.parallel_config.data_parallel_size
 
-    # the layout order is: DP x PP x TP
+    # the layout order is: DP x PP x SP x TP
     # to get group_ranks for each dimension, transpose that dimension to the
     # last dimension, then reshape to 2D, then unbind the last dimension
     all_ranks = torch.arange(world_size).reshape(
