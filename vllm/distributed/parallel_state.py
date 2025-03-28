@@ -880,7 +880,6 @@ def init_distributed_environment(
 
 def initialize_model_parallel(
     tensor_model_parallel_size: int = 1,
-    sequence_model_parallel_size: int = 1,
     pipeline_model_parallel_size: int = 1,
     backend: Optional[str] = None,
 ) -> None:
@@ -919,6 +918,8 @@ def initialize_model_parallel(
     has_external_dp = False
     from vllm.config import get_current_vllm_config
     config = get_current_vllm_config()
+    sequence_model_parallel_size = \
+        config.parallel_config.sequence_model_parallel_size
     if config is not None:
         if config.parallel_config.world_size != world_size:
             # detect external data parallelism.
@@ -1048,7 +1049,6 @@ def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
 
 def ensure_model_parallel_initialized(
     tensor_model_parallel_size: int,
-    sequence_model_parallel_size: int,
     pipeline_model_parallel_size: int,
     backend: Optional[str] = None,
 ) -> None:
@@ -1060,7 +1060,6 @@ def ensure_model_parallel_initialized(
         get_world_group().device_group)
     if not model_parallel_is_initialized():
         initialize_model_parallel(tensor_model_parallel_size,
-                                  sequence_model_parallel_size,
                                   pipeline_model_parallel_size, backend)
         return
 
@@ -1069,11 +1068,6 @@ def ensure_model_parallel_initialized(
     ), ("tensor parallel group already initialized, but of unexpected size: "
         f"{get_tensor_model_parallel_world_size()=} vs. "
         f"{tensor_model_parallel_size=}")
-    sp_world_size = get_sp_group().world_size
-    assert (sp_world_size == sequence_model_parallel_size), (
-        "sequence parallel group already initialized, but of unexpected size: "
-        f"{sp_world_size=} vs. "
-        f"{sequence_model_parallel_size=}")
     pp_world_size = get_pp_group().world_size
     assert (pp_world_size == pipeline_model_parallel_size), (
         "pipeline parallel group already initialized, but of unexpected size: "
