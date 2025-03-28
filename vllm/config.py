@@ -912,9 +912,9 @@ class ModelConfig:
             total_num_hidden_layers = getattr(self.hf_text_config,
                                               "num_hidden_layers", 0)
         # the layout order is: DP x PP x SP x TP
-        pp_rank = (parallel_config.rank // (
-                   parallel_config.tensor_parallel_size *
-                   parallel_config.sequence_parallel_size)
+        pp_rank = (parallel_config.rank //
+                   (parallel_config.tensor_parallel_size *
+                    parallel_config.sequence_parallel_size)
                    ) % parallel_config.pipeline_parallel_size
         pp_size = parallel_config.pipeline_parallel_size
         start, end = get_pp_indices(total_num_hidden_layers, pp_rank, pp_size)
@@ -1857,8 +1857,7 @@ class SpeculativeConfig:
     @staticmethod
     def maybe_create_spec_config(
         target_model_config: ModelConfig,
-        target_parallel_config: 
-      ,
+        target_parallel_config: ParallelConfig,
         target_dtype: str,
         speculative_model: Optional[str],
         speculative_model_quantization: Optional[str],
