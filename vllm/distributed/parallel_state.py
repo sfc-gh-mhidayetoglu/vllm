@@ -939,14 +939,14 @@ def initialize_model_parallel(
     # to get group_ranks for each dimension, transpose that dimension to the
     # last dimension, then reshape to 2D, then unbind the last dimension
     all_ranks = torch.arange(world_size).reshape(
-        data_parallel_size, pipeline_model_parallel_size, sequence_model_parallel_size,
-        tensor_model_parallel_size)  # noqa
+        data_parallel_size, pipeline_model_parallel_size,
+        sequence_model_parallel_size, tensor_model_parallel_size)  # noqa
 
     # Build the tensor model-parallel groups.
     global _TP
     assert _TP is None, ("tensor model parallel group is already initialized")
     group_ranks = []
-    for i in range(num_tensor_model_parallel_groups):
+    for i in range(world_size // tensor_model_parallel_size):
         ranks = list(
             range(i * tensor_model_parallel_size,
                   (i + 1) * tensor_model_parallel_size))
@@ -1021,8 +1021,9 @@ def initialize_model_parallel(
 
     logger.info(
         "rank %s in world size %s is assigned as "
-        "DP rank %s, PP rank %s, SP_TP rank %s SP rank %s, TP rank %s", rank, world_size,
-        _DP.rank_in_group, _PP.rank_in_group, _SP_TP.rank_in_group, _SP.rank_in_group, _TP.rank_in_group)
+        "DP rank %s, PP rank %s, SP_TP rank %s SP rank %s, TP rank %s", rank,
+        world_size, _DP.rank_in_group, _PP.rank_in_group, _SP_TP.rank_in_group,
+        _SP.rank_in_group, _TP.rank_in_group)
 
 
 def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
@@ -1134,7 +1135,7 @@ def destroy_model_parallel():
     if _SP:
         _SP.destroy()
     _SP = None
-    
+
     global _SP_TP
     if _SP_TP:
         _SP_TP.destroy()
