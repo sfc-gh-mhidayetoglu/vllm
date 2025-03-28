@@ -6,13 +6,12 @@ from typing import TYPE_CHECKING, Any, Optional
 import numpy as np
 import torch
 
-
-from vllm.distributed import get_sp_group
 from vllm.attention.backends.abstract import (AttentionBackend, AttentionImpl,
                                               AttentionMetadata, AttentionType,
                                               is_quantized_kv_cache)
 from vllm.attention.backends.utils import get_flash_attn_version
-from vllm.attention.ops.triton_merge_attn_states import merge_attn_states,
+from vllm.attention.ops.triton_merge_attn_states import merge_attn_states
+from vllm.distributed import get_sp_group
 from vllm.logger import init_logger
 from vllm.platforms import current_platform
 from vllm.utils import cdiv
@@ -209,7 +208,6 @@ class FlashAttentionImpl(AttentionImpl):
         self.vllm_flash_attn_version = get_flash_attn_version()
 
         self.SP = get_sp_group().world_size
-        self.SP_rank = get_sp_group().rank_in_group
         self.device_group = get_sp_group().device_group
 
     def forward(
