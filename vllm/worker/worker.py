@@ -342,9 +342,6 @@ class Worker(LocalOrDistributedWorkerBase):
 
     @property
     def do_metadata_broadcast(self) -> bool:
-        print(
-            "*********\n**********\n*********\n********* do_metadata_broadcast"
-        )
         return self.parallel_config.tensor_parallel_size > 1
 
     @property
@@ -505,13 +502,9 @@ def init_worker_distributed_environment(
     parallel_config = vllm_config.parallel_config
     set_custom_all_reduce(not parallel_config.disable_custom_all_reduce)
 
-    print("*********\n**********\n************\n********** "
-          "ensure_model_parallel_initialized")
-
     init_distributed_environment(parallel_config.world_size, rank,
                                  distributed_init_method, local_rank)
     ensure_model_parallel_initialized(parallel_config.tensor_parallel_size,
-                                      parallel_config.sequence_parallel_size,
                                       parallel_config.pipeline_parallel_size)
 
     ensure_kv_transfer_initialized(vllm_config)
