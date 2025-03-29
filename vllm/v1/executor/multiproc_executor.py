@@ -64,9 +64,6 @@ class MultiprocExecutor(Executor):
             f"tensor_parallel_size * sequence_parallel_size "
             f"({tensor_parallel_size * sequence_parallel_size}). "
             f"Pipeline parallelism is not yet implemented in v1")
-        print(
-            "******************************************************************************************** MultiprocExecutor"
-        )
 
         # Set multiprocessing envs that are common to V0 and V1
         set_multiprocessing_worker_envs(self.parallel_config)
