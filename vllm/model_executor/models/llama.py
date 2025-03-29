@@ -31,7 +31,8 @@ from transformers import LlamaConfig
 from vllm.attention import Attention
 from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, VllmConfig
-from vllm.distributed import get_pp_group, get_sp_group, get_tp_group
+from vllm.distributed import get_pp_group, get_tensor_model_parallel_world_size
+from vllm.distributed.parallel import get_sp_group
 from vllm.model_executor.layers.activation import SiluAndMul
 from vllm.model_executor.layers.layernorm import RMSNorm
 from vllm.model_executor.layers.linear import (MergedColumnParallelLinear,
@@ -111,8 +112,7 @@ class LlamaAttention(nn.Module):
         super().__init__()
         layer_idx = extract_layer_index(prefix)
         self.hidden_size = hidden_size
-        tp_size = get_tp_group().world_size
-        sp_size = get_sp_group().world_size
+        tp_size = get_tensor_model_parallel_world_size()
         self.total_num_heads = num_heads
         assert self.total_num_heads % tp_size == 0
         self.num_heads = num_heads // tp_size
@@ -184,10 +184,10 @@ class LlamaAttention(nn.Module):
             sliding_window = None
 
         self.attn = Attention(
-            self.num_heads // sp_size,
+            self.num_heads,
             self.head_dim,
             self.scaling,
-            num_kv_heads=self.num_kv_heads // sp_size,
+            num_kv_heads=self.num_kv_heads,
             cache_config=cache_config,
             quant_config=quant_config,
             per_layer_sliding_window=sliding_window,

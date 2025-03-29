@@ -10,6 +10,7 @@ import vllm.envs as envs
 from vllm.attention import AttentionType
 from vllm.attention.selector import backend_name_to_enum, get_attn_backend
 from vllm.config import CacheConfig, get_current_vllm_config
+from vllm.distributed.parallel_state import get_sp_group
 from vllm.forward_context import ForwardContext, get_forward_context
 from vllm.model_executor.layers.linear import UnquantizedLinearMethod
 from vllm.model_executor.layers.quantization.base_config import (
@@ -90,10 +91,11 @@ class Attention(nn.Module):
         self._k_scale_float = 1.0
         self._v_scale_float = 1.0
 
+        SP = get_sp_group().world_size
         self.use_mla = use_mla
-        self.num_heads = num_heads
+        self.num_heads = num_heads // SP
         self.head_size = head_size
-        self.num_kv_heads = num_kv_heads
+        self.num_kv_heads = num_kv_heads // SP
         self.sliding_window = sliding_window
 
         quant_method = quant_config.get_quant_method(
