@@ -63,6 +63,9 @@ class MultiprocessingDistributedExecutor(DistributedExecutorBase):
         world_size = self.parallel_config.world_size
         tensor_parallel_size = self.parallel_config.tensor_parallel_size
         sequence_parallel_size = self.parallel_config.sequence_parallel_size
+        print(
+            "******************************************************************************************** MultiprocessingDistributedExecutor"
+        )
 
         # Set multiprocessing envs that are common to V0 and V1
         set_multiprocessing_worker_envs(self.parallel_config)
