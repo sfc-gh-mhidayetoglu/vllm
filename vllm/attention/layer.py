@@ -92,10 +92,12 @@ class Attention(nn.Module):
         self._v_scale_float = 1.0
 
         SP = get_sp_group().world_size
+        num_heads = num_heads // SP
+        num_kv_heads = num_kv_heads // SP
         self.use_mla = use_mla
-        self.num_heads = num_heads // SP
+        self.num_heads = num_heads
         self.head_size = head_size
-        self.num_kv_heads = num_kv_heads // SP
+        self.num_kv_heads = num_kv_heads
         self.sliding_window = sliding_window
 
         quant_method = quant_config.get_quant_method(
