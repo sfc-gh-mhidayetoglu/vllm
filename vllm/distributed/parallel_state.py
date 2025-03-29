@@ -889,8 +889,6 @@ def initialize_model_parallel(
     Arguments:
         tensor_model_parallel_size: number of GPUs used for tensor model
             parallelism.
-        sequence_model_parallel_size: number of GPUs used for sequence model
-            parallelism.
         pipeline_model_parallel_size: number of GPUs used for pipeline model
             parallelism.
 
@@ -919,7 +917,7 @@ def initialize_model_parallel(
     from vllm.config import get_current_vllm_config
     config = get_current_vllm_config()
     sequence_model_parallel_size = \
-        config.parallel_config.sequence_model_parallel_size
+        config.parallel_config.sequence_parallel_size
     if config is not None:
         if config.parallel_config.world_size != world_size:
             # detect external data parallelism.
