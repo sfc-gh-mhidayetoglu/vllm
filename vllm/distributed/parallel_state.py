@@ -756,14 +756,6 @@ def get_sp_group() -> GroupCoordinator:
     return _SP
 
 
-_SP_TP: Optional[GroupCoordinator] = None
-
-
-def get_sp_tp_group() -> GroupCoordinator:
-    assert _SP_TP is not None
-    return _SP_TP
-
-
 _PP: Optional[GroupCoordinator] = None
 
 _DP: Optional[GroupCoordinator] = None
@@ -916,7 +908,7 @@ def initialize_model_parallel(
     has_external_dp = False
     from vllm.config import get_current_vllm_config
     config = get_current_vllm_config()
-    sequence_model_parallel_size = \
+    sequence_parallel_size = \
         config.parallel_config.sequence_parallel_size
     if config is not None:
         if config.parallel_config.world_size != world_size:
@@ -928,7 +920,7 @@ def initialize_model_parallel(
             # in that case, we treat the rest dimensions as if they are
             # data parallel, and create a dummy dp group that is not used.
             data_parallel_size = world_size // (pipeline_model_parallel_size *
-                                                sequence_model_parallel_size *
+                                                sequence_parallel_size *
                                                 tensor_model_parallel_size)
             has_external_dp = True
         else:
@@ -939,7 +931,7 @@ def initialize_model_parallel(
     # last dimension, then reshape to 2D, then unbind the last dimension
     all_ranks = torch.arange(world_size).reshape(
         data_parallel_size, pipeline_model_parallel_size,
-        sequence_model_parallel_size, tensor_model_parallel_size)  # noqa
+        sequence_parallel_size, tensor_model_parallel_size)  # noqa
 
     # Build the tensor model-parallel groups.
     global _TP
@@ -968,8 +960,8 @@ def initialize_model_parallel(
                                     group_name="pp")
 
     # Build the sequence model-parallel groups.
-    ulysses_model_parallel_size = tensor_model_parallel_size \
-        * sequence_model_parallel_size
+    ulysses_parallel_size = tensor_model_parallel_size \
+        * sequence_parallel_size
     global _SP
     assert _SP is None, (
         "sequence model parallel group is already initialized")
@@ -977,30 +969,14 @@ def initialize_model_parallel(
     for i in range(pipeline_model_parallel_size):
         for j in range(tensor_model_parallel_size):
             ranks = list(
-                range(i * ulysses_model_parallel_size + j,
-                      (i + 1) * ulysses_model_parallel_size + j,
+                range(i * ulysses_parallel_size + j,
+                      (i + 1) * ulysses_parallel_size + j,
                       tensor_model_parallel_size))
             group_ranks.append(ranks)
     _SP = init_model_parallel_group(group_ranks,
                                     get_world_group().local_rank,
                                     backend,
                                     group_name="sp")
-    global _SP_TP
-    assert _SP_TP is None
-    # group_ranks = [[rank for group in group_ranks for rank in group]]
-    group_ranks = []
-    for i in range(pipeline_model_parallel_size):
-        ranks = list(
-            range(i * ulysses_model_parallel_size,
-                  (i + 1) * ulysses_model_parallel_size))
-        group_ranks.append(ranks)
-    # message queue broadcaster is only used in SP_TP group
-    _SP_TP = init_model_parallel_group(group_ranks,
-                                       get_world_group().local_rank,
-                                       backend,
-                                       use_message_queue_broadcaster=True,
-                                       group_name="sp_tp")
-
     global _DP
     assert _DP is None, ("data parallel group is already initialized")
     group_ranks = all_ranks.transpose(0,
@@ -1020,9 +996,9 @@ def initialize_model_parallel(
 
     logger.info(
         "rank %s in world size %s is assigned as "
-        "DP rank %s, PP rank %s, SP_TP rank %s SP rank %s, TP rank %s", rank,
-        world_size, _DP.rank_in_group, _PP.rank_in_group, _SP_TP.rank_in_group,
-        _SP.rank_in_group, _TP.rank_in_group)
+        "DP rank %s, PP rank %s, SP rank %s, TP rank %s", rank, world_size,
+        _DP.rank_in_group, _PP.rank_in_group, _SP.rank_in_group,
+        _TP.rank_in_group)
 
 
 def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:
