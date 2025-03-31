@@ -1104,11 +1104,6 @@ def destroy_model_parallel():
         _SP.destroy()
     _SP = None
 
-    global _SP_TP
-    if _SP_TP:
-        _SP_TP.destroy()
-    _SP_TP = None
-
     global _PP
     if _PP:
         _PP.destroy()
