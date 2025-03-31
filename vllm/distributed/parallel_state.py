@@ -959,12 +959,11 @@ def initialize_model_parallel(
                                     backend,
                                     group_name="pp")
 
-    # Build the sequence model-parallel groups.
+    # Build the sequence parallel groups.
     ulysses_parallel_size = tensor_model_parallel_size \
         * sequence_parallel_size
     global _SP
-    assert _SP is None, (
-        "sequence model parallel group is already initialized")
+    assert _SP is None, ("sequence parallel group is already initialized")
     group_ranks = []
     for i in range(pipeline_model_parallel_size):
         for j in range(tensor_model_parallel_size):
