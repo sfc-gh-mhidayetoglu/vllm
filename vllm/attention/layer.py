@@ -216,8 +216,9 @@ class Attention(nn.Module):
                                   attn_metadata,
                                   output=output)
             else:
-                torch.ops.vllm.unified_attention_with_output(
-                    query, key, value, output, self.layer_name)
+                # torch.ops.vllm.unified_attention_with_output(
+                #     query, key, value, output, self.layer_name)
+                pass
             return output.view(-1, hidden_size)
         else:
             if self.use_direct_call:
