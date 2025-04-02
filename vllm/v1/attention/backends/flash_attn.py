@@ -270,7 +270,8 @@ class FlashAttentionImpl(AttentionImpl):
                 -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
         # all-to-all
         qkv_ = torch.empty_like(qkv)
-        torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
+        # torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
+        qkv_ = qkv
         # unpack
         q_, k_, v_ = qkv_.split([
             self.num_heads * self.head_size, self.num_kv_heads *
@@ -352,7 +353,8 @@ class FlashAttentionImpl(AttentionImpl):
             )
         # Ulysses all-to-all 2/2
         c = torch.empty_like(c_)
-        torch.distributed.all_to_all_single(c, c_, group=self.device_group)
+        # torch.distributed.all_to_all_single(c, c_, group=self.device_group)
+        c = c_
         output.copy_(
             torch.transpose(
                 c.view(self.SP, -1, self.num_heads * self.head_size), 0,
