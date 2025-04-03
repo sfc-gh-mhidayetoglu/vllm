@@ -334,7 +334,7 @@ class Qwen2Model(nn.Module):
             assert intermediate_tensors is not None
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
-        residual = hidden_state
+        residual = hidden_states
         # for layer in self.layers[self.start_layer:self.end_layer]:
         #     hidden_states, residual = layer(
         #         positions,
