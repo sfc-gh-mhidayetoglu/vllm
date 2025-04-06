@@ -1191,7 +1191,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
 
             self.model.forward = custom_forward
 
-        self.monkeypatch_forward()
+        monkeypatch_forward()
 
     def _get_prompt_logprobs_dict(
         self,
