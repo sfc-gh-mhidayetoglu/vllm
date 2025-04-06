@@ -1162,6 +1162,16 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             else:
                 draft_token_ids.append(drafter_output.tolist())
         return draft_token_ids
+    
+    def monkeypatch_forward(self):
+        original_forward = self.model.forward
+        def custom_forward(*args, **kwargs):
+            print("Custom forward called!")
+            # You can add pre-processing code here
+            result = original_forward(*args, **kwargs)
+            # You can add post-processing code here
+            return result
+        self.model.forward = custom_forward
 
     def load_model(self) -> None:
         logger.info("Starting to load model %s...", self.model_config.model)
@@ -1180,18 +1190,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                     self.model_memory_usage / float(2**30),
                     time_after_load - time_before_load)
         print("test")
-        def monkeypatch_forward():
-            original_forward = self.model.forward
-            def custom_forward(*args, **kwargs):
-                print("Custom forward called!")
-                # You can add pre-processing code here
-                result = original_forward(*args, **kwargs)
-                # You can add post-processing code here
-                return result
-
-            self.model.forward = custom_forward
-
-        monkeypatch_forward()
+        self.monkeypatch_forward()
 
     def _get_prompt_logprobs_dict(
         self,
