@@ -1180,6 +1180,14 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                     self.model_memory_usage / float(2**30),
                     time_after_load - time_before_load)
         print("test")
+        def custom_forward(*args, **kwargs):
+            print("Custom forward called!")
+            # You can add pre-processing code here
+            result = self.model.forward(*args, **kwargs)
+            # You can add post-processing code here
+            return result
+
+        self.model.forward = custom_forward
 
     def _get_prompt_logprobs_dict(
         self,
