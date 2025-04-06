@@ -1168,26 +1168,31 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         SP = self.parallel_config.sequence_parallel_size
         def custom_forward(*args, **kwargs):
 
-            # N = input_ids.shape[0]
-            # N_ulysses = N // SP
+            input_ids = kwargs['input_ids']
+            positions = kwargs['positionds']
 
+            N = input_ids.shape[0]
+            N_ulysses = N // SP
 
-            if torch.distributed.get_rank() == 0:
-                print(f"args {args}\n kwargs {kwargs}")
+            # if torch.distributed.get_rank() == 0:
+            #     print(f"args {args}\n kwargs {kwargs}")
 
-            # from vllm.forward_context import get_forward_context
-            # metadata = get_forward_context().attn_metadata
-            # if metadata is None:
-            #     if torch.distributed.get_rank() == 0:
-            #         print(f"numforward {self.numforward} N {N} "
-            #               f"N_ranks {[N_ulysses] * SP}")
-            # else:
-            #     self.numforward += 1
-            #     if torch.distributed.get_rank() == 0:
-            #         print(f"numforward {self.numforward} N {N} "
-            #               f"N_ranks {[N_ulysses] * SP} "
-            #               f"actual tokens: {metadata.num_actual_tokens} "
-            #               f"seq. lens: {metadata.seq_lens.tolist()}")
+            from vllm.forward_context import get_forward_context
+            metadata = get_forward_context().attn_metadata
+            if metadata is None:
+                if torch.distributed.get_rank() == 0:
+                    print(f"numforward {self.numforward} N {N} "
+                          f"N_ranks {[N_ulysses] * SP}")
+            else:
+                self.numforward += 1
+                if torch.distributed.get_rank() == 0:
+                    print(f"numforward {self.numforward} N {N} "
+                          f"N_ranks {[N_ulysses] * SP} "
+                          f"actual tokens: {metadata.num_actual_tokens} "
+                          f"seq. lens: {metadata.seq_lens.tolist()}")
+                    
+            kwargs['input_ids'] = input_ids
+            kwargs['positions'] = positions
 
             # You can add pre-processing code here
             result = original_forward(*args, **kwargs)
