@@ -1169,7 +1169,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         def custom_forward(*args, **kwargs):
 
             input_ids = kwargs['input_ids']
-            positions = kwargs['positionds']
+            positions = kwargs['positions']
 
             N = input_ids.shape[0]
             N_ulysses = N // SP
