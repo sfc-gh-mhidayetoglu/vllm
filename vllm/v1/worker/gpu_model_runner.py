@@ -1194,8 +1194,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                           f"actual tokens: {metadata.num_actual_tokens} "
                           f"seq. lens: {metadata.seq_lens.tolist()}")
 
-            kwargs['input_ids'] = input_ids
-            kwargs['positions'] = positions
+            kwargs['input_ids'] = input_ids[:N_ulysses]
+            kwargs['positions'] = positions[:N_ulysses]
 
             # You can add pre-processing code here
             output = model_forward(*args, **kwargs)
