@@ -1162,10 +1162,14 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             else:
                 draft_token_ids.append(drafter_output.tolist())
         return draft_token_ids
-    
+
     def monkeypatch_forward(self):
-        original_forward = self.model.forward
-        SP = self.parallel_config.sequence_parallel_size
+        from vllm.distributed import get_sp_group
+        SP = get_sp_group().world_size
+        SP_rank = get_sp_group().rank_in_group
+        device_group = get_sp_group().device_group
+        model_forward = self.model.forward
+
         def custom_forward(*args, **kwargs):
 
             input_ids = kwargs['input_ids']
@@ -1173,9 +1177,11 @@ class GPUModelRunner(LoRAModelRunnerMixin):
 
             N = input_ids.shape[0]
             N_ulysses = N // SP
+            N_offset = N_ulysses * SP_rank
 
-            # if torch.distributed.get_rank() == 0:
-            #     print(f"args {args}\n kwargs {kwargs}")
+            # narrow the input
+            input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
+            positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
 
             from vllm.forward_context import get_forward_context
             metadata = get_forward_context().attn_metadata
@@ -1187,14 +1193,24 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                     print(f"N {N} N_ranks {[N_ulysses] * SP} "
                           f"actual tokens: {metadata.num_actual_tokens} "
                           f"seq. lens: {metadata.seq_lens.tolist()}")
-                    
+
             kwargs['input_ids'] = input_ids
             kwargs['positions'] = positions
 
             # You can add pre-processing code here
-            result = original_forward(*args, **kwargs)
+            output = model_forward(*args, **kwargs)
             # You can add post-processing code here
-            return result
+
+            # all-gather model_output
+            model_output = torch.empty((N, self.model.config.hidden_size),
+                                       dtype=output.dtype,
+                                       device=output.device)
+            torch.distributed.all_gather_into_tensor(model_output,
+                                                     output,
+                                                     group=device_group)
+
+            return model_output
+
         self.model.forward = custom_forward
 
     def load_model(self) -> None:
