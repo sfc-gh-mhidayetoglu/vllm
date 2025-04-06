@@ -1171,36 +1171,18 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         model_forward = self.model.forward
 
         def custom_forward(*args, **kwargs):
-
+            # update inputs
             input_ids = kwargs['input_ids']
             positions = kwargs['positions']
-
+            # Ulysses parameters
             N = input_ids.shape[0]
             N_ulysses = N // SP
             N_offset = N_ulysses * SP_rank
-
             # narrow the input
-            input_ids[:N_ulysses] = input_ids[N_offset:N_offset + N_ulysses]
-            positions[:N_ulysses] = positions[N_offset:N_offset + N_ulysses]
-
-            from vllm.forward_context import get_forward_context
-            metadata = get_forward_context().attn_metadata
-            if metadata is None:
-                if torch.distributed.get_rank() == 0:
-                    print(f"N {N} N_ranks {[N_ulysses] * SP}")
-            else:
-                if torch.distributed.get_rank() == 0:
-                    print(f"N {N} N_ranks {[N_ulysses] * SP} "
-                          f"actual tokens: {metadata.num_actual_tokens} "
-                          f"seq. lens: {metadata.seq_lens.tolist()}")
-
-            kwargs['input_ids'] = input_ids[:N_ulysses]
-            kwargs['positions'] = positions[:N_ulysses]
-
-            # You can add pre-processing code here
+            kwargs['input_ids'] = input_ids[N_offset:N_offset + N_ulysses]
+            kwargs['positions'] = positions[N_offset:N_offset + N_ulysses]
+            # original forward
             output = model_forward(*args, **kwargs)
-            # You can add post-processing code here
-
             # all-gather model_output
             model_output = torch.empty((N, self.model.config.hidden_size),
                                        dtype=output.dtype,
@@ -1208,7 +1190,6 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             torch.distributed.all_gather_into_tensor(model_output,
                                                      output,
                                                      group=device_group)
-
             return model_output
 
         self.model.forward = custom_forward
