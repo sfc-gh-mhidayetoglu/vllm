@@ -1181,13 +1181,10 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             metadata = get_forward_context().attn_metadata
             if metadata is None:
                 if torch.distributed.get_rank() == 0:
-                    print(f"numforward {self.numforward} N {N} "
-                          f"N_ranks {[N_ulysses] * SP}")
+                    print(f"N {N} N_ranks {[N_ulysses] * SP}")
             else:
-                self.numforward += 1
                 if torch.distributed.get_rank() == 0:
-                    print(f"numforward {self.numforward} N {N} "
-                          f"N_ranks {[N_ulysses] * SP} "
+                    print(f"N {N} N_ranks {[N_ulysses] * SP} "
                           f"actual tokens: {metadata.num_actual_tokens} "
                           f"seq. lens: {metadata.seq_lens.tolist()}")
                     
