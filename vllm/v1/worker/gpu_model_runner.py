@@ -1166,7 +1166,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
     def monkeypatch_forward(self):
         original_forward = self.model.forward
         SP = self.parallel_config.sequence_parallel_size
-        def custom_forward(self, *args, **kwargs):
+        def custom_forward(*args, **kwargs):
 
             # N = input_ids.shape[0]
             # N_ulysses = N // SP
@@ -1190,7 +1190,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
             # You can add pre-processing code here
-            result = original_forward(self, *args, **kwargs)
+            result = original_forward(*args, **kwargs)
             # You can add post-processing code here
             return result
         self.model.forward = custom_forward
