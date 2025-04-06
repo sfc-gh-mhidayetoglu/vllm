@@ -1165,7 +1165,12 @@ class GPUModelRunner(LoRAModelRunnerMixin):
     
     def monkeypatch_forward(self):
         original_forward = self.model.forward
-        def custom_forward(*args, **kwargs):
+        SP = self.parallel_config.sequence_parallel_size
+        def custom_forward(self, input_ids, positions, *args, **kwargs):
+
+            N = input_ids.shape[0]
+            N_ulysses = N // SP
+
 
             if torch.distributed.get_rank() == 0:
                 print(f"args {args}\n kwargs {kwargs}")
@@ -1185,7 +1190,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
             # You can add pre-processing code here
-            result = original_forward(*args, **kwargs)
+            result = original_forward(self, input_ids, positions, *args, **kwargs)
             # You can add post-processing code here
             return result
         self.model.forward = custom_forward
