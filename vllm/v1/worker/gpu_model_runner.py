@@ -1170,7 +1170,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         device_group = get_sp_group().device_group
         model_forward = self.model.forward
 
-        def custom_forward(*args, **kwargs):
+        def ulysses_forward(*args, **kwargs):
             # update inputs
             input_ids = kwargs['input_ids']
             positions = kwargs['positions']
@@ -1192,7 +1192,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                                                      group=device_group)
             return model_output
 
-        self.model.forward = custom_forward
+        self.model.forward = ulysses_forward
 
     def load_model(self) -> None:
         logger.info("Starting to load model %s...", self.model_config.model)
