@@ -22,6 +22,10 @@ from vllm.utils import direct_register_custom_op
 IS_KV_REPLICATED = False
 
 
+def is_kv_replicated() -> bool:
+    return IS_KV_REPLICATED
+
+
 class Attention(nn.Module):
     """Attention layer.
 
