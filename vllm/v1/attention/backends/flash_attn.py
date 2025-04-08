@@ -278,16 +278,14 @@ class FlashAttentionImpl(AttentionImpl):
             q_ = torch.empty_like(q)
             torch.distributed.all_to_all_single(q_, q, group=self.device_group)
             # all-gather (key, value)
-            k_ = torch.empty(N,
-                             self.num_kv_heads,
-                             self.head_size,
-                             dtype=query.dtype,
-                             device=query.device)
-            v_ = torch.empty(N,
-                             self.num_kv_heads,
-                             self.head_size,
-                             dtype=query.dtype,
-                             device=query.device)
+            kv = torch.cat(query, key)
+            kv_ = torch.empty(N,
+                              2 * self.num_kv_heads * self.head_size,
+                              dtype=query.dtype,
+                              device=query.device)
+            torch.distributed.all_gather(kv_, kv, group=self.device_group)
+            k_, v_ = kv_.split([self.num_kv_heads * self.head_size] * 2,
+                               dim=-1)
         else:
             # pack
             qkv = torch.cat(
