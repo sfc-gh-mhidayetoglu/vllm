@@ -194,7 +194,8 @@ class FlashAttentionImpl(AttentionImpl):
         torch.distributed.barrier()
         for i in range(torch.distributed.get_world_size()):
             if torch.distributed.get_rank() == i:
-                print(f"num_heads {num_heads} num_kv_heads {num_kv_heads}")
+                print(f"num_heads {self.num_heads} "
+                      f"num_kv_heads {self.num_kv_heads}")
             torch.cuda.synchronize()
             torch.distributed.barrier()
 
