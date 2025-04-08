@@ -10,6 +10,7 @@ from vllm.attention.backends.abstract import (AttentionBackend, AttentionImpl,
                                               AttentionMetadata, AttentionType,
                                               is_quantized_kv_cache)
 from vllm.attention.backends.utils import get_flash_attn_version
+from vllm.attention.layer import IS_KV_REPLICATED
 from vllm.attention.ops.triton_merge_attn_states import merge_attn_states
 from vllm.distributed import get_sp_group
 from vllm.logger import init_logger
@@ -263,8 +264,6 @@ class FlashAttentionImpl(AttentionImpl):
         # output.copy_(query)
         # return output
         # traceback.print_stack()
-
-        from vllm.attention.layer import IS_KV_REPLICATED
 
         # Ulysses transpose 1/2
         if IS_KV_REPLICATED:
