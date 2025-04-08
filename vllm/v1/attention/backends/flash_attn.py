@@ -264,10 +264,10 @@ class FlashAttentionImpl(AttentionImpl):
         # return output
         # traceback.print_stack()
 
-        import vllm
+        from vllm.attention.layer import IS_KV_REPLICATED
 
         # Ulysses transpose 1/2
-        if vllm.attention.layer.IS_KV_REPLICATED:
+        if IS_KV_REPLICATED:
             # all-to-all (query)
             q = query.view(-1,
                            self.SP, self.num_heads * self.head_size).transpose(
