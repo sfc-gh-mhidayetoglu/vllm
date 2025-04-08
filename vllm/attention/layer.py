@@ -19,6 +19,8 @@ from vllm.model_executor.layers.quantization.kv_cache import BaseKVCacheMethod
 from vllm.platforms import _Backend, current_platform
 from vllm.utils import direct_register_custom_op
 
+IS_KV_REPLICATED = False
+
 
 class Attention(nn.Module):
     """Attention layer.
@@ -92,8 +94,12 @@ class Attention(nn.Module):
         self._v_scale_float = 1.0
 
         SP = get_sp_group().world_size
-        num_heads = num_heads // SP
-        num_kv_heads = max(1, num_kv_heads // SP)
+        num_heads //= SP
+        num_kv_heads //= SP
+        if num_kv_heads == 0:
+            num_kv_heads = 1
+            global IS_KV_REPLICATED
+            IS_KV_REPLICATED = True
         self.use_mla = use_mla
         self.num_heads = num_heads
         self.head_size = head_size

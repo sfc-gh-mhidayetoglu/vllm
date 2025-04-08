@@ -152,9 +152,6 @@ class FlashAttentionMetadataBuilder:
         return attn_metadata
 
 
-KV_REPLICATED = False
-
-
 class FlashAttentionImpl(AttentionImpl):
 
     def __init__(
@@ -193,16 +190,7 @@ class FlashAttentionImpl(AttentionImpl):
             logits_soft_cap = 0
         self.logits_soft_cap = logits_soft_cap
 
-        torch.cuda.synchronize()
-        torch.distributed.barrier()
-        for i in range(torch.distributed.get_world_size()):
-            if torch.distributed.get_rank() == i:
-                print(f"num_heads {self.num_heads} "
-                      f"num_kv_heads {self.num_kv_heads}")
-            torch.cuda.synchronize()
-            torch.distributed.barrier()
-
-        # assert self.num_heads % self.num_kv_heads == 0
+        assert self.num_heads % self.num_kv_heads == 0
 
         self.num_queries_per_kv = self.num_heads // self.num_kv_heads
 
