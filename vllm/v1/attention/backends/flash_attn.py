@@ -272,12 +272,15 @@ class FlashAttentionImpl(AttentionImpl):
                 print("IS_KV_REPLICATED")
             q_ = torch.empty(N,
                              self.num_heads * self.head_size,
+                             dtype=query.dtype,
                              device=query.device)
             k_ = torch.empty(N,
                              self.num_kv_heads * self.head_size,
+                             dtype=query.dtype,
                              device=query.device)
             v_ = torch.empty(N,
                              self.num_kv_heads * self.head_size,
+                             dtype=query.dtype,
                              device=query.device)
             # q_ = query.view(-1, self.SP,
             #                 self.num_heads * self.head_size).transpose(
