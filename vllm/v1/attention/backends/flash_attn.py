@@ -248,16 +248,16 @@ class FlashAttentionImpl(AttentionImpl):
         # performance to make sure it does not introduce any overhead.
 
         # Ulysses Attention
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"FlashAttentionImpl.forward \n \
-        #     q {query.shape}\n \
-        #     k {key.shape}\n \
-        #     v {value.shape}\n \
-        #     output {output.shape}\n \
-        #     kv_cache {kv_cache.shape}\n \
-        #     self.num_heads {self.num_heads}\n \
-        #     self.num_kv_heads {self.num_kv_heads}\n \
-        #     self.head_size {self.head_size}\n")
+        if torch.distributed.get_rank() == 0:
+            print(f"FlashAttentionImpl.forward \n \
+            q {query.shape}\n \
+            k {key.shape}\n \
+            v {value.shape}\n \
+            output {output.shape}\n \
+            kv_cache {kv_cache.shape}\n \
+            self.num_heads {self.num_heads}\n \
+            self.num_kv_heads {self.num_kv_heads}\n \
+            self.head_size {self.head_size}\n")
         # output.copy_(query)
         # return output
         # traceback.print_stack()
