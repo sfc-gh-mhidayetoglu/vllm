@@ -93,7 +93,7 @@ class Attention(nn.Module):
 
         SP = get_sp_group().world_size
         num_heads = num_heads // SP
-        num_kv_heads = num_kv_heads // SP
+        num_kv_heads = max(1, num_kv_heads // SP)
         self.use_mla = use_mla
         self.num_heads = num_heads
         self.head_size = head_size
