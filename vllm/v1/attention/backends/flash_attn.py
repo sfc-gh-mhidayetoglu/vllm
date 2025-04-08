@@ -190,8 +190,9 @@ class FlashAttentionImpl(AttentionImpl):
             logits_soft_cap = 0
         self.logits_soft_cap = logits_soft_cap
 
-        assert self.num_heads % self.num_kv_heads == 0, \
-            f"num_heads {num_heads} num_kv_heads {num_kv_heads}"
+        print(f"num_heads {num_heads} num_kv_heads {num_kv_heads}")
+
+        assert self.num_heads % self.num_kv_heads == 0
 
         self.num_queries_per_kv = self.num_heads // self.num_kv_heads
 
