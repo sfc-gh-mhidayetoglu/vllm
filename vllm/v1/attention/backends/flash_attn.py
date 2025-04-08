@@ -271,17 +271,21 @@ class FlashAttentionImpl(AttentionImpl):
             if torch.distributed.get_rank() == 0:
                 print("IS_KV_REPLICATED")
             q_ = torch.empty(N,
-                             self.num_heads * self.head_size,
+                             self.num_heads,
+                             self.head_size,
                              dtype=query.dtype,
                              device=query.device)
             k_ = torch.empty(N,
-                             self.num_kv_heads * self.head_size,
+                             self.num_kv_heads,
+                             self.head_size,
                              dtype=query.dtype,
                              device=query.device)
             v_ = torch.empty(N,
-                             self.num_kv_heads * self.head_size,
+                             self.num_kv_heads,
+                             self.head_size,
                              dtype=query.dtype,
                              device=query.device)
+            c_ = output.view(-1, self.num_heads, self.head_size)
             # q_ = query.view(-1, self.SP,
             #                 self.num_heads * self.head_size).transpose(
             #                     0, 1).reshape(-1,
@@ -315,11 +319,11 @@ class FlashAttentionImpl(AttentionImpl):
                 self.head_size, self.num_kv_heads * self.head_size
             ],
                                     dim=-1)
-        # prepare
-        q_ = q_.reshape(-1, self.num_heads, self.head_size)
-        k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
-        v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
-        c_ = output.view(-1, self.num_heads, self.head_size)
+            # prepare
+            q_ = q_.reshape(-1, self.num_heads, self.head_size)
+            k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
+            v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
+            c_ = output.view(-1, self.num_heads, self.head_size)
 
         if torch.distributed.get_rank() == 0:
             print(f"\n \
