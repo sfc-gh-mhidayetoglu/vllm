@@ -270,11 +270,14 @@ class FlashAttentionImpl(AttentionImpl):
         if vllm.attention.layer.IS_KV_REPLICATED:
             if torch.distributed.get_rank() == 0:
                 print("IS_KV_REPLICATED")
-            # q_ = torch.empty(N,
-            #                  self.num_heads,
-            #                  self.head_size,
-            #                  dtype=query.dtype,
-            #                  device=query.device)
+            # all-to-all (query)
+            q = query.view(-1,
+                           self.SP, self.num_heads * self.head_size).transpose(
+                               0, 1).reshape(-1,
+                                             self.num_heads * self.head_size)
+            q_ = torch.empty_like(q)
+            torch.distributed.all_to_all_single(q_, q, group=self.device_group)
+            # all-gather (key, value)
             k_ = torch.empty(N,
                              self.num_kv_heads,
                              self.head_size,
@@ -285,18 +288,6 @@ class FlashAttentionImpl(AttentionImpl):
                              self.head_size,
                              dtype=query.dtype,
                              device=query.device)
-            q = query.view(-1,
-                           self.SP, self.num_heads * self.head_size).transpose(
-                               0, 1).reshape(-1,
-                                             self.num_heads * self.head_size)
-            q_ = torch.empty_like(q)
-            torch.distributed.all_to_all_single(q_, q, group=self.device_group)
-            # k_ = torch.empty(q_.shape[0],
-            #                  self.num_kv_heads * self.head_size,
-            #                  device=q_.device)
-            # v_ = torch.empty(q_.shape[0],
-            #                  self.num_kv_heads * self.head_size,
-            #                  device=q_.device)
         else:
             # pack
             qkv = torch.cat(
