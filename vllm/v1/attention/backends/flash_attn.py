@@ -248,8 +248,10 @@ class FlashAttentionImpl(AttentionImpl):
         # performance to make sure it does not introduce any overhead.
 
         # Ulysses Attention
+        N = query.shape[0] * self.SP
         if torch.distributed.get_rank() == 0:
             print(f"FlashAttentionImpl.forward \n \
+            N {N}\n \
             q {query.shape}\n \
             k {key.shape}\n \
             v {value.shape}\n \
@@ -268,19 +270,28 @@ class FlashAttentionImpl(AttentionImpl):
         if vllm.attention.layer.IS_KV_REPLICATED:
             if torch.distributed.get_rank() == 0:
                 print("IS_KV_REPLICATED")
-            q_ = query.view(-1, self.SP,
-                            self.num_heads * self.head_size).transpose(
-                                0, 1).reshape(-1,
-                                              self.num_heads * self.head_size)
-            torch.distributed.all_to_all_single(q_,
-                                                q_,
-                                                group=self.device_group)
-            k_ = torch.empty(q_.shape[0],
+            q_ = torch.empty(N,
+                             self.num_heads * self.head_size,
+                             device=query.device)
+            k_ = torch.empty(N,
                              self.num_kv_heads * self.head_size,
-                             device=q_.device)
-            v_ = torch.empty(q_.shape[0],
+                             device=query.device)
+            v_ = torch.empty(N,
                              self.num_kv_heads * self.head_size,
-                             device=q_.device)
+                             device=query.device)
+            # q_ = query.view(-1, self.SP,
+            #                 self.num_heads * self.head_size).transpose(
+            #                     0, 1).reshape(-1,
+            #                                   self.num_heads * self.head_size)
+            # torch.distributed.all_to_all_single(q_,
+            #                                     q_,
+            #                                     group=self.device_group)
+            # k_ = torch.empty(q_.shape[0],
+            #                  self.num_kv_heads * self.head_size,
+            #                  device=q_.device)
+            # v_ = torch.empty(q_.shape[0],
+            #                  self.num_kv_heads * self.head_size,
+            #                  device=q_.device)
         else:
             # pack
             qkv = torch.cat(
