@@ -312,13 +312,13 @@ class FlashAttentionImpl(AttentionImpl):
         v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
         c_ = output.view(-1, self.num_heads, self.head_size)
 
-        if torch.distributed.get_rank() == 0:
-            print(f"\n \
-                    q_ {q_.shape}\n \
-                    k_ {k_.shape}\n \
-                    v_ {v_.shape}\n \
-                    c_ {c_.shape}\n \
-                    num_actual_tokens {attn_metadata.num_actual_tokens}")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"\n \
+        #             q_ {q_.shape}\n \
+        #             k_ {k_.shape}\n \
+        #             v_ {v_.shape}\n \
+        #             c_ {c_.shape}\n \
+        #             num_actual_tokens {attn_metadata.num_actual_tokens}")
 
         num_actual_tokens = attn_metadata.num_actual_tokens
         # Reshape the input keys and values and store them in the cache.

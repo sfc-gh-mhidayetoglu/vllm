@@ -106,9 +106,6 @@ class Attention(nn.Module):
         self.num_kv_heads = num_kv_heads
         self.sliding_window = sliding_window
 
-        if torch.distributed.get_rank() == 0:
-            print(f"num_heads {num_heads} num_kv_heads {num_kv_heads}")
-
         quant_method = quant_config.get_quant_method(
             self, prefix=prefix) if quant_config else None
         if quant_method is not None and not isinstance(
