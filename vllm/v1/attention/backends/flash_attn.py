@@ -264,8 +264,6 @@ class FlashAttentionImpl(AttentionImpl):
         # return output
         # traceback.print_stack()
 
-        return output
-
         import vllm
 
         # Ulysses transpose 1/2
