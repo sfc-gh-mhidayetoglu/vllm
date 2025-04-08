@@ -277,7 +277,7 @@ class FlashAttentionImpl(AttentionImpl):
             torch.distributed.all_to_all_single(q_, q, group=self.device_group)
             # all-gather (key, value)
             kv = torch.cat((key, value), dim=-1)
-            kv_ = torch.empty(q.shape[0] * self.SP,
+            kv_ = torch.empty(q_.shape[0],
                               2 * self.num_kv_heads * self.head_size,
                               dtype=query.dtype,
                               device=query.device)
