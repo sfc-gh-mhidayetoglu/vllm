@@ -283,7 +283,9 @@ class FlashAttentionImpl(AttentionImpl):
                               2 * self.num_kv_heads * self.head_size,
                               dtype=query.dtype,
                               device=query.device)
-            torch.distributed.all_gather(kv_, kv, group=self.device_group)
+            torch.distributed.all_gather_into_tensor(kv_,
+                                                     kv,
+                                                     group=self.device_group)
             k_, v_ = kv_.split([self.num_kv_heads * self.head_size] * 2,
                                dim=-1)
         else:
