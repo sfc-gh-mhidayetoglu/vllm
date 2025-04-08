@@ -190,7 +190,13 @@ class FlashAttentionImpl(AttentionImpl):
             logits_soft_cap = 0
         self.logits_soft_cap = logits_soft_cap
 
-        print(f"num_heads {num_heads} num_kv_heads {num_kv_heads}")
+        torch.cuda.synchronize()
+        torch.distributed.barrier()
+        for i in range(torch.distributed.get_world_size()):
+            if torch.distributed.get_rank() == i:
+                print(f"num_heads {num_heads} num_kv_heads {num_kv_heads}")
+            torch.cuda.synchronize()
+            torch.distributed.barrier()
 
         assert self.num_heads % self.num_kv_heads == 0
 
