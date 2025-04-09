@@ -51,6 +51,8 @@ else:
 
 logger = init_logger(__name__)
 
+SP_TP_MODE = False
+
 
 class GPUModelRunner(LoRAModelRunnerMixin):
 
@@ -1176,6 +1178,9 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             positions = kwargs['positions']
             # Ulysses parameters
             N = input_ids.shape[0]
+            threshold = 64
+            global SP_TP_MODE
+            SP_TP_MODE = True if threshold > N else False
             N_ulysses = N // SP
             N_offset = N_ulysses * SP_rank
             if torch.distributed.get_rank() == 0:

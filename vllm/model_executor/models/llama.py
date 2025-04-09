@@ -577,10 +577,12 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         #               f"actual tokens: {metadata.num_actual_tokens} "
         #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         metadata = get_forward_context().attn_metadata
         if torch.distributed.get_rank() == 0:
             print(f"numiter: {self.numiter} "
-                  f"input_ids: {input_ids.shape}")
+                  f"input_ids: {input_ids.shape} "
+                  f"SP_TP_MODE: {SP_TP_MODE}")
             if metadata is None:
                 print("metadata: None")
             else:
