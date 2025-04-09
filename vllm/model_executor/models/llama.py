@@ -434,6 +434,33 @@ class LlamaModel(nn.Module):
         return loaded_params
 
 
+@support_torch_compile
+class LlamaModelTP(nn.Module):
+
+    def __init__(self,
+                 *,
+                 vllm_config: VllmConfig,
+                 model: LlamaModel,
+                 prefix: str = ""):
+        super().__init__()
+        self.config = vllm_config.model_config.hf_config
+        self._model = [model]  # Box it to avoid recursive registration
+
+    @property
+    def model(self) -> LlamaModel:
+        return self._model[0]
+
+    def forward(
+        self,
+        input_ids: Optional[torch.Tensor],
+        positions: torch.Tensor,
+        intermediate_tensors: Optional[IntermediateTensors],
+        inputs_embeds: Optional[torch.Tensor] = None,
+    ) -> Union[torch.Tensor, IntermediateTensors]:
+        return self.model.forward(input_ids, positions, intermediate_tensors,
+                                  inputs_embeds)
+
+
 class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     packed_modules_mapping = {
         "qkv_proj": ["q_proj", "k_proj", "v_proj"],
@@ -480,6 +507,12 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
 
         self.model = self._init_model(vllm_config=vllm_config,
                                       prefix=maybe_prefix(prefix, "model"))
+
+        vllm_config.compilation_config = (
+            vllm_config.compilation_config.model_copy())
+        vllm_config.compilation_config.inductor_compile_config = (
+            vllm_config.compilation_config.inductor_compile_config.copy())
+        self.model_tp = LlamaModelTP(vllm_config=vllm_config, model=self.model)
 
         if get_pp_group().is_last_rank:
             self.unpadded_vocab_size = config.vocab_size
@@ -546,12 +579,12 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
 
         metadata = get_forward_context().attn_metadata
         if torch.distributed.get_rank() == 0:
-            print(f"numiter: {self.numiter}"
-                  f" input_ids: {input_ids.shape}")
+            print(f"numiter: {self.numiter} "
+                  f"input_ids: {input_ids.shape}")
             if metadata is None:
                 print("metadata: None")
             else:
-                print(f"metadata: not None"
+                print(f"metadata: "
                       f"actual tokens: {metadata.num_actual_tokens} "
                       f"seq. lens: {metadata.seq_lens.tolist()}")
         self.numiter += 1

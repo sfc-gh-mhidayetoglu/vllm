@@ -992,7 +992,6 @@ def initialize_model_parallel(
         ranks = list(
             range(i * ulysses_parallel_size, (i + 1) * ulysses_parallel_size))
         group_ranks.append(ranks)
-    print("SPTP", group_ranks)
     _SP_TP = init_model_parallel_group(group_ranks,
                                        get_world_group().local_rank,
                                        backend,
