@@ -529,6 +529,21 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+
+        # from vllm.forward_context import get_forward_context
+        # metadata = get_forward_context().attn_metadata
+        # if metadata is None:
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP}")
+        # else:
+        #     self.numforward += 1
+        #     if torch.distributed.get_rank() == 0:
+        #         print(f"numforward {self.numforward} N {N} "
+        #               f"N_ranks {[N_ulysses] * SP} "
+        #               f"actual tokens: {metadata.num_actual_tokens} "
+        #               f"seq. lens: {metadata.seq_lens.tolist()}")
+
         metadata = get_forward_context().attn_metadata
         if torch.distributed.get_rank() == 0:
             print(f"numiter: {self.numiter}"
@@ -536,8 +551,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
             if metadata is None:
                 print("metadata: None")
             else:
-                print("metadata: not None")
-            self.numiter += 1
+                print(f"metadata: not None"
+                      f"actual tokens: {metadata.num_actual_tokens} "
+                      f"seq. lens: {metadata.seq_lens.tolist()}")
+        self.numiter += 1
         model_output = self.model(input_ids, positions, intermediate_tensors,
                                   inputs_embeds)
         return model_output

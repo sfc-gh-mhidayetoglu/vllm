@@ -1178,6 +1178,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             N = input_ids.shape[0]
             N_ulysses = N // SP
             N_offset = N_ulysses * SP_rank
+            if torch.distributed.get_rank() == 0:
+                print(f"N {N}, N_ranks {[N_ulysses] * SP}")
             # narrow the input
             kwargs['input_ids'] = input_ids[N_offset:N_offset + N_ulysses]
             kwargs['positions'] = positions[N_offset:N_offset + N_ulysses]
