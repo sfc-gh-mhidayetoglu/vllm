@@ -246,6 +246,10 @@ class FlashAttentionImpl(AttentionImpl):
         # Whenever making a change in this method, please benchmark the
         # performance to make sure it does not introduce any overhead.
 
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        if torch.distributed.get_rank() == 0:
+            print(f"SP_TP_MODE {SP_TP_MODE}")
+
         # Ulysses Attention
         # if torch.distributed.get_rank() == 0:
         #     print(f"FlashAttentionImpl.forward \n \
@@ -257,7 +261,6 @@ class FlashAttentionImpl(AttentionImpl):
         #     self.num_heads {self.num_heads}\n \
         #     self.num_kv_heads {self.num_kv_heads}\n \
         #     self.head_size {self.head_size}\n")
-        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         if SP_TP_MODE:
             q_ = query.view(-1, self.num_heads, self.head_size)
             k_ = key.view(-1, self.num_kv_heads, self.head_size)
