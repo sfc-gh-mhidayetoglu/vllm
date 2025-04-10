@@ -1030,7 +1030,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 k: v[:num_input_tokens]
                 for k, v in self.intermediate_tensors.items()
             })
-
+        
         # Run the decoder.
         # Use persistent buffers for CUDA graphs.
         with set_forward_context(attn_metadata, self.vllm_config):
@@ -1503,6 +1503,9 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             # Cache the dummy encoder outputs.
             self.encoder_cache["tmp"] = dict(enumerate(dummy_encoder_outputs))
 
+        if torch.distributed.get_rank() == 0:
+            print(f"profile run start")
+
         hidden_states = self._dummy_run(self.max_num_tokens)
         if get_pp_group().is_last_rank:
             sampler_output = self._dummy_sampler_run(hidden_states)
@@ -1512,6 +1515,9 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         del hidden_states, sampler_output
         self.encoder_cache.clear()
         gc.collect()
+
+        if torch.distributed.get_rank() == 0:
+            print(f"profile run end")
 
     def capture_model(self) -> None:
         if not self.use_cuda_graph:
