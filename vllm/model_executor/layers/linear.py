@@ -1277,20 +1277,21 @@ class RowParallelLinear(LinearBase):
     def forward(
         self, input_
     ) -> Union[torch.Tensor, tuple[torch.Tensor, Optional[Parameter]]]:
-        # from vllm.distributed.parallel_state import get_sp_tp_group
-        # sp_tp_size = get_sp_tp_group().world_size
-        # sp_tp_rank = get_sp_tp_group().rank_in_group
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        from vllm.distributed.parallel_state import get_sp_tp_group
+        sp_tp_size = get_sp_tp_group().world_size
+        sp_tp_rank = get_sp_tp_group().rank_in_group
 
         if self.input_is_parallel:
-            #print("PARALLEL", input_.shape)
+            # print("PARALLEL", input_.shape)
             input_parallel = input_
-        # elif sp_tp_mode:
-        #     #print("SPTPMODE", input_.shape)
-        #     splitted_input = split_tensor_along_last_dim(
-        #         input_, num_partitions=sp_tp_size)
-        #     input_parallel = splitted_input[sp_tp_rank].contiguous()
+        elif sp_tp_mode:
+             # print("SPTPMODE", input_.shape)
+            splitted_input = split_tensor_along_last_dim(
+                input_, num_partitions=sp_tp_size)
+            input_parallel = splitted_input[sp_tp_rank].contiguous()
         else:
-            #print("NOSPTPMODE", input_.shape)
+            # print("NOSPTPMODE", input_.shape)
             tp_rank = get_tensor_model_parallel_rank()
             splitted_input = split_tensor_along_last_dim(
                 input_, num_partitions=self.tp_size)
@@ -1301,17 +1302,18 @@ class RowParallelLinear(LinearBase):
         # Only fuse bias add into GEMM for rank 0 (this ensures that
         # bias will not get added more than once in TP>1 case)
         bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
-        # from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        # if SP_TP_MODE:
-        #     bias_ = None if (sp_tp_rank > 0 or self.skip_bias_add) else self.bias
-        # else:
-        #     bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
+        if SP_TP_MODE:
+            bias_ = None if (sp_tp_rank > 0 or self.skip_bias_add) else self.bias
+        else:
+            bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
         output_parallel = self.quant_method.apply(self,
                                                   input_parallel,
-                                                  bias=bias_)
-        if self.reduce_results and self.tp_size > 1:
+                                                  bias=bias_,
+                                                  sp_tp_mode=SP_TP_MODE)
+        if self.reduce_results and SP_TP_MODE and sp_tp_size > 1:
+            output = get_sp_tp_group().all_reduce(output_parallel)
+        elif self.reduce_results and not SP_TP_MODE and self.tp_size > 1:
             output = tensor_model_parallel_all_reduce(output_parallel)
-            # output = get_sp_tp_group().allreduce(output_parallel)
         else:
             output = output_parallel
 
