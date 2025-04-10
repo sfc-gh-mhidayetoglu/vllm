@@ -200,9 +200,19 @@ class LlamaAttention(nn.Module):
         hidden_states: torch.Tensor,
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
-        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        # q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        from vllm.distributed.parallel_state import get_sp_group
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        if SP_TP_MODE:
+            q_size = self.q_size // get_sp_group().world_size
+            kv_size = self.kv_size // get_sp_group().world_size
+        else:
+            q_size = self.q_size
+            kv_size = self.kv_size
+        q, k, v = qkv.split([q_size, kv_size, kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v)
+
         output, _ = self.o_proj(attn_output)
         return output
 
