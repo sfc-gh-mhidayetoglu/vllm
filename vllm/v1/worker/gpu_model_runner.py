@@ -978,6 +978,9 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         attn_metadata, logits_indices, spec_decode_metadata = (
             self._prepare_inputs(scheduler_output))
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        if torch.distributed.get_rank() == 0:
+            print(f"execute model with SP_TP_MODE {SP_TP_MODE}")
         # add padding to the batch size to make it a multiple of SP
         SP = self.parallel_config.sequence_parallel_size
         num_input_tokens = (num_scheduled_tokens + SP - 1) // SP * SP
