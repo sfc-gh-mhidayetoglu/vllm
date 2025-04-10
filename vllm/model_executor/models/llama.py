@@ -209,6 +209,10 @@ class LlamaAttention(nn.Module):
         else:
             q_size = self.q_size
             kv_size = self.kv_size
+        if torch.distributed.get_rank() == 0:
+            print(
+                f"q_size: {q_size}, kv_size: {kv_size} SP_TP_MODE: {SP_TP_MODE}"
+            )
         q, k, v = qkv.split([q_size, kv_size, kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v)
