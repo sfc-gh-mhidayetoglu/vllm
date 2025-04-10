@@ -203,6 +203,7 @@ class LlamaAttention(nn.Module):
         # q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         from vllm.distributed.parallel_state import get_sp_group
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        from vllm.v1.worker.gpu_worker import SS_PROFILE_RUN
         if SP_TP_MODE:
             q_size = self.q_size // get_sp_group().world_size
             kv_size = self.kv_size // get_sp_group().world_size
@@ -211,7 +212,7 @@ class LlamaAttention(nn.Module):
             kv_size = self.kv_size
         if torch.distributed.get_rank() == 0:
             print(
-                f"q_size: {q_size}, kv_size: {kv_size} SP_TP_MODE: {SP_TP_MODE}"
+                f"q_size: {q_size}, kv_size: {kv_size} SP_TP_MODE: {SP_TP_MODE} SS_PROFILE_RUN: {SS_PROFILE_RUN}" 
             )
         q, k, v = qkv.split([q_size, kv_size, kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
