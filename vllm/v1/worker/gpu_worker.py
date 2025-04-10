@@ -154,7 +154,11 @@ class Worker(WorkerBase):
         _, total_gpu_memory = torch.cuda.mem_get_info()
         # Execute a forward pass with dummy inputs to profile the memory usage
         # of the model.
+        if torch.distributed.get_rank() == 0:
+            print("profile run start")
         self.model_runner.profile_run()
+        if torch.distributed.get_rank() == 0:
+            print("profile run end")
 
         free_gpu_memory, _ = torch.cuda.mem_get_info()
         # NOTE(woosuk): Here we assume that the other processes using the same
