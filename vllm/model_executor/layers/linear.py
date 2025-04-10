@@ -1303,7 +1303,8 @@ class RowParallelLinear(LinearBase):
                                                   input_parallel,
                                                   bias=bias_)
         if self.reduce_results and self.tp_size > 1:
-            output = tensor_model_parallel_all_reduce(output_parallel)
+            # output = tensor_model_parallel_all_reduce(output_parallel)
+            output = get_sp_tp_group().allreduce(output_parallel)
         else:
             output = output_parallel
 
