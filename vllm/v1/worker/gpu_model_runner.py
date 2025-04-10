@@ -1554,12 +1554,16 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         with graph_capture(device=self.device):
             for num_tokens in reversed(self.cudagraph_batch_sizes):
                 SP = self.parallel_config.sequence_parallel_size
+                if torch.distributed.get_rank() == 0:
+                    print(f"capture SP: {num_tokens * SP}")
                 if num_tokens * SP >= SP_TP_THRESHOLD:
                     for _ in range(self.vllm_config.compilation_config.
                                 cudagraph_num_of_warmups):
                         self._dummy_run(num_tokens * SP)
                     self._dummy_run(num_tokens * SP)
             for num_tokens in reversed(self.cudagraph_batch_sizes):
+                if torch.distributed.get_rank() == 0:
+                    print(f"capture SP_TP: {num_tokens}")
                 if num_tokens < SP_TP_THRESHOLD:
                     for _ in range(self.vllm_config.compilation_config.
                                 cudagraph_num_of_warmups):
