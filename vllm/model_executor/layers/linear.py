@@ -190,12 +190,16 @@ class UnquantizedLinearMethod(LinearMethodBase):
               sp_tp_mode: bool = False,
               column_parallel: bool = False,
               output_partition_sizes: list = None) -> torch.Tensor:
-
-        output = F.linear(x, layer.weight, bias)
+        
+        if sp_tp_mode:
+            weight = layer.weight
+        else:
+            weight = layer.weight
+        output = F.linear(x, weight, bias)
 
         if torch.distributed.get_rank() == 0:
             print(
-                f"unquantized linear x {x.shape} weight {layer.weight.shape} bias {None if bias is None else bias.shape} output {output.shape} x type {x.dtype} weight type {layer.weight.dtype} bias type {None if bias is None else bias.dtype} output type {output.dtype}"
+                f"unquantized linear x {x.shape} weight {weight.shape} bias {None if bias is None else bias.shape} output {output.shape} x type {x.dtype} weight type {weight.dtype} bias type {None if bias is None else bias.dtype} output type {output.dtype}"
             )
             print(f"sp_tp_mode {sp_tp_mode} column_parallel {column_parallel} output_partition_sizes {output_partition_sizes}")
 
