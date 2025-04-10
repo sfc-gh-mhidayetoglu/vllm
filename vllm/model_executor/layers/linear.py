@@ -186,7 +186,10 @@ class UnquantizedLinearMethod(LinearMethodBase):
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
-              bias: Optional[torch.Tensor] = None) -> torch.Tensor:
+              bias: Optional[torch.Tensor] = None,
+              sp_tp_mode: bool = False,
+              column_parallel: bool = False,
+              output_partition_sizes: list = None) -> torch.Tensor:
 
         output = F.linear(x, layer.weight, bias)
 
@@ -194,6 +197,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
             print(
                 f"unquantized linear x {x.shape} weight {layer.weight.shape} bias {None if bias is None else bias.shape} output {output.shape} x type {x.dtype} weight type {layer.weight.dtype} bias type {None if bias is None else bias.dtype} output type {output.dtype}"
             )
+            print(f"sp_tp_mode {sp_tp_mode} column_parallel {column_parallel} output_partition_sizes {output_partition_sizes}")
 
         return output
 
@@ -479,11 +483,11 @@ class ColumnParallelLinear(LinearBase):
         # Matrix multiply.
         assert self.quant_method is not None
         output_parallel = self.quant_method.apply(self, input_, bias)
-        # from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        # output_parallel = self.quant_method.apply(self, input_, bias,
-        #                                           sp_tp_mode=SP_TP_MODE,
-        #                                           column_parallel=True,
-        #                                           output_partition_sizes=self.output_partition_sizes)
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        output_parallel = self.quant_method.apply(self, input_, bias,
+                                                  sp_tp_mode=SP_TP_MODE,
+                                                  column_parallel=True,
+                                                  output_partition_sizes=self.output_partition_sizes)
         if self.gather_output:
             assert True, "gather_output is not supported"
             # All-gather across the partitions.
