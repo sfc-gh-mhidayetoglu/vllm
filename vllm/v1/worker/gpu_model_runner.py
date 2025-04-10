@@ -1181,7 +1181,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             threshold = 64
             global SP_TP_MODE
             if SP_TP_MODE is not None:
-                SP_TP_MODE = True if N < threshold else False
+                SP_TP_MODE = True if threshold > N else False
             if SP_TP_MODE is None or SP_TP_MODE is False:
                 N_ulysses = N // SP
                 N_offset = N_ulysses * SP_rank
@@ -1194,11 +1194,11 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 output = model_forward(*args, **kwargs)
                 # all-gather model_output
                 model_output = torch.empty((N, self.model.config.hidden_size),
-                                        dtype=output.dtype,
-                                        device=output.device)
+                                           dtype=output.dtype,
+                                           device=output.device)
                 torch.distributed.all_gather_into_tensor(model_output,
-                                                        output,
-                                                        group=device_group)
+                                                         output,
+                                                         group=device_group)
             if SP_TP_MODE is not None and SP_TP_MODE is True:
                 model_output = model_forward(*args, **kwargs)
             if SP_TP_MODE is None:
@@ -1508,7 +1508,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
 
             # Cache the dummy encoder outputs.
             self.encoder_cache["tmp"] = dict(enumerate(dummy_encoder_outputs))
-        
+
         hidden_states = self._dummy_run(self.max_num_tokens)
         if get_pp_group().is_last_rank:
             sampler_output = self._dummy_sampler_run(hidden_states)

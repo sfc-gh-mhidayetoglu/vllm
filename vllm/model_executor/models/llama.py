@@ -590,8 +590,13 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                       f"actual tokens: {metadata.num_actual_tokens} "
                       f"seq. lens: {metadata.seq_lens.tolist()}")
         self.numiter += 1
-        model_output = self.model(input_ids, positions, intermediate_tensors,
-                                  inputs_embeds)
+
+        if SP_TP_MODE is None or SP_TP_MODE == False:
+            model_output = self.model(input_ids, positions, intermediate_tensors,
+                                      inputs_embeds)
+        if SP_TP_MODE is None or SP_TP_MODE == True:
+            model_output = self.model_tp(input_ids, positions, intermediate_tensors,
+                                      inputs_embeds)
         return model_output
 
     def compute_logits(
