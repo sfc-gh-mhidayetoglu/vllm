@@ -51,6 +51,7 @@ else:
 
 logger = init_logger(__name__)
 
+SP_TP_THRESHOLD = 64
 SP_TP_MODE = None
 
 
@@ -978,21 +979,26 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         attn_metadata, logits_indices, spec_decode_metadata = (
             self._prepare_inputs(scheduler_output))
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
-        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        if torch.distributed.get_rank() == 0:
-            print(f"execute model with SP_TP_MODE {SP_TP_MODE}")
-        # add padding to the batch size to make it a multiple of SP
-        SP = self.parallel_config.sequence_parallel_size
-        num_input_tokens = (num_scheduled_tokens + SP - 1) // SP * SP
-        if (self.use_cuda_graph
-                and num_input_tokens // SP <= self.cudagraph_batch_sizes[-1]):
-            # Use piecewise CUDA graphs.
-            # Add padding to the batch size.
-            num_input_tokens = SP * self.vllm_config.pad_for_cudagraph(
-                num_input_tokens // SP)
+        if num_scheduled_tokens < SP_TP_THRESHOLD:
+            num_input_tokens = num_scheduled_tokens
+            if (self.use_cuda_graph and num_input_tokens <= self.cudagraph_batch_sizes[-1]):
+                num_input_tokens = self.vllm_config.pad_for_cudagraph(
+                    num_input_tokens)
+            else:
+                pass
         else:
-            # Eager mode.
-            pass
+            # add padding to the batch size to make it a multiple of SP
+            SP = self.parallel_config.sequence_parallel_size
+            num_input_tokens = (num_scheduled_tokens + SP - 1) // SP * SP
+            if (self.use_cuda_graph
+                    and num_input_tokens // SP <= self.cudagraph_batch_sizes[-1]):
+                # Use piecewise CUDA graphs.
+                # Add padding to the batch size.
+                num_input_tokens = SP * self.vllm_config.pad_for_cudagraph(
+                    num_input_tokens // SP)
+            else:
+                # Eager mode.
+                pass
         attn_metadata.num_input_tokens = num_input_tokens
 
         if self.is_multimodal_model:
@@ -1181,10 +1187,9 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             positions = kwargs['positions']
             # Ulysses parameters
             N = input_ids.shape[0]
-            threshold = 64
             global SP_TP_MODE
             if SP_TP_MODE is not None:
-                SP_TP_MODE = True if threshold > N else False
+                SP_TP_MODE = True if SP_TP_THRESHOLD > N else False
             if SP_TP_MODE is None or SP_TP_MODE is False:
                 N_ulysses = N // SP
                 N_offset = N_ulysses * SP_rank
