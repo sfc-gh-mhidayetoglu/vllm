@@ -1200,6 +1200,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                                                          output,
                                                          group=device_group)
             if SP_TP_MODE is not None and SP_TP_MODE is True:
+                if torch.distributed.get_rank() == 0:
+                    print(f"N {N}")
                 model_output = model_forward(*args, **kwargs)
             if SP_TP_MODE is None:
                 SP_TP_MODE = False
