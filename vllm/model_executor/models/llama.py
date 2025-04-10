@@ -596,11 +596,13 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        from vllm.v1.worker.gpu_worker import SS_PROFILE_RUN
         metadata = get_forward_context().attn_metadata
         if torch.distributed.get_rank() == 0:
             print(f"numiter: {self.numiter} "
                   f"input_ids: {input_ids.shape} "
-                  f"SP_TP_MODE: {SP_TP_MODE}")
+                  f"SP_TP_MODE: {SP_TP_MODE} "
+                  f"SS_PROFILE_RUN: {SS_PROFILE_RUN}")
             if metadata is None:
                 print("metadata: None")
             else:
@@ -609,10 +611,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                       f"seq. lens: {metadata.seq_lens.tolist()}")
         self.numiter += 1
 
-        if SP_TP_MODE is None or SP_TP_MODE is False:
+        if SS_PROFILE_RUN or SP_TP_MODE is False:
             model_output = self.model(input_ids, positions,
                                       intermediate_tensors, inputs_embeds)
-        if SP_TP_MODE is None or SP_TP_MODE is True:
+        if SS_PROFILE_RUN is None or SP_TP_MODE is True:
             model_output = self.model_tp(input_ids, positions,
                                          intermediate_tensors, inputs_embeds)
         return model_output
