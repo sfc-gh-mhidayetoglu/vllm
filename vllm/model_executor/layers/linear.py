@@ -190,9 +190,23 @@ class UnquantizedLinearMethod(LinearMethodBase):
               sp_tp_mode: bool = False,
               column_parallel: bool = False,
               output_partition_sizes: list = None) -> torch.Tensor:
-        
+
+        from vllm.distributed.parallel_state import get_sp_group 
         if sp_tp_mode:
-            weight = layer.weight
+            sp_size = get_sp_group().world_size
+            sp_rank = get_sp_group().rank_in_group
+            if not column_parallel:
+                assert layer.weight.shape[1] % sp_size == 0
+                chunk_size = layer.weight.shape[1] // sp_size
+                weight = layer.weight.split(chunk_size, dim=1)[sp_rank]
+            else:
+                assert layer.weight.shape[0] % sp_size == 0
+                chunk_sizes = []
+                for size in output_partition_sizes:
+                    chunk_size = size // sp_size
+                    chunk_sizes.extend([chunk_size] * sp_size)
+                split = layer.weight.split(chunk_sizes, dim=0)
+                weight = torch.cat([split[i] for i in range(sp_rank, len(split), sp_size)])
         else:
             weight = layer.weight
         output = F.linear(x, weight, bias)
