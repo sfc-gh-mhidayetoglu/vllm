@@ -1194,19 +1194,12 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             # update inputs
             input_ids = kwargs['input_ids']
             positions = kwargs['positions']
+            kwargs_temp = kwargs
             # Ulysses parameters
             N = input_ids.shape[0]
             from vllm.v1.worker.gpu_worker import SS_PROFILE_RUN
             global SP_TP_MODE
             SP_TP_MODE = True if SP_TP_THRESHOLD > N else False
-            if SS_PROFILE_RUN or SP_TP_MODE is True:
-                if torch.distributed.get_rank() == 0:
-                    print(f"N {N}")
-                if SS_PROFILE_RUN:
-                    SP_TP_MODE = True
-                model_output = model_forward(*args, **kwargs)
-                if SS_PROFILE_RUN:
-                    SP_TP_MODE = False
             if SS_PROFILE_RUN or SP_TP_MODE is False:
                 N_ulysses = N // SP
                 N_offset = N_ulysses * SP_rank
@@ -1224,6 +1217,14 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 torch.distributed.all_gather_into_tensor(model_output,
                                                          output,
                                                          group=device_group)
+            if SS_PROFILE_RUN or SP_TP_MODE is True:
+                if torch.distributed.get_rank() == 0:
+                    print(f"N {N}")
+                if SS_PROFILE_RUN:
+                    SP_TP_MODE = True
+                model_output = model_forward(*args, **kwargs_temp)
+                if SS_PROFILE_RUN:
+                    SP_TP_MODE = False
             return model_output
 
         self.model.forward = ulysses_forward
