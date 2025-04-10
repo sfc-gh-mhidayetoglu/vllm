@@ -591,10 +591,10 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                       f"seq. lens: {metadata.seq_lens.tolist()}")
         self.numiter += 1
 
-        if SP_TP_MODE is None or SP_TP_MODE == False:
+        if SP_TP_MODE is None or SP_TP_MODE is False:
             model_output = self.model(input_ids, positions, intermediate_tensors,
                                       inputs_embeds)
-        if SP_TP_MODE is None or SP_TP_MODE == True:
+        if SP_TP_MODE is None or SP_TP_MODE is True:
             model_output = self.model_tp(input_ids, positions, intermediate_tensors,
                                       inputs_embeds)
         return model_output
