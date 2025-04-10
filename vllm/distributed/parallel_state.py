@@ -810,7 +810,7 @@ def graph_capture(device: torch.device):
     """
     context = GraphCaptureContext(torch.cuda.Stream(device=device))
     with get_tp_group().graph_capture(context), get_pp_group().graph_capture(
-            context):
+            context), get_sp_tp_group().graph_capture(context):
         yield context
 
 
