@@ -205,12 +205,12 @@ class LlamaAttention(nn.Module):
             print(f"attention q {q.shape} k {k.shape} v {v.shape}")
         from vllm.distributed.parallel_state import get_sp_group
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        if SP_TP_MODE:
-            q_size = self.q_size // get_sp_group().world_size
-            kv_size = self.kv_size // get_sp_group().world_size
-        else:
-            q_size = self.q_size
-            kv_size = self.kv_size
+        # if SP_TP_MODE:
+        #     q_size = self.q_size // get_sp_group().world_size
+        #     kv_size = self.kv_size // get_sp_group().world_size
+        # else:
+        q_size = self.q_size
+        kv_size = self.kv_size
         # if torch.distributed.get_rank() == 0:
         #     print(
         #         f"qkv {qkv.shape} q_size: {q_size}, kv_size: {kv_size} SP_TP_MODE: {SP_TP_MODE} SS_PROFILE_RUN: {SS_PROFILE_RUN}"

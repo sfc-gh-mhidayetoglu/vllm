@@ -209,6 +209,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
                 weight = torch.cat([split[i] for i in range(sp_rank, len(split), sp_size)])
         else:
             weight = layer.weight
+        weight = layer.weight
         output = F.linear(x, weight, bias)
 
         if torch.distributed.get_rank() == 0:
