@@ -370,6 +370,8 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
+        if torch.distributed.get_rank() == 0:
+            print("hello from forward")
         # for layer in self.layers[self.start_layer:self.end_layer]:
         for layer in self.layers[0:1]:
             hidden_states, residual = layer(positions, hidden_states, residual)
