@@ -251,16 +251,16 @@ class FlashAttentionImpl(AttentionImpl):
         if torch.distributed.get_rank() == 0:
             print(f"SP_TP_MODE {SP_TP_MODE}")
         # Ulysses Attention
-        if torch.distributed.get_rank() == 0:
-            print(f"FlashAttentionImpl.forward \n \
-            q {query.shape}\n \
-           k {key.shape}\n \
-            v {value.shape}\n \
-            output {output.shape}\n \
-            kv_cache {kv_cache.shape}\n \
-            self.num_heads {self.num_heads}\n \
-            self.num_kv_heads {self.num_kv_heads}\n \
-            self.head_size {self.head_size}\n")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"FlashAttentionImpl.forward \n \
+        #     q {query.shape}\n \
+        #     k {key.shape}\n \
+        #     v {value.shape}\n \
+        #     output {output.shape}\n \
+        #     kv_cache {kv_cache.shape}\n \
+        #     self.num_heads {self.num_heads}\n \
+        #     self.num_kv_heads {self.num_kv_heads}\n \
+        #     self.head_size {self.head_size}\n")
         if SP_TP_MODE:
             q_ = query.reshape(-1, self.num_heads, self.head_size)
             k_ = key.reshape(-1, self.num_kv_heads, self.head_size)
@@ -296,13 +296,13 @@ class FlashAttentionImpl(AttentionImpl):
             v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
             c_ = output.view(-1, self.num_heads, self.head_size)
 
-        if torch.distributed.get_rank() == 0:
-            print(f"\n \
-                    q_ {q_.shape}\n \
-                    k_ {k_.shape}\n \
-                    v_ {v_.shape}\n \
-                    c_ {c_.shape}\n \
-                    num_actual_tokens {attn_metadata.num_actual_tokens}")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"\n \
+        #             q_ {q_.shape}\n \
+        #             k_ {k_.shape}\n \
+        #             v_ {v_.shape}\n \
+        #             c_ {c_.shape}\n \
+        #             num_actual_tokens {attn_metadata.num_actual_tokens}")
 
         num_actual_tokens = attn_metadata.num_actual_tokens
         # Reshape the input keys and values and store them in the cache.

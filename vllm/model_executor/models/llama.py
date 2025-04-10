@@ -215,8 +215,8 @@ class LlamaAttention(nn.Module):
         #     )
         q, k, v = qkv.split([q_size, kv_size, kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
-        if torch.distributed.get_rank() == 0:
-            print(f"attention q {q.shape} cont: {q.is_contiguous()} k {k.shape} cont: {k.is_contiguous()} v {v.shape} cont: {v.is_contiguous()}")
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"attention q {q.shape} cont: {q.is_contiguous()} k {k.shape} cont: {k.is_contiguous()} v {v.shape} cont: {v.is_contiguous()}")
         attn_output = self.attn(q, k, v)
 
         output, _ = self.o_proj(attn_output)
@@ -373,8 +373,8 @@ class LlamaModel(nn.Module):
 
         if torch.distributed.get_rank() == 0:
             print(f"hello from forward input_ids {input_ids.shape}")
-        # for layer in self.layers[self.start_layer:self.end_layer]:
-        for layer in self.layers[0:1]:
+        for layer in self.layers[self.start_layer:self.end_layer]:
+            # for layer in self.layers[0:1]:
             hidden_states, residual = layer(positions, hidden_states, residual)
 
         if not get_pp_group().is_last_rank:

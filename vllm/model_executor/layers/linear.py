@@ -191,7 +191,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
               column_parallel: bool = False,
               output_partition_sizes: list = None) -> torch.Tensor:
 
-        from vllm.distributed.parallel_state import get_sp_group 
+        from vllm.distributed.parallel_state import get_sp_group
         if sp_tp_mode:
             sp_size = get_sp_group().world_size
             sp_rank = get_sp_group().rank_in_group
@@ -206,16 +206,17 @@ class UnquantizedLinearMethod(LinearMethodBase):
                     chunk_size = size // sp_size
                     chunk_sizes.extend([chunk_size] * sp_size)
                 split = layer.weight.split(chunk_sizes, dim=0)
-                weight = torch.cat([split[i] for i in range(sp_rank, len(split), sp_size)])
+                weight = torch.cat(
+                    [split[i] for i in range(sp_rank, len(split), sp_size)])
         else:
             weight = layer.weight
         output = F.linear(x, weight, bias)
 
-        if torch.distributed.get_rank() == 0:
-            print(
-                f"unquantized linear x {x.shape} weight {weight.shape} bias {None if bias is None else bias.shape} output {output.shape} x type {x.dtype} weight type {weight.dtype} bias type {None if bias is None else bias.dtype} output type {output.dtype}"
-            )
-            print(f"sp_tp_mode {sp_tp_mode} column_parallel {column_parallel} output_partition_sizes {output_partition_sizes}")
+        # if torch.distributed.get_rank() == 0:
+        #     print(
+        #         f"unquantized linear x {x.shape} weight {weight.shape} bias {None if bias is None else bias.shape} output {output.shape} x type {x.dtype} weight type {weight.dtype} bias type {None if bias is None else bias.dtype} output type {output.dtype}"
+        #     )
+        #     print(f"sp_tp_mode {sp_tp_mode} column_parallel {column_parallel} output_partition_sizes {output_partition_sizes}")
 
         return output
 
@@ -502,10 +503,13 @@ class ColumnParallelLinear(LinearBase):
         assert self.quant_method is not None
         # output_parallel = self.quant_method.apply(self, input_, bias)
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        output_parallel = self.quant_method.apply(self, input_, bias,
-                                                  sp_tp_mode=SP_TP_MODE,
-                                                  column_parallel=True,
-                                                  output_partition_sizes=self.output_partition_sizes)
+        output_parallel = self.quant_method.apply(
+            self,
+            input_,
+            bias,
+            sp_tp_mode=SP_TP_MODE,
+            column_parallel=True,
+            output_partition_sizes=self.output_partition_sizes)
         if self.gather_output:
             assert True, "gather_output is not supported"
             # All-gather across the partitions.
@@ -1277,8 +1281,8 @@ class RowParallelLinear(LinearBase):
     def forward(
         self, input_
     ) -> Union[torch.Tensor, tuple[torch.Tensor, Optional[Parameter]]]:
-        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         from vllm.distributed.parallel_state import get_sp_tp_group
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         sp_tp_size = get_sp_tp_group().world_size
         sp_tp_rank = get_sp_tp_group().rank_in_group
 
@@ -1286,7 +1290,7 @@ class RowParallelLinear(LinearBase):
             # print("PARALLEL", input_.shape)
             input_parallel = input_
         elif sp_tp_mode:
-             # print("SPTPMODE", input_.shape)
+            # print("SPTPMODE", input_.shape)
             splitted_input = split_tensor_along_last_dim(
                 input_, num_partitions=sp_tp_size)
             input_parallel = splitted_input[sp_tp_rank].contiguous()
@@ -1303,9 +1307,11 @@ class RowParallelLinear(LinearBase):
         # bias will not get added more than once in TP>1 case)
         bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
         if SP_TP_MODE:
-            bias_ = None if (sp_tp_rank > 0 or self.skip_bias_add) else self.bias
+            bias_ = None if (sp_tp_rank > 0
+                             or self.skip_bias_add) else self.bias
         else:
-            bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
+            bias_ = None if (self.tp_rank > 0
+                             or self.skip_bias_add) else self.bias
         output_parallel = self.quant_method.apply(self,
                                                   input_parallel,
                                                   bias=bias_,
