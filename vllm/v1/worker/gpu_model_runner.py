@@ -980,11 +980,15 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             self._prepare_inputs(scheduler_output))
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
         if num_scheduled_tokens < SP_TP_THRESHOLD:
+            if torch.distributed.get_rank() == 0:
+                print(f"num_scheduled_tokens: {num_scheduled_tokens} < {SP_TP_THRESHOLD}")
             num_input_tokens = num_scheduled_tokens
             if (self.use_cuda_graph and num_input_tokens <= self.cudagraph_batch_sizes[-1]):
                 num_input_tokens = self.vllm_config.pad_for_cudagraph(
                     num_input_tokens)
             else:
+                if torch.distributed.get_rank() == 0:
+                    print(f"num_scheduled_tokens: {num_scheduled_tokens} >= {SP_TP_THRESHOLD}")
                 pass
         else:
             # add padding to the batch size to make it a multiple of SP
