@@ -482,7 +482,7 @@ class ColumnParallelLinear(LinearBase):
 
         # Matrix multiply.
         assert self.quant_method is not None
-        output_parallel = self.quant_method.apply(self, input_, bias)
+        # output_parallel = self.quant_method.apply(self, input_, bias)
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         output_parallel = self.quant_method.apply(self, input_, bias,
                                                   sp_tp_mode=SP_TP_MODE,
