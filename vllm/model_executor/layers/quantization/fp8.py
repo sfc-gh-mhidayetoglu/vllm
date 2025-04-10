@@ -361,6 +361,9 @@ class Fp8LinearMethod(LinearMethodBase):
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
 
+        if torch.distributed.get_rank() == 0:
+            print(f"FP8 linear x {x.shape} weight {layer.weight.shape} bias {None if bias is None else bias.shape} x type {x.dtype} weight type {layer.weight.dtype} bias type {None if bias is None else bias.dtype}")
+
         if self.use_marlin:
             return apply_fp8_marlin_linear(
                 input=x,
