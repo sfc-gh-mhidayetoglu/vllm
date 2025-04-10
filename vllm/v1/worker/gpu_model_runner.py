@@ -1180,23 +1180,29 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             N = input_ids.shape[0]
             threshold = 64
             global SP_TP_MODE
-            SP_TP_MODE = True if threshold > N else False
-            N_ulysses = N // SP
-            N_offset = N_ulysses * SP_rank
-            if torch.distributed.get_rank() == 0:
-                print(f"N {N}, N_ranks {[N_ulysses] * SP}")
-            # narrow the input
-            kwargs['input_ids'] = input_ids[N_offset:N_offset + N_ulysses]
-            kwargs['positions'] = positions[N_offset:N_offset + N_ulysses]
-            # original forward
-            output = model_forward(*args, **kwargs)
-            # all-gather model_output
-            model_output = torch.empty((N, self.model.config.hidden_size),
-                                       dtype=output.dtype,
-                                       device=output.device)
-            torch.distributed.all_gather_into_tensor(model_output,
-                                                     output,
-                                                     group=device_group)
+            if SP_TP_MODE is not None:
+                SP_TP_MODE = True if N < threshold else False
+            if SP_TP_MODE is None or SP_TP_MODE is False:
+                N_ulysses = N // SP
+                N_offset = N_ulysses * SP_rank
+                if torch.distributed.get_rank() == 0:
+                    print(f"N {N}, N_ranks {[N_ulysses] * SP}")
+                # narrow the input
+                kwargs['input_ids'] = input_ids[N_offset:N_offset + N_ulysses]
+                kwargs['positions'] = positions[N_offset:N_offset + N_ulysses]
+                # original forward
+                output = model_forward(*args, **kwargs)
+                # all-gather model_output
+                model_output = torch.empty((N, self.model.config.hidden_size),
+                                        dtype=output.dtype,
+                                        device=output.device)
+                torch.distributed.all_gather_into_tensor(model_output,
+                                                        output,
+                                                        group=device_group)
+            if SP_TP_MODE is not None and SP_TP_MODE is True:
+                model_output = model_forward(*args, **kwargs)
+            if SP_TP_MODE is None:
+                SP_TP_MODE = False
             return model_output
 
         self.model.forward = ulysses_forward
