@@ -1553,11 +1553,18 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         # can reuse the memory pool allocated for the large shapes.
         with graph_capture(device=self.device):
             for num_tokens in reversed(self.cudagraph_batch_sizes):
-                SP = 1 if num_tokens < SP_TP_THRESHOLD else self.parallel_config.sequence_parallel_size
-                for _ in range(self.vllm_config.compilation_config.
-                               cudagraph_num_of_warmups):
+                SP = self.parallel_config.sequence_parallel_size
+                if num_tokens * SP >= SP_TP_THRESHOLD:
+                    for _ in range(self.vllm_config.compilation_config.
+                                cudagraph_num_of_warmups):
+                        self._dummy_run(num_tokens * SP)
                     self._dummy_run(num_tokens * SP)
-                self._dummy_run(num_tokens * SP)
+            for num_tokens in reversed(self.cudagraph_batch_sizes):
+                if num_tokens < SP_TP_THRESHOLD:
+                    for _ in range(self.vllm_config.compilation_config.
+                                cudagraph_num_of_warmups):
+                        self._dummy_run(num_tokens)
+                    self._dummy_run(num_tokens)
 
         end_time = time.perf_counter()
         end_free_gpu_memory = torch.cuda.mem_get_info()[0]
