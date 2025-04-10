@@ -981,21 +981,26 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
         if num_scheduled_tokens < SP_TP_THRESHOLD:
             if torch.distributed.get_rank() == 0:
-                print(f"num_scheduled_tokens: {num_scheduled_tokens} < {SP_TP_THRESHOLD}")
+                print(
+                    f"num_scheduled_tokens: {num_scheduled_tokens} < {SP_TP_THRESHOLD}"
+                )
             num_input_tokens = num_scheduled_tokens
-            if (self.use_cuda_graph and num_input_tokens <= self.cudagraph_batch_sizes[-1]):
+            if (self.use_cuda_graph
+                    and num_input_tokens <= self.cudagraph_batch_sizes[-1]):
                 num_input_tokens = self.vllm_config.pad_for_cudagraph(
                     num_input_tokens)
             else:
                 pass
         else:
             if torch.distributed.get_rank() == 0:
-                print(f"num_scheduled_tokens: {num_scheduled_tokens} >= {SP_TP_THRESHOLD}")
+                print(
+                    f"num_scheduled_tokens: {num_scheduled_tokens} >= {SP_TP_THRESHOLD}"
+                )
             # add padding to the batch size to make it a multiple of SP
             SP = self.parallel_config.sequence_parallel_size
             num_input_tokens = (num_scheduled_tokens + SP - 1) // SP * SP
-            if (self.use_cuda_graph
-                    and num_input_tokens // SP <= self.cudagraph_batch_sizes[-1]):
+            if (self.use_cuda_graph and num_input_tokens // SP
+                    <= self.cudagraph_batch_sizes[-1]):
                 # Use piecewise CUDA graphs.
                 # Add padding to the batch size.
                 num_input_tokens = SP * self.vllm_config.pad_for_cudagraph(
@@ -1546,9 +1551,9 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         # Trigger CUDA graph capture for specific shapes.
         # Capture the large shapes first so that the smaller shapes
         # can reuse the memory pool allocated for the large shapes.
-        SP = self.parallel_config.sequence_parallel_size
         with graph_capture(device=self.device):
             for num_tokens in reversed(self.cudagraph_batch_sizes):
+                SP = 1 if num_tokens < SP_TP_THRESHOLD else self.parallel_config.sequence_parallel_size
                 for _ in range(self.vllm_config.compilation_config.
                                cudagraph_num_of_warmups):
                     self._dummy_run(num_tokens * SP)
