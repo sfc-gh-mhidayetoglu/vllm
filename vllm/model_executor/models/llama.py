@@ -201,6 +201,8 @@ class LlamaAttention(nn.Module):
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        if torch.distributed.get_rank() == 0:
+            print(f"attention q {q.shape} k {k.shape} v {v.shape}")
         # from vllm.distributed.parallel_state import get_sp_group
         # from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         # from vllm.v1.worker.gpu_worker import SS_PROFILE_RUN

@@ -216,8 +216,6 @@ class Attention(nn.Module):
                                   attn_metadata,
                                   output=output)
             else:
-                if torch.distributed.get_rank() == 0:
-                    print("test")
                 torch.ops.vllm.unified_attention_with_output(
                     query, key, value, output, self.layer_name)
             return output.view(-1, hidden_size)
