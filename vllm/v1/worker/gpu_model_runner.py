@@ -51,7 +51,7 @@ else:
 
 logger = init_logger(__name__)
 
-SP_TP_THRESHOLD = 2
+SP_TP_THRESHOLD = 64
 SP_TP_MODE = None
 
 
