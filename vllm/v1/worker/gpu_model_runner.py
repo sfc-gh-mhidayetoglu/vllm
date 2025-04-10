@@ -1216,7 +1216,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 torch.distributed.all_gather_into_tensor(model_output,
                                                          output,
                                                          group=device_group)
-            if SS_PROFILE_RUN is not None and SP_TP_MODE is True:
+            if SS_PROFILE_RUN or SP_TP_MODE is True:
                 if torch.distributed.get_rank() == 0:
                     print(f"N {N}")
                 model_output = model_forward(*args, **kwargs)
