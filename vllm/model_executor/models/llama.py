@@ -355,8 +355,8 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        # for layer in self.layers[self.start_layer:self.end_layer]:
-        for layer in self.layers[0:1]:
+        for layer in self.layers[self.start_layer:self.end_layer]:
+            # for layer in self.layers[0:1]:
             hidden_states, residual = layer(positions, hidden_states, residual)
 
         if not get_pp_group().is_last_rank:
@@ -593,11 +593,11 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         self.numiter += 1
 
         if SP_TP_MODE is None or SP_TP_MODE is False:
-            model_output = self.model(input_ids, positions, intermediate_tensors,
-                                      inputs_embeds)
+            model_output = self.model(input_ids, positions,
+                                      intermediate_tensors, inputs_embeds)
         if SP_TP_MODE is None or SP_TP_MODE is True:
-            model_output = self.model_tp(input_ids, positions, intermediate_tensors,
-                                      inputs_embeds)
+            model_output = self.model_tp(input_ids, positions,
+                                         intermediate_tensors, inputs_embeds)
         return model_output
 
     def compute_logits(
