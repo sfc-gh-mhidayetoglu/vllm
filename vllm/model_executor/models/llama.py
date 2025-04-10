@@ -219,8 +219,8 @@ class LlamaAttention(nn.Module):
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v)
 
-        output, _ = self.o_proj(attn_output)
-        return output
+        # output, _ = self.o_proj(attn_output)
+        return attn_output
 
 
 class LlamaDecoderLayer(nn.Module):
