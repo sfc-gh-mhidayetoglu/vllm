@@ -1219,7 +1219,11 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             if SS_PROFILE_RUN or SP_TP_MODE is True:
                 if torch.distributed.get_rank() == 0:
                     print(f"N {N}")
+                if SS_PROFILE_RUN:
+                    SP_TP_MODE = True
                 model_output = model_forward(*args, **kwargs)
+                if SS_PROFILE_RUN:
+                    SP_TP_MODE = False
             return model_output
 
         self.model.forward = ulysses_forward
