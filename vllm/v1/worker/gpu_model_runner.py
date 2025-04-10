@@ -51,7 +51,7 @@ else:
 
 logger = init_logger(__name__)
 
-SP_TP_MODE = False
+SP_TP_MODE = None
 
 
 class GPUModelRunner(LoRAModelRunnerMixin):
