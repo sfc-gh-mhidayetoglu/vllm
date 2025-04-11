@@ -52,7 +52,6 @@ else:
 
 logger = init_logger(__name__)
 
-SP_TP_THRESHOLD = 64
 SP_TP_MODE = False
 SP_TP_PROFILE_RUN = False
 
@@ -994,26 +993,26 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         attn_metadata, logits_indices, spec_decode_metadata = (
             self._prepare_inputs(scheduler_output))
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
-        if num_scheduled_tokens < SP_TP_THRESHOLD:
-            num_input_tokens = num_scheduled_tokens
-            if (self.use_cuda_graph
-                    and num_input_tokens <= self.cudagraph_batch_sizes[-1]):
+        sp_tp_threshold = self.parallel_config.shapeshifter_threshold
+        if num_scheduled_tokens < sp_tp_threshold:
+            if (self.use_cuda_graph and num_scheduled_tokens
+                    <= self.cudagraph_batch_sizes[-1]):
+                # Use piecewise CUDA graphs.
+                # Add padding to the batch size.
                 num_input_tokens = self.vllm_config.pad_for_cudagraph(
-                    num_input_tokens)
+                    num_scheduled_tokens)
             else:
-                pass
+                # Eager mode.
+                num_input_tokens = num_scheduled_tokens
         else:
             # add padding to the batch size to make it a multiple of SP
             SP = self.parallel_config.sequence_parallel_size
             num_input_tokens = (num_scheduled_tokens + SP - 1) // SP * SP
             if (self.use_cuda_graph and num_input_tokens // SP
                     <= self.cudagraph_batch_sizes[-1]):
-                # Use piecewise CUDA graphs.
-                # Add padding to the batch size.
                 num_input_tokens = SP * self.vllm_config.pad_for_cudagraph(
                     num_input_tokens // SP)
             else:
-                # Eager mode.
                 pass
         attn_metadata.num_input_tokens = num_input_tokens
 
@@ -1203,7 +1202,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             # Ulysses parameters
             N = input_ids.shape[0]
             global SP_TP_MODE
-            SP_TP_MODE = bool(N < SP_TP_THRESHOLD)
+            sp_tp_threshold = self.parallel_config.shapeshifter_threshold
+            SP_TP_MODE = bool(sp_tp_threshold > N)
             if SP_TP_PROFILE_RUN or SP_TP_MODE is True:
                 if torch.distributed.get_rank() == 0:
                     print(f"N {N}")
@@ -1558,11 +1558,12 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         # Capture the large shapes first so that the smaller shapes
         # can reuse the memory pool allocated for the large shapes.
         with graph_capture(device=self.device):
+            sp_tp_threshold = self.parallel_config.shapeshifter_threshold
             for num_tokens in reversed(self.cudagraph_batch_sizes):
                 SP = self.parallel_config.sequence_parallel_size
                 if torch.distributed.get_rank() == 0:
                     print(f"capture SP: {num_tokens * SP}")
-                if num_tokens * SP >= SP_TP_THRESHOLD:
+                if num_tokens * SP >= sp_tp_threshold:
                     for _ in range(self.vllm_config.compilation_config.
                                    cudagraph_num_of_warmups):
                         self._dummy_run(num_tokens * SP)
@@ -1570,7 +1571,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             for num_tokens in reversed(self.cudagraph_batch_sizes):
                 if torch.distributed.get_rank() == 0:
                     print(f"capture SP_TP: {num_tokens}")
-                if num_tokens < SP_TP_THRESHOLD:
+                if num_tokens < sp_tp_threshold:
                     for _ in range(self.vllm_config.compilation_config.
                                    cudagraph_num_of_warmups):
                         self._dummy_run(num_tokens)
