@@ -9,7 +9,7 @@ from torch.nn.parameter import Parameter
 
 import vllm.envs as envs
 from vllm import _custom_ops as ops
-from vllm.distributed import get_tensor_model_parallel_world_size
+from vllm.distributed import get_sp_group, get_tensor_model_parallel_world_size
 from vllm.logger import init_logger
 from vllm.model_executor.layers.fused_moe import (FusedMoE, FusedMoEMethodBase,
                                                   FusedMoeWeightScaleSupported)
@@ -155,6 +155,9 @@ class Fp8LinearMethod(LinearMethodBase):
         self.fp8_linear = Fp8LinearOp(
             # Default to using per_token quantization if cutlass is supported
             use_per_token_if_dynamic=cutlass_fp8_supported())
+
+        self.SP_size = get_sp_group().world_size
+        self.SP_rank = get_sp_group().rank_in_group
 
     def create_weights(
         self,
@@ -400,11 +403,46 @@ class Fp8LinearMethod(LinearMethodBase):
                 cutlass_block_fp8_supported=self.cutlass_block_fp8_supported,
             )
 
-        return self.fp8_linear.apply(input=x,
-                                     weight=layer.weight,
-                                     weight_scale=layer.weight_scale,
-                                     input_scale=layer.input_scale,
-                                     bias=bias)
+        if sp_tp_mode:
+            sp_size = self.SP_size
+            sp_rank = self.SP_rank
+            if not column_parallel:
+                assert layer.weight.shape[0] % sp_size == 0
+                chunk_size = layer.weight.shape[0] // sp_size
+                weight = layer.weight.split(chunk_size, dim=0)[sp_rank]
+            else:
+                assert layer.weight.shape[1] % sp_size == 0
+                chunk_sizes = []
+                for size in output_partition_sizes:
+                    chunk_size = size // sp_size
+                    chunk_sizes.extend([chunk_size] * sp_size)
+                split = layer.weight.split(chunk_sizes, dim=1)
+                size = sum(chunk_sizes[i]
+                           for i in range(sp_rank, len(chunk_sizes), sp_size))
+                weight = torch.empty([size, layer.weight.shape[0]],
+                                     dtype=layer.weight.dtype,
+                                     device=layer.weight.device).t()
+                offset = 0
+                for i in range(sp_rank, len(split), sp_size):
+                    weight[:,
+                           offset:offset + split[i].shape[1]].copy_(split[i])
+                    offset += split[i].shape[1]
+        else:
+            weight = self.weight
+
+        output = self.fp8_linear.apply(input=x,
+                                       weight=weight,
+                                       weight_scale=layer.weight_scale,
+                                       input_scale=layer.input_scale,
+                                       bias=bias)
+
+        if torch.distributed.get_rank() == 0:
+            print(
+                f"              sharded weight {weight.shape}"
+                f" {weight.dtype}\n"
+                f"              output shape {output.shape} {output.dtype}\n")
+
+        return output
 
 
 class Fp8MoEMethod(FusedMoEMethodBase):
