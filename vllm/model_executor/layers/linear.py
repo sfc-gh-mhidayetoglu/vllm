@@ -214,9 +214,9 @@ class UnquantizedLinearMethod(LinearMethodBase):
 
         if torch.distributed.get_rank() == 0:
             if column_parallel:
-                print("FP8 column parallel linear: ")
+                print("unqunatized column parallel linear: ")
             else:
-                print("FP8 row parallel linear: ")
+                print("unquantized row parallel linear: ")
             print(f"              x shape {x.shape} {x.dtype}\n"
                   f"              weight {layer.weight.shape}"
                   f" {layer.weight.dtype}\n"

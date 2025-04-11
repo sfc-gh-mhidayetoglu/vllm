@@ -205,8 +205,8 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states)
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         if SP_TP_MODE:
-            q_size = self.q_size  # // self.SP
-            kv_size = self.kv_size  # // self.SP
+            q_size = self.q_size // self.SP
+            kv_size = self.kv_size // self.SP
         else:
             q_size = self.q_size
             kv_size = self.kv_size
@@ -365,10 +365,8 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"hello from forward input_ids {input_ids.shape}")
-        for layer in self.layers[self.start_layer:self.end_layer]:
-            # for layer in self.layers[0:1]:
+        # for layer in self.layers[self.start_layer:self.end_layer]:
+        for layer in self.layers[0:1]:
             hidden_states, residual = layer(positions, hidden_states, residual)
 
         if not get_pp_group().is_last_rank:
