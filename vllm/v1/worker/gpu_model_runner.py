@@ -13,7 +13,8 @@ import torch.nn as nn
 from vllm.attention import AttentionType, get_attn_backend
 from vllm.attention.layer import Attention
 from vllm.config import CompilationLevel, VllmConfig
-from vllm.distributed.parallel_state import get_pp_group, graph_capture
+from vllm.distributed.parallel_state import (get_pp_group, get_sp_group,
+                                             graph_capture)
 from vllm.forward_context import set_forward_context
 from vllm.inputs import INPUT_REGISTRY
 from vllm.logger import init_logger
@@ -53,6 +54,7 @@ logger = init_logger(__name__)
 
 SP_TP_THRESHOLD = 64
 SP_TP_MODE = False
+SP_TP_PROFILE_RUN = False
 
 
 class GPUModelRunner(LoRAModelRunnerMixin):
@@ -1176,8 +1178,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         return draft_token_ids
 
     def monkeypatch_forward(self):
-        from vllm.distributed import get_sp_group
-        SP = get_sp_group().world_size
+        SP_size = get_sp_group().world_size
         SP_rank = get_sp_group().rank_in_group
         device_group = get_sp_group().device_group
         model_forward = self.model.forward
@@ -1188,22 +1189,19 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             positions = kwargs['positions']
             # Ulysses parameters
             N = input_ids.shape[0]
-            from vllm.v1.worker.gpu_worker import SS_PROFILE_RUN
             global SP_TP_MODE
             SP_TP_MODE = bool(N < SP_TP_THRESHOLD)
-            if SS_PROFILE_RUN or SP_TP_MODE is True:
+            if SP_TP_PROFILE_RUN or SP_TP_MODE is True:
                 if torch.distributed.get_rank() == 0:
                     print(f"N {N}")
-                if SS_PROFILE_RUN:
-                    SP_TP_MODE = True
+                # set SP_TP_MODE to capture the branch in profile run
+                SP_TP_MODE = True
                 model_output = model_forward(*args, **kwargs)
-                if SS_PROFILE_RUN:
-                    SP_TP_MODE = False
-            if SS_PROFILE_RUN or SP_TP_MODE is False:
-                N_ulysses = N // SP
+            if SP_TP_PROFILE_RUN or SP_TP_MODE is False:
+                N_ulysses = N // SP_size
                 N_offset = N_ulysses * SP_rank
                 if torch.distributed.get_rank() == 0:
-                    print(f"N {N}, N_ranks {[N_ulysses] * SP}")
+                    print(f"N {N}, N_ranks {[N_ulysses] * SP_size}")
                 # narrow the input
                 kwargs['input_ids'] = input_ids[N_offset:N_offset + N_ulysses]
                 kwargs['positions'] = positions[N_offset:N_offset + N_ulysses]
@@ -1443,6 +1441,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         return sampler_output
 
     def profile_run(self) -> None:
+        global SP_TP_PROFILE_RUN
+        SP_TP_PROFILE_RUN = True
         # Profile with multimodal encoder & encoder cache.
         # TODO: handle encoder-decoder models once we support them.
         if (self.is_multimodal_model and self.max_num_encoder_input_tokens > 0
@@ -1531,6 +1531,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         del hidden_states, sampler_output
         self.encoder_cache.clear()
         gc.collect()
+        SP_TP_PROFILE_RUN = False
 
     def capture_model(self) -> None:
         if not self.use_cuda_graph:

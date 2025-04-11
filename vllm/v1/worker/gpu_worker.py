@@ -30,7 +30,6 @@ logger = init_logger(__name__)
 if TYPE_CHECKING:
     from vllm.v1.core.scheduler_output import SchedulerOutput
 
-SS_PROFILE_RUN = False
 
 class Worker(WorkerBase):
 
@@ -155,14 +154,7 @@ class Worker(WorkerBase):
         _, total_gpu_memory = torch.cuda.mem_get_info()
         # Execute a forward pass with dummy inputs to profile the memory usage
         # of the model.
-        if torch.distributed.get_rank() == 0:
-            print("profile run start")
-        global SS_PROFILE_RUN
-        SS_PROFILE_RUN = True
         self.model_runner.profile_run()
-        if torch.distributed.get_rank() == 0:
-            print("profile run end")
-        SS_PROFILE_RUN = False
 
         free_gpu_memory, _ = torch.cuda.mem_get_info()
         # NOTE(woosuk): Here we assume that the other processes using the same
