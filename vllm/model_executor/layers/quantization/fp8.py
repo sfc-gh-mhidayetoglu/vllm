@@ -404,6 +404,7 @@ class Fp8LinearMethod(LinearMethodBase):
             sp_size = get_sp_group().world_size
             sp_rank = get_sp_group().rank_in_group
             if column_parallel:
+                # column parallel linear
                 assert layer.weight.shape[1] % sp_size == 0
                 chunk_sizes = []
                 for size in output_partition_sizes:
@@ -421,6 +422,7 @@ class Fp8LinearMethod(LinearMethodBase):
                            offset:offset + split[i].shape[1]].copy_(split[i])
                     offset += split[i].shape[1]
             else:
+                # row parallel linear
                 assert layer.weight.shape[0] % sp_size == 0
                 chunk_size = layer.weight.shape[0] // sp_size
                 weight = layer.weight.split(chunk_size, dim=0)[sp_rank]
