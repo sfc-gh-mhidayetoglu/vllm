@@ -33,7 +33,6 @@ from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, VllmConfig
 from vllm.distributed import (get_pp_group, get_sp_group,
                               get_tensor_model_parallel_world_size)
-from vllm.forward_context import get_forward_context
 from vllm.model_executor.layers.activation import SiluAndMul
 from vllm.model_executor.layers.layernorm import RMSNorm
 from vllm.model_executor.layers.linear import (MergedColumnParallelLinear,
@@ -558,7 +557,7 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
 
-        self.numiter = 0
+        # self.numiter = 0
 
     def _init_model(self, vllm_config: VllmConfig, prefix: str = ""):
         return LlamaModel(vllm_config=vllm_config, prefix=prefix)
@@ -589,18 +588,19 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         #               f"seq. lens: {metadata.seq_lens.tolist()}")
 
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        metadata = get_forward_context().attn_metadata
-        if torch.distributed.get_rank() == 0:
-            print(f"numiter: {self.numiter} "
-                  f"input_ids: {input_ids.shape} "
-                  f"SP_TP_MODE: {SP_TP_MODE} ")
-            if metadata is None:
-                print("metadata: None")
-            else:
-                print(f"metadata: "
-                      f"actual tokens: {metadata.num_actual_tokens} "
-                      f"seq. lens: {metadata.seq_lens.tolist()}")
-        self.numiter += 1
+
+        # metadata = get_forward_context().attn_metadata
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"numiter: {self.numiter} "
+        #           f"input_ids: {input_ids.shape} "
+        #           f"SP_TP_MODE: {SP_TP_MODE} ")
+        #     if metadata is None:
+        #         print("metadata: None")
+        #     else:
+        #         print(f"metadata: "
+        #               f"actual tokens: {metadata.num_actual_tokens} "
+        #               f"seq. lens: {metadata.seq_lens.tolist()}")
+        # self.numiter += 1
 
         if SP_TP_MODE is True:
             model_output = self.model_tp(input_ids, positions,
