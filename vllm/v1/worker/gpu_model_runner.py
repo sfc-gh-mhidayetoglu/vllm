@@ -267,15 +267,15 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         self.seq_lens_np = self.seq_lens_cpu.numpy()
 
         def monkeypatch_profile_run(self):
-            original_profile_run = self.profile_run
+            orig_profile_run = self.profile_run
 
-            def patched_profile_run():
+            def profile_run():
                 global SP_TP_PROFILE_RUN
                 SP_TP_PROFILE_RUN = True
-                original_profile_run()
+                orig_profile_run()
                 SP_TP_PROFILE_RUN = False
 
-            self.profile_run = patched_profile_run
+            self.profile_run = profile_run
 
         monkeypatch_profile_run(self)
 
@@ -1196,7 +1196,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         device_group = get_sp_group().device_group
         model_forward = self.model.forward
 
-        def ulysses_forward(*args, **kwargs):
+        def forward(*args, **kwargs):
             # update inputs
             input_ids = kwargs['input_ids']
             positions = kwargs['positions']
@@ -1229,7 +1229,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                                                          group=device_group)
             return model_output
 
-        self.model.forward = ulysses_forward
+        self.model.forward = forward
 
     def load_model(self) -> None:
         logger.info("Starting to load model %s...", self.model_config.model)
