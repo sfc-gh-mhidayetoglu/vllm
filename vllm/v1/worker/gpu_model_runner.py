@@ -266,6 +266,19 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                                         pin_memory=self.pin_memory)
         self.seq_lens_np = self.seq_lens_cpu.numpy()
 
+        def monkeypatch_profile_run(self):
+            original_profile_run = self.profile_run
+
+            def patched_profile_run():
+                global SP_TP_PROFILE_RUN
+                SP_TP_PROFILE_RUN = True
+                original_profile_run()
+                SP_TP_PROFILE_RUN = False
+
+            self.profile_run = patched_profile_run
+
+        monkeypatch_profile_run(self)
+
     def _update_states(self, scheduler_output: "SchedulerOutput") -> None:
         """Update the cached states and the persistent batch with the scheduler
         output.
@@ -1441,8 +1454,6 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         return sampler_output
 
     def profile_run(self) -> None:
-        global SP_TP_PROFILE_RUN
-        SP_TP_PROFILE_RUN = True
         # Profile with multimodal encoder & encoder cache.
         # TODO: handle encoder-decoder models once we support them.
         if (self.is_multimodal_model and self.max_num_encoder_input_tokens > 0
@@ -1531,7 +1542,6 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         del hidden_states, sampler_output
         self.encoder_cache.clear()
         gc.collect()
-        SP_TP_PROFILE_RUN = False
 
     def capture_model(self) -> None:
         if not self.use_cuda_graph:
