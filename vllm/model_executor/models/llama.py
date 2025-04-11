@@ -205,8 +205,8 @@ class LlamaAttention(nn.Module):
         qkv, _ = self.qkv_proj(hidden_states)
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         if SP_TP_MODE:
-            q_size = self.q_size // self.SP
-            kv_size = self.kv_size // self.SP
+            q_size = self.q_size  # // self.SP
+            kv_size = self.kv_size  # // self.SP
         else:
             q_size = self.q_size
             kv_size = self.kv_size
