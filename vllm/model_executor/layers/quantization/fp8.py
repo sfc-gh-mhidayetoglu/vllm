@@ -428,7 +428,7 @@ class Fp8LinearMethod(LinearMethodBase):
                            offset:offset + split[i].shape[1]].copy_(split[i])
                     offset += split[i].shape[1]
         else:
-            weight = self.weight
+            weight = layer.weight
 
         output = self.fp8_linear.apply(input=x,
                                        weight=weight,
