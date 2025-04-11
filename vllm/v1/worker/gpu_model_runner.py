@@ -1207,8 +1207,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             if SP_TP_PROFILE_RUN or SP_TP_MODE is True:
                 if torch.distributed.get_rank() == 0:
                     print(f"N {N}")
-                # set SP_TP_MODE to capture the branch in profile run
-                SP_TP_MODE = True
+                if SP_TP_PROFILE_RUN:
+                    SP_TP_MODE = True
                 model_output = model_forward(*args, **kwargs)
             if SP_TP_PROFILE_RUN or SP_TP_MODE is False:
                 N_ulysses = N // SP_size
@@ -1218,7 +1218,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 # narrow the input
                 kwargs['input_ids'] = input_ids[N_offset:N_offset + N_ulysses]
                 kwargs['positions'] = positions[N_offset:N_offset + N_ulysses]
-                # original forward
+                if SP_TP_PROFILE_RUN:
+                    SP_TP_MODE = False
                 output = model_forward(*args, **kwargs)
                 # all-gather model_output
                 model_output = torch.empty((N, self.model.config.hidden_size),
