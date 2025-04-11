@@ -31,7 +31,8 @@ from transformers import LlamaConfig
 from vllm.attention import Attention
 from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, VllmConfig
-from vllm.distributed import get_pp_group, get_tensor_model_parallel_world_size
+from vllm.distributed import (get_pp_group, get_sp_group,
+                              get_tensor_model_parallel_world_size)
 from vllm.forward_context import get_forward_context
 from vllm.model_executor.layers.activation import SiluAndMul
 from vllm.model_executor.layers.layernorm import RMSNorm
@@ -194,31 +195,24 @@ class LlamaAttention(nn.Module):
             prefix=f"{prefix}.attn",
         )
 
+        self.SP = get_sp_group().world_size
+
     def forward(
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
-        # q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-        from vllm.distributed.parallel_state import get_sp_group
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         if SP_TP_MODE:
-            q_size = self.q_size // get_sp_group().world_size
-            kv_size = self.kv_size // get_sp_group().world_size
+            q_size = self.q_size // self.SP
+            kv_size = self.kv_size // self.SP
         else:
             q_size = self.q_size
             kv_size = self.kv_size
-        # if torch.distributed.get_rank() == 0:
-        #     print(
-        #         f"qkv {qkv.shape} q_size: {q_size}, kv_size: {kv_size} SP_TP_MODE: {SP_TP_MODE} SS_PROFILE_RUN: {SS_PROFILE_RUN}"
-        #     )
         q, k, v = qkv.split([q_size, kv_size, kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"attention q {q.shape} cont: {q.is_contiguous()} k {k.shape} cont: {k.is_contiguous()} v {v.shape} cont: {v.is_contiguous()}")
         attn_output = self.attn(q, k, v)
-
         output, _ = self.o_proj(attn_output)
         return output
 
