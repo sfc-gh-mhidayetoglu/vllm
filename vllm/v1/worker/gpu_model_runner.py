@@ -52,7 +52,7 @@ else:
 logger = init_logger(__name__)
 
 SP_TP_THRESHOLD = 64
-SP_TP_MODE = None
+SP_TP_MODE = False
 
 
 class GPUModelRunner(LoRAModelRunnerMixin):
@@ -980,10 +980,6 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             self._prepare_inputs(scheduler_output))
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
         if num_scheduled_tokens < SP_TP_THRESHOLD:
-            if torch.distributed.get_rank() == 0:
-                print(
-                    f"num_scheduled_tokens: {num_scheduled_tokens} < {SP_TP_THRESHOLD}"
-                )
             num_input_tokens = num_scheduled_tokens
             if (self.use_cuda_graph
                     and num_input_tokens <= self.cudagraph_batch_sizes[-1]):
@@ -992,10 +988,6 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             else:
                 pass
         else:
-            if torch.distributed.get_rank() == 0:
-                print(
-                    f"num_scheduled_tokens: {num_scheduled_tokens} >= {SP_TP_THRESHOLD}"
-                )
             # add padding to the batch size to make it a multiple of SP
             SP = self.parallel_config.sequence_parallel_size
             num_input_tokens = (num_scheduled_tokens + SP - 1) // SP * SP
@@ -1198,7 +1190,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             N = input_ids.shape[0]
             from vllm.v1.worker.gpu_worker import SS_PROFILE_RUN
             global SP_TP_MODE
-            SP_TP_MODE = True if SP_TP_THRESHOLD > N else False
+            SP_TP_MODE = bool(N < SP_TP_THRESHOLD)
             if SS_PROFILE_RUN or SP_TP_MODE is True:
                 if torch.distributed.get_rank() == 0:
                     print(f"N {N}")

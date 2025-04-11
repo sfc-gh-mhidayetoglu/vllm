@@ -9,7 +9,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter, UninitializedParameter
 
-from vllm.distributed import (divide, get_tensor_model_parallel_rank,
+from vllm.distributed import (divide, get_sp_group, get_sp_tp_group,
+                              get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size,
                               split_tensor_along_last_dim,
                               tensor_model_parallel_all_gather,
@@ -191,7 +192,6 @@ class UnquantizedLinearMethod(LinearMethodBase):
               column_parallel: bool = False,
               output_partition_sizes: list = None) -> torch.Tensor:
 
-        from vllm.distributed.parallel_state import get_sp_group
         if sp_tp_mode:
             sp_size = get_sp_group().world_size
             sp_rank = get_sp_group().rank_in_group
@@ -214,9 +214,13 @@ class UnquantizedLinearMethod(LinearMethodBase):
 
         # if torch.distributed.get_rank() == 0:
         #     print(
-        #         f"unquantized linear x {x.shape} weight {weight.shape} bias {None if bias is None else bias.shape} output {output.shape} x type {x.dtype} weight type {weight.dtype} bias type {None if bias is None else bias.dtype} output type {output.dtype}"
+        #         f"unquantized linear x {x.shape} weight {weight.shape}
+        # bias {None if bias is None else bias.shape} output {output.shape}
+        # x type {x.dtype} weight type {weight.dtype} bias type
+        # {None if bias is None else bias.dtype} output type {output.dtype}"
         #     )
-        #     print(f"sp_tp_mode {sp_tp_mode} column_parallel {column_parallel} output_partition_sizes {output_partition_sizes}")
+        #     print(f"sp_tp_mode {sp_tp_mode} column_parallel {column_parallel}
+        # output_partition_sizes {output_partition_sizes}")
 
         return output
 
@@ -501,7 +505,6 @@ class ColumnParallelLinear(LinearBase):
 
         # Matrix multiply.
         assert self.quant_method is not None
-        # output_parallel = self.quant_method.apply(self, input_, bias)
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         output_parallel = self.quant_method.apply(
             self,
@@ -511,9 +514,11 @@ class ColumnParallelLinear(LinearBase):
             column_parallel=True,
             output_partition_sizes=self.output_partition_sizes)
         if self.gather_output:
-            assert True, "gather_output is not supported"
             # All-gather across the partitions.
-            output = tensor_model_parallel_all_gather(output_parallel)
+            if SP_TP_MODE:
+                output = get_sp_tp_group().all_gather(output_parallel)
+            else:
+                output = tensor_model_parallel_all_gather(output_parallel)
         else:
             output = output_parallel
         output_bias = self.bias if self.skip_bias_add else None
@@ -1281,21 +1286,17 @@ class RowParallelLinear(LinearBase):
     def forward(
         self, input_
     ) -> Union[torch.Tensor, tuple[torch.Tensor, Optional[Parameter]]]:
-        from vllm.distributed.parallel_state import get_sp_tp_group
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         sp_tp_size = get_sp_tp_group().world_size
         sp_tp_rank = get_sp_tp_group().rank_in_group
 
         if self.input_is_parallel:
-            # print("PARALLEL", input_.shape)
             input_parallel = input_
-        elif sp_tp_mode:
-            # print("SPTPMODE", input_.shape)
+        elif SP_TP_MODE:
             splitted_input = split_tensor_along_last_dim(
                 input_, num_partitions=sp_tp_size)
             input_parallel = splitted_input[sp_tp_rank].contiguous()
         else:
-            # print("NOSPTPMODE", input_.shape)
             tp_rank = get_tensor_model_parallel_rank()
             splitted_input = split_tensor_along_last_dim(
                 input_, num_partitions=self.tp_size)
@@ -1305,7 +1306,6 @@ class RowParallelLinear(LinearBase):
         assert self.quant_method is not None
         # Only fuse bias add into GEMM for rank 0 (this ensures that
         # bias will not get added more than once in TP>1 case)
-        bias_ = None if (self.tp_rank > 0 or self.skip_bias_add) else self.bias
         if SP_TP_MODE:
             bias_ = None if (sp_tp_rank > 0
                              or self.skip_bias_add) else self.bias
