@@ -114,8 +114,9 @@ class EngineArgs:
                                                  Type[ExecutorBase]]] = None
     # number of P/D disaggregation (or other disaggregation) workers
     pipeline_parallel_size: int = 1
-    sequence_parallel_size: int = 1
     tensor_parallel_size: int = 1
+    sequence_parallel_size: int = 1
+    shapeshifter_threshold: int = 0
     enable_expert_parallel: bool = False
     max_parallel_loading_workers: Optional[int] = None
     block_size: Optional[int] = None
@@ -431,16 +432,21 @@ class EngineArgs:
                             type=int,
                             default=EngineArgs.pipeline_parallel_size,
                             help='Number of pipeline stages.')
-        parser.add_argument('--sequence-parallel-size',
-                            '-sp',
-                            type=int,
-                            default=EngineArgs.sequence_parallel_size,
-                            help='Number of sequence parallel replicas.')
         parser.add_argument('--tensor-parallel-size',
                             '-tp',
                             type=int,
                             default=EngineArgs.tensor_parallel_size,
                             help='Number of tensor parallel replicas.')
+        parser.add_argument('--sequence-parallel-size',
+                            '-sp',
+                            type=int,
+                            default=EngineArgs.sequence_parallel_size,
+                            help='Number of sequence parallel replicas.')
+        parser.add_argument('--shapeshifter-threshold',
+                            '-sst',
+                            type=int,
+                            default=EngineArgs.shapeshifter_threshold,
+                            help='Use pure TP with batch size < threshold.')
         parser.add_argument(
             '--enable-expert-parallel',
             action='store_true',
@@ -1248,8 +1254,9 @@ class EngineArgs:
         )
         parallel_config = ParallelConfig(
             pipeline_parallel_size=self.pipeline_parallel_size,
-            sequence_parallel_size=self.sequence_parallel_size,
             tensor_parallel_size=self.tensor_parallel_size,
+            sequence_parallel_size=self.sequence_parallel_size,
+            shapeshifter_threshold=self.shapeshifter_threshold,
             enable_expert_parallel=self.enable_expert_parallel,
             max_parallel_loading_workers=self.max_parallel_loading_workers,
             disable_custom_all_reduce=self.disable_custom_all_reduce,
