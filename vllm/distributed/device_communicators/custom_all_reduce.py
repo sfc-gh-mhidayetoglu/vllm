@@ -315,6 +315,6 @@ class CustomAllreduce:
 class CustomAlltoall(CustomAllreduce):
 
     def __init__(*args, **kwargs):
-        super.__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if torch.distributed.get_rank() == 0:
             print("CustomAlltoall init")
