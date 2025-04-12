@@ -21,16 +21,16 @@ class CudaCommunicator(DeviceCommunicatorBase):
             print(
                 "initialize cuda communicator ********************************************** "
             )
-            print (f"unique_name: {unique_name} {unique_name == 'sp'} {unique_name == 'tp'} {unique_name == 'sp_tp'}")
+            print (f"unique_name: {unique_name} {'sp' in unique_name} {'tp' in unique_name} {'sp_tp' in unique_name}")
 
-        if unique_name == "tp" or unique_name == "sp_tp":
+        if "tp" in unique_name:
             # only tp and sp_tp use custom allreduce
             from vllm.distributed.parallel_state import (
                 _ENABLE_CUSTOM_ALL_REDUCE)
             use_custom_allreduce = _ENABLE_CUSTOM_ALL_REDUCE
         else:
             use_custom_allreduce = False
-        if unique_name == "sp":
+        if "sp" in unique_name:
             # only sp uses alltoall
             use_custom_alltoall = True
         else:
