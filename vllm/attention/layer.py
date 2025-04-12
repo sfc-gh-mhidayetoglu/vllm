@@ -204,6 +204,8 @@ class Attention(nn.Module):
                 #     key = key.view(-1, self.num_kv_heads, self.head_size)
                 # if value is not None:
                 #     value = value.view(-1, self.num_kv_heads, self.head_size)
+                if torch.distributed.get_rank() == 0:
+                    print("layer to be captured")
             if self.use_direct_call:
                 forward_context: ForwardContext = get_forward_context()
                 attn_metadata = forward_context.attn_metadata
