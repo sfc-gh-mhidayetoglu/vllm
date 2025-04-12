@@ -165,6 +165,8 @@ class GroupCoordinator:
         use_message_queue_broadcaster: bool = False,
         group_name: Optional[str] = None,
     ):
+        if torch.distributed.get_rank() == 0:
+            print(f"init group {group_name} ********************************************** ")  # noqa
         group_name = group_name or "anonymous"
         self.unique_name = _get_unique_name(group_name)
         _register_group(self)

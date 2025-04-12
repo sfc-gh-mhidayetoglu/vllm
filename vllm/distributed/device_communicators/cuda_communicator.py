@@ -19,7 +19,7 @@ class CudaCommunicator(DeviceCommunicatorBase):
 
         if torch.distributed.get_rank() == 0:
             print(
-                "initialize cuda communicator ********************************************** " # noqa
+                "initialize cuda communicator ********************************************** "  # noqa
             )
 
         if "tp" not in unique_name:

@@ -37,7 +37,9 @@ class PyNcclCommunicator:
         is bind to a unique device.
         """
         if torch.distributed.get_rank() == 0:
-            print("initialize pynccl ********************************************** ") # noqa
+            print(
+                "initialize pynccl ********************************************** "
+            )  # noqa
         if not isinstance(group, StatelessProcessGroup):
             assert dist.is_initialized()
             assert dist.get_backend(group) != dist.Backend.NCCL, (

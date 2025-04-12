@@ -67,7 +67,9 @@ class CustomAllreduce:
         are in the same node.
         """
         if torch.distributed.get_rank() == 0:
-            print("initialize custom allreduce ********************************************** ") # noqa
+            print(
+                "initialize custom allreduce ********************************************** "
+            )  # noqa
         self._IS_CAPTURING = False
         self.disabled = True
 
