@@ -192,19 +192,19 @@ class UnquantizedLinearMethod(LinearMethodBase):
               column_parallel: bool = False,
               output_partition_sizes: list = None) -> torch.Tensor:
 
-        # if torch.distributed.get_rank() == 0:
-        #     if column_parallel:
-        #         print("unqunatized column parallel linear: ")
-        #     else:
-        #         print("unquantized row parallel linear: ")
-        #     print(f"              x shape {x.shape} {x.dtype}\n"
-        #           f"              weight {layer.weight.shape}"
-        #           f" {layer.weight.dtype}\n"
-        #           f"              bias {None if bias is None else bias.shape}"
-        #           f" {None if bias is None else bias.dtype}\n"
-        #           f"              output_partition_sizes"
-        #           f" {output_partition_sizes}\n"
-        #           f"              sp_tp_mode {sp_tp_mode}\n")
+        if torch.distributed.get_rank() == 0:
+            if column_parallel:
+                print("unqunatized column parallel linear: ")
+            else:
+                print("unquantized row parallel linear: ")
+            print(f"              x shape {x.shape} {x.dtype}\n"
+                  f"              weight {layer.weight.shape}"
+                  f" {layer.weight.dtype}\n"
+                  f"              bias {None if bias is None else bias.shape}"
+                  f" {None if bias is None else bias.dtype}\n"
+                  f"              output_partition_sizes"
+                  f" {output_partition_sizes}\n"
+                  f"              sp_tp_mode {sp_tp_mode}\n")
 
         if sp_tp_mode:
             sp_size = get_sp_group().world_size
@@ -229,11 +229,11 @@ class UnquantizedLinearMethod(LinearMethodBase):
 
         output = F.linear(x, weight, bias)
 
-        # if torch.distributed.get_rank() == 0:
-        #     print(
-        #         f"              sharded weight {weight.shape}"
-        #         f" {weight.dtype}\n"
-        #         f"              output shape {output.shape} {output.dtype}\n")
+        if torch.distributed.get_rank() == 0:
+            print(
+                f"              sharded weight {weight.shape}"
+                f" {weight.dtype}\n"
+                f"              output shape {output.shape} {output.dtype}\n")
 
         return output
 
