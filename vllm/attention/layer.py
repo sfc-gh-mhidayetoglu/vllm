@@ -211,6 +211,7 @@ class Attention(nn.Module):
                     #     recv,
                     #     query.contiguous(),
                     #     group=get_sp_group().device_group)
+                    query = query.contiguous()
                     torch.distributed.all_reduce(
                         query, group=get_sp_group().device_group)
                     recv = query
