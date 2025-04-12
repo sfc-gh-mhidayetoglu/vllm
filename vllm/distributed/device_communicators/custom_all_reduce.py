@@ -66,6 +66,8 @@ class CustomAllreduce:
         is bind to a unique device, and all communicators in this group
         are in the same node.
         """
+        if torch.distributed.get_rank() == 0:
+            print("initialize custom allreduce ********************************************** ") # noqa
         self._IS_CAPTURING = False
         self.disabled = True
 

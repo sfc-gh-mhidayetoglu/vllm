@@ -16,6 +16,12 @@ class CudaCommunicator(DeviceCommunicatorBase):
                  device_group: Optional[ProcessGroup] = None,
                  unique_name: str = ""):
         super().__init__(cpu_group, device, device_group, unique_name)
+
+        if torch.distributed.get_rank() == 0:
+            print(
+                "initialize cuda communicator ********************************************** " # noqa
+            )
+
         if "tp" not in unique_name:
             # only tp uses custom allreduce
             use_custom_allreduce = False
