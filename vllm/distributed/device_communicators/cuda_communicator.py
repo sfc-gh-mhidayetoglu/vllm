@@ -30,7 +30,7 @@ class CudaCommunicator(DeviceCommunicatorBase):
 
         # lazy import to avoid documentation build error
         from vllm.distributed.device_communicators.custom_all_reduce import (
-            CustomAllreduce)
+            CustomAllreduce, CustomAlltoall)
         from vllm.distributed.device_communicators.pynccl import (
             PyNcclCommunicator)
 
@@ -48,6 +48,8 @@ class CudaCommunicator(DeviceCommunicatorBase):
                 group=self.cpu_group,
                 device=self.device,
             )
+
+        self.alltoall_comm: Optional[CustomAlltoall] = None
 
     def all_reduce(self, input_):
         # always try custom allreduce first,
