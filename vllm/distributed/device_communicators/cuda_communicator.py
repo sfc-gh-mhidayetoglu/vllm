@@ -56,7 +56,8 @@ class CudaCommunicator(DeviceCommunicatorBase):
             )
 
         self.alltoall_comm: Optional[CustomAlltoall] = None
-        if use_custom_allreduce and self.world_size > 1:
+        use_custom_alltoall = True
+        if use_custom_alltoall and self.world_size > 1:
             self.alltoall_comm = CustomAlltoall(
                 group=self.cpu_group,
                 device=self.device,

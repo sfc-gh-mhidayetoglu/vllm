@@ -317,4 +317,4 @@ class CustomAlltoall(CustomAllreduce):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if torch.distributed.get_rank() == 0:
-            print("CustomAlltoall init")
+            print("CustomAlltoall init ********************************************** ")
