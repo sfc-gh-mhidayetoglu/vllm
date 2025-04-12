@@ -21,6 +21,7 @@ class CudaCommunicator(DeviceCommunicatorBase):
             print(
                 "initialize cuda communicator ********************************************** "
             )
+            print (f"unique_name: {unique_name} {unique_name == "sp"} {unique_name == "tp"} {unique_name == "sp_tp"}")
 
         if unique_name == "tp" or unique_name == "sp_tp":
             # only tp and sp_tp use custom allreduce

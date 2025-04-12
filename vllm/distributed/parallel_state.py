@@ -917,10 +917,10 @@ def initialize_model_parallel(
 
     data_parallel_size = 1
     has_external_dp = False
-    from vllm.config import get_current_vllm_config
-    config = get_current_vllm_config()
     sequence_parallel_size = \
         config.parallel_config.sequence_parallel_size
+    from vllm.config import get_current_vllm_config
+    config = get_current_vllm_config()
     if config is not None:
         if config.parallel_config.world_size != world_size:
             # detect external data parallelism.
