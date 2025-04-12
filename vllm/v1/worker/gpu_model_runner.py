@@ -1205,16 +1205,16 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             sp_tp_threshold = self.parallel_config.shapeshifter_threshold
             SP_TP_MODE = bool(sp_tp_threshold > N)
             if SP_TP_PROFILE_RUN or SP_TP_MODE is True:
-                # if torch.distributed.get_rank() == 0:
-                #     print(f"N {N}")
+                if torch.distributed.get_rank() == 0:
+                    print(f"N {N}")
                 if SP_TP_PROFILE_RUN:
                     SP_TP_MODE = True
                 model_output = model_forward(*args, **kwargs)
             if SP_TP_PROFILE_RUN or SP_TP_MODE is False:
                 N_ulysses = N // SP_size
                 N_offset = N_ulysses * SP_rank
-                # if torch.distributed.get_rank() == 0:
-                #     print(f"N {N}, N_ranks {[N_ulysses] * SP_size}")
+                if torch.distributed.get_rank() == 0:
+                    print(f"N {N}, N_ranks {[N_ulysses] * SP_size}")
                 # narrow the input
                 kwargs['input_ids'] = input_ids[N_offset:N_offset + N_ulysses]
                 kwargs['positions'] = positions[N_offset:N_offset + N_ulysses]
