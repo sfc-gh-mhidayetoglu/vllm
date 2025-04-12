@@ -209,7 +209,7 @@ class Attention(nn.Module):
                 if SP_TP_MODE:
                     recv = torch.empty_like(query)
                     torch.distributed.all_to_all_single(
-                        recv, query, device=get_sp_group().device_group)
+                        recv, query, device_group=get_sp_group().device_group)
                 else:
                     recv = query
                 query = recv
