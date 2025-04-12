@@ -47,6 +47,8 @@ class CudaCommunicator(DeviceCommunicatorBase):
                 device=self.device,
             )
 
+        if torch.distributed.get_rank() == 0:
+        print(f"initialize cuda communicator {use_custom_allreduce} world size {self.world_size} ********************************************** ")
         self.ca_comm: Optional[CustomAllreduce] = None
         if use_custom_allreduce and self.world_size > 1:
             # Initialize a custom fast all-reduce implementation.
