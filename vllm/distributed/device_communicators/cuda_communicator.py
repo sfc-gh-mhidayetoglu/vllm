@@ -18,7 +18,9 @@ class CudaCommunicator(DeviceCommunicatorBase):
         super().__init__(cpu_group, device, device_group, unique_name)
 
         if torch.distributed.get_rank() == 0:
-            print("initialize cuda communicator ********************************************** ")
+            print(
+                "initialize cuda communicator ********************************************** "
+            )
 
         if "tp" not in unique_name:
             # only tp uses custom allreduce
@@ -27,10 +29,16 @@ class CudaCommunicator(DeviceCommunicatorBase):
             from vllm.distributed.parallel_state import (
                 _ENABLE_CUSTOM_ALL_REDUCE)
             use_custom_allreduce = _ENABLE_CUSTOM_ALL_REDUCE
+        if "sp" not in unique_name:
+            # only sp uses alltoall
+            use_custom_alltoall = False
+        else:
+            use_custom_alltoall = True
         use_pynccl = True
 
         self.use_pynccl = use_pynccl
         self.use_custom_allreduce = use_custom_allreduce
+        self.use_custom_alltoall = use_custom_alltoall
 
         # lazy import to avoid documentation build error
         from vllm.distributed.device_communicators.custom_all_reduce import (
@@ -46,7 +54,9 @@ class CudaCommunicator(DeviceCommunicatorBase):
             )
 
         if torch.distributed.get_rank() == 0:
-            print(f"custom communicator {use_custom_allreduce} world size {self.world_size} ********************************************** ")
+            print(
+                f"custom allreduce communicator {use_custom_allreduce} world size {self.world_size} ********************************************** "
+            )
         self.ca_comm: Optional[CustomAllreduce] = None
         if use_custom_allreduce and self.world_size > 1:
             # Initialize a custom fast all-reduce implementation.
@@ -55,8 +65,11 @@ class CudaCommunicator(DeviceCommunicatorBase):
                 device=self.device,
             )
 
+        if torch.distributed.get_rank() == 0:
+            print(
+                f"custom alltoall communicator {use_custom_alltoall} world size {self.world_size} ********************************************** "
+            )
         self.alltoall_comm: Optional[CustomAlltoall] = None
-        use_custom_alltoall = True
         if use_custom_alltoall and self.world_size > 1:
             self.alltoall_comm = CustomAlltoall(
                 group=self.cpu_group,
