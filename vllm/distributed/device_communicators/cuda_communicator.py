@@ -52,10 +52,11 @@ class CudaCommunicator(DeviceCommunicatorBase):
         self.alltoall_comm: Optional[CustomAlltoall] = None
         use_custom_alltoall = True
         if use_custom_alltoall and self.world_size > 1:
-            self.alltoall_comm = CustomAlltoall(
-                group=self.cpu_group,
-                device=self.device,
-            )
+            # self.alltoall_comm = CustomAlltoall(
+            #     group=self.cpu_group,
+            #     device=self.device,
+            # )
+            pass
 
     def all_reduce(self, input_):
         # always try custom allreduce first,
