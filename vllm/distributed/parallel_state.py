@@ -988,7 +988,7 @@ def initialize_model_parallel(
                                     backend,
                                     group_name="sp")
     global _SP_TP
-    assert _SP_TP is None
+    assert _SP_TP is None, ("ulysses group is already initialized")
     group_ranks = []
     for i in range(pipeline_model_parallel_size):
         ranks = list(
