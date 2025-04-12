@@ -204,14 +204,14 @@ class Attention(nn.Module):
                 #     key = key.view(-1, self.num_kv_heads, self.head_size)
                 # if value is not None:
                 #     value = value.view(-1, self.num_kv_heads, self.head_size)
-                from vllm.distributed.parallel_state import get_sp_group
                 from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
                 if SP_TP_MODE:
                     recv = torch.empty_like(query)
-                    torch.distributed.all_to_all_single(
-                        recv,
-                        query.contiguous(),
-                        group=get_sp_group().device_group)
+                    # torch.distributed.all_to_all_single(
+                    #     recv,
+                    #     query.contiguous(),
+                    #     group=get_sp_group().device_group)
+                    recv = query
                 else:
                     recv = query
                 query = recv
