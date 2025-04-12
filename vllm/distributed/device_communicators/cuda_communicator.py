@@ -22,18 +22,18 @@ class CudaCommunicator(DeviceCommunicatorBase):
                 "initialize cuda communicator ********************************************** "
             )
 
-        if "tp" not in unique_name:
-            # only tp uses custom allreduce
-            use_custom_allreduce = False
-        else:
+        if unique_name == "tp" or unique_name == "sp_tp":
+            # only tp and sp_tp use custom allreduce
             from vllm.distributed.parallel_state import (
                 _ENABLE_CUSTOM_ALL_REDUCE)
             use_custom_allreduce = _ENABLE_CUSTOM_ALL_REDUCE
-        if "sp" not in unique_name:
-            # only sp uses alltoall
-            use_custom_alltoall = False
         else:
+            use_custom_allreduce = False
+        if unique_name == "sp":
+            # only sp uses alltoall
             use_custom_alltoall = True
+        else:
+            use_custom_alltoall = False
         use_pynccl = True
 
         self.use_pynccl = use_pynccl
@@ -132,3 +132,5 @@ class CudaCommunicator(DeviceCommunicatorBase):
             self.pynccl_comm = None
         if self.ca_comm is not None:
             self.ca_comm = None
+        if self.alltoall_comm is not None:
+            self.alltoall_comm = None
