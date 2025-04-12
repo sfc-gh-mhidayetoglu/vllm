@@ -18,9 +18,7 @@ class CudaCommunicator(DeviceCommunicatorBase):
         super().__init__(cpu_group, device, device_group, unique_name)
 
         if torch.distributed.get_rank() == 0:
-            print(
-                "initialize cuda communicator ********************************************** "  # noqa
-            )
+            print("initialize cuda communicator ********************************************** ")
 
         if "tp" not in unique_name:
             # only tp uses custom allreduce
@@ -48,7 +46,7 @@ class CudaCommunicator(DeviceCommunicatorBase):
             )
 
         if torch.distributed.get_rank() == 0:
-        print(f"initialize cuda communicator {use_custom_allreduce} world size {self.world_size} ********************************************** ")
+            print(f"initialize cuda communicator {use_custom_allreduce} world size {self.world_size} ********************************************** ")
         self.ca_comm: Optional[CustomAllreduce] = None
         if use_custom_allreduce and self.world_size > 1:
             # Initialize a custom fast all-reduce implementation.
