@@ -248,19 +248,19 @@ class FlashAttentionImpl(AttentionImpl):
 
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
 
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"SP_TP_MODE {SP_TP_MODE}")
+        if torch.distributed.get_rank() == 0:
+            print(f"attention SP_TP_MODE {SP_TP_MODE}")
         # Ulysses Attention
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"FlashAttentionImpl.forward \n \
-        #     q {query.shape}\n \
-        #     k {key.shape}\n \
-        #     v {value.shape}\n \
-        #     output {output.shape}\n \
-        #     kv_cache {kv_cache.shape}\n \
-        #     self.num_heads {self.num_heads}\n \
-        #     self.num_kv_heads {self.num_kv_heads}\n \
-        #     self.head_size {self.head_size}\n")
+        if torch.distributed.get_rank() == 0:
+            print(f"FlashAttentionImpl.forward \n \
+            q {query.shape}\n \
+            k {key.shape}\n \
+            v {value.shape}\n \
+            output {output.shape}\n \
+            kv_cache {kv_cache.shape}\n \
+            self.num_heads {self.num_heads}\n \
+            self.num_kv_heads {self.num_kv_heads}\n \
+            self.head_size {self.head_size}\n")
         if SP_TP_MODE:
             q_ = query.reshape(-1, self.num_heads, self.head_size)
             k_ = key.reshape(-1, self.num_kv_heads, self.head_size)

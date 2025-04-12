@@ -204,8 +204,15 @@ class Attention(nn.Module):
                 #     key = key.view(-1, self.num_kv_heads, self.head_size)
                 # if value is not None:
                 #     value = value.view(-1, self.num_kv_heads, self.head_size)
-                if torch.distributed.get_rank() == 0:
-                    print("layer to be captured")
+                from vllm.distributed.parallel_state import get_sp_group
+                from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+                if SP_TP_MODE:
+                    recv = torch.empty_like(query)
+                    torch.distributed.all_to_all_single(
+                        recv, query, device=get_sp_group().device_group)
+                else:
+                    recv = query
+                query = recv
             if self.use_direct_call:
                 forward_context: ForwardContext = get_forward_context()
                 attn_metadata = forward_context.attn_metadata
