@@ -118,6 +118,16 @@ def all_reduce_fake(tensor: torch.Tensor, group_name: str) -> torch.Tensor:
     return torch.empty_like(tensor)
 
 
+def all_to_all(tensor: torch.Tensor, group_name: str) -> torch.Tensor:
+    assert group_name in _groups, f"Group {group_name} is not found."
+    group = _groups[group_name]()
+    if group is None:
+        raise ValueError(f"Group {group_name} is destroyed.")
+    return group._all_to_all_out_place(tensor)
+
+def all_to_all_fake(tensor: torch.Tensor, group_name: str) -> torch.Tensor:
+    return torch.empty_like(tensor)
+
 if supports_custom_op():
     direct_register_custom_op(
         op_name="all_reduce",
@@ -125,7 +135,12 @@ if supports_custom_op():
         mutates_args=[],
         fake_impl=all_reduce_fake,
     )
-
+    direct_register_custom_op(
+        op_name="all_to_all",
+        op_func=all_to_all,
+        mutates_args=[],
+        fake_impl=all_to_all_fake,
+    )
 
 class GroupCoordinator:
     """
@@ -287,6 +302,18 @@ class GroupCoordinator:
         with torch.cuda.stream(stream), maybe_ca_context:
             yield graph_capture_context
 
+    def all_to_all(self, input_) -> torch.Tensor:
+        if self.world_size == 1:
+            return input_
+        if self.use_custom_op_call:
+            return torch.ops.vllm.all_to_all(input_,
+                                            group_name=self.unique_name)
+        else:
+            return self.device_communicator.all_to_all(input_)
+
+    def _all_to_all_out_place(self, input_: torch.Tensor) -> torch.Tensor:
+        return self.device_communicator.all_to_all(input_)
+
     def all_reduce(self, input_: torch.Tensor) -> torch.Tensor:
         """
         User-facing all-reduce function before we actually call the
@@ -307,13 +334,9 @@ class GroupCoordinator:
             return input_
 
         if self.use_custom_op_call:
-            if torch.distributed.get_rank() == 0:
-                print(f"all-reduce ops")
             return torch.ops.vllm.all_reduce(input_,
                                              group_name=self.unique_name)
         else:
-            if torch.distributed.get_rank() == 0:
-                print(f"all-reduce out_place")
             return self._all_reduce_out_place(input_)
 
     def _all_reduce_out_place(self, input_: torch.Tensor) -> torch.Tensor:
