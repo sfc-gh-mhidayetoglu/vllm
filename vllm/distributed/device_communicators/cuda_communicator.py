@@ -86,13 +86,19 @@ class CudaCommunicator(DeviceCommunicatorBase):
         ca_comm = self.ca_comm
         if ca_comm is not None and not ca_comm.disabled and \
             ca_comm.should_custom_ar(input_):
+            if torch.distributed.get_rank() == 0:
+                print(f"custom all-reduce")
             out = ca_comm.custom_all_reduce(input_)
             assert out is not None
             return out
         pynccl_comm = self.pynccl_comm
         assert pynccl_comm is not None
+        if torch.distributed.get_rank() == 0:
+            print(f"pynccl all-reduce")
         out = pynccl_comm.all_reduce(input_)
         if out is None:
+            if torch.distributed.get_rank() == 0:
+                print(f"torch all-reduce")
             # fall back to the default all-reduce using PyTorch.
             # this usually happens during testing.
             # when we run the model, allreduce only happens for the TP
