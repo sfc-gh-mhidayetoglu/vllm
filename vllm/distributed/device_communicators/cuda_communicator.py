@@ -79,6 +79,8 @@ class CudaCommunicator(DeviceCommunicatorBase):
             pass
 
     def all_reduce(self, input_):
+        if torch.distributed.get_rank() == 0:
+            print("device all-reduce")
         # always try custom allreduce first,
         # and then pynccl.
         ca_comm = self.ca_comm
