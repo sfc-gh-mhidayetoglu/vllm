@@ -165,6 +165,10 @@ class GroupCoordinator:
         use_message_queue_broadcaster: bool = False,
         group_name: Optional[str] = None,
     ):
+        group_name = group_name or "anonymous"
+        self.unique_name = _get_unique_name(group_name)
+        _register_group(self)
+
         self.rank = torch.distributed.get_rank()
         self.local_rank = local_rank
         self.device_group = None
@@ -219,10 +223,6 @@ class GroupCoordinator:
 
         if torch.distributed.get_rank() == 0:
             print(f"init group {group_name} ************************* use_custom_op_call {self.use_custom_op_call} use_device_communicator {self.use_device_communicator}")  # noqa
-        group_name = group_name or "anonymous"
-        self.unique_name = _get_unique_name(group_name)
-        _register_group(self)
-
 
     @property
     def first_rank(self):
