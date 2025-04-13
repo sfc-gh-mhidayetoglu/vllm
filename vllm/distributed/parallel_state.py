@@ -165,12 +165,6 @@ class GroupCoordinator:
         use_message_queue_broadcaster: bool = False,
         group_name: Optional[str] = None,
     ):
-        if torch.distributed.get_rank() == 0:
-            print(f"init group {group_name} ********************************************** ")  # noqa
-        group_name = group_name or "anonymous"
-        self.unique_name = _get_unique_name(group_name)
-        _register_group(self)
-
         self.rank = torch.distributed.get_rank()
         self.local_rank = local_rank
         self.device_group = None
@@ -222,6 +216,13 @@ class GroupCoordinator:
 
         from vllm.platforms import current_platform
         self.use_custom_op_call = current_platform.is_cuda_alike()
+
+        if torch.distributed.get_rank() == 0:
+            print(f"init group {group_name} ************************* use_custom_op_call {self.use_custom_op_call} use_device_communicator {self.use_device_communicator}")  # noqa
+        group_name = group_name or "anonymous"
+        self.unique_name = _get_unique_name(group_name)
+        _register_group(self)
+
 
     @property
     def first_rank(self):
@@ -305,13 +306,14 @@ class GroupCoordinator:
         if self.world_size == 1:
             return input_
 
-        if torch.distributed.get_rank() == 0:
-            print(f"all-reduce use_custom_op_call = {self.use_custom_op_call}")
-
         if self.use_custom_op_call:
+            if torch.distributed.get_rank() == 0:
+                print(f"all-reduce ops")
             return torch.ops.vllm.all_reduce(input_,
                                              group_name=self.unique_name)
         else:
+            if torch.distributed.get_rank() == 0:
+                print(f"all-reduce out_place")
             return self._all_reduce_out_place(input_)
 
     def _all_reduce_out_place(self, input_: torch.Tensor) -> torch.Tensor:
