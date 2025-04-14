@@ -206,7 +206,7 @@ class Attention(nn.Module):
                     if value is not None:
                         v_ = value.view(-1, self.num_kv_heads, self.head_size)
                 else:
-                    # SP = get_sp_group().world_size
+                    SP = get_sp_group().world_size
                     # Ulysses all-to-all 2/2
                     qkv = torch.cat(
                         (query.view(-1, SP, self.num_heads * self.head_size),
