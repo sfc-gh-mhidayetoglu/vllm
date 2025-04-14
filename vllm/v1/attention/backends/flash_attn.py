@@ -253,11 +253,11 @@ class FlashAttentionImpl(AttentionImpl):
         # Ulysses Attention
         if torch.distributed.get_rank() == 0:
             print(f"FlashAttentionImpl.forward \n \
-            q {query.shape}\n \
-            k {key.shape}\n \
-            v {value.shape}\n \
-            output {output.shape}\n \
-            kv_cache {kv_cache.shape}\n \
+            q {query.shape} cont {query.is_contiguous()}\n \
+            k {key.shape} cont {key.is_contiguous()}\n \
+            v {value.shape} cont {value.is_contiguous()}\n \
+            output {output.shape} cont {output.is_contiguous()}\n \
+            kv_cache {kv_cache.shape} cont {kv_cache.is_contiguous()}\n \
             self.num_heads {self.num_heads}\n \
             self.num_kv_heads {self.num_kv_heads}\n \
             self.head_size {self.head_size}\n")
