@@ -252,12 +252,13 @@ class Attention(nn.Module):
             if SP_TP_MODE:
                 output = c_.reshape(output.shape)
             else:
-                c = torch.empty_like(c_)
-                torch.distributed.all_to_all_single(c, c_, group=self.device_group)
+                # c = torch.empty_like(c_)
+                # torch.distributed.all_to_all_single(c, c_, group=self.device_group)
+                c = get_sp_group().all_to_all(c_)
                 output.copy_(
                     torch.transpose(
                         c.view(SP, -1, self.num_heads * self.head_size), 0,
-                        1).reshape(-1, self.num_heads * self.SP * self.head_size))
+                        1).reshape(-1, self.num_heads * SP * self.head_size))
 
             return output.view(-1, hidden_size)
         else:
