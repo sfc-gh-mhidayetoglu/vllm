@@ -80,6 +80,7 @@ class CudaCommunicator(DeviceCommunicatorBase):
     def all_to_all(self, input_):
         out = torch.empty_like(input_)
         torch.distributed.all_to_all_single(out, input_, group=self.device_group)
+        return out
 
     def all_reduce(self, input_):
         # always try custom allreduce first,

@@ -214,6 +214,8 @@ class Attention(nn.Module):
                     query = query.contiguous()
                     # torch.distributed.all_reduce(
                     #     query, group=get_sp_group().device_group)
+                    if torch.distributed.get_rank() == 0:
+                        print(f"SP_TP_MODE query {None if query is None else query.shape}")
                     recv = get_sp_group().all_to_all(query)
                 else:
                     recv = query
