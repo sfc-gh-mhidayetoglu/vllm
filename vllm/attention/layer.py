@@ -228,12 +228,16 @@ class Attention(nn.Module):
                     #     self.head_size, self.num_kv_heads * self.head_size
                     # ],
                     #                         dim=-1)
-                    q_ = query.view(-1, SP, self.num_heads * self.head_size).transpose(
+                    q = query.view(-1, SP, self.num_heads * self.head_size).transpose(
                         0, 1).reshape(-1, self.num_heads * self.head_size)
-                    k_ = key.view(-1, SP, self.num_kv_heads * self.head_size).transpose(
+                    k = key.view(-1, SP, self.num_kv_heads * self.head_size).transpose(
                         0, 1).reshape(-1, self.num_kv_heads * self.head_size)
-                    v_ = value.view(-1, SP, self.num_kv_heads * self.head_size).transpose(
+                    v = value.view(-1, SP, self.num_kv_heads * self.head_size).transpose(
                         0, 1).reshape(-1, self.num_kv_heads * self.head_size)
+                    
+                    q_ = get_sp_group().all_to_all(q)
+                    k_ = get_sp_group().all_to_all(k)
+                    v_ = get_sp_group().all_to_all(v)
                     
                     # prepare
                     q_ = q_.reshape(-1, self.num_heads, self.head_size)
