@@ -223,7 +223,7 @@ class Attention(nn.Module):
                     # qkv_ = get_sp_group().all_to_all(qkv)
                     # qkv_ = qkv
                     # unpack
-                    q_, k_, v_ = qkv_.split([
+                    q_, k_, v_ = qkv.split([
                         self.num_heads * self.head_size, self.num_kv_heads *
                         self.head_size, self.num_kv_heads * self.head_size
                     ],
