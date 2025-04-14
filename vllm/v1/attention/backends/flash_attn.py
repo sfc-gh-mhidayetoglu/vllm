@@ -246,7 +246,7 @@ class FlashAttentionImpl(AttentionImpl):
         # Whenever making a change in this method, please benchmark the
         # performance to make sure it does not introduce any overhead.
 
-        # from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
 
         if torch.distributed.get_rank() == 0:
             print(f"attention SP_TP_MODE {SP_TP_MODE}")
