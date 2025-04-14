@@ -254,6 +254,7 @@ class Attention(nn.Module):
             if SP_TP_MODE:
                 output = c_.reshape(output.shape)
             else:
+                SP = get_sp_group().world_size
                 # c = torch.empty_like(c_)
                 # torch.distributed.all_to_all_single(c, c_, group=self.device_group)
                 c = get_sp_group().all_to_all(c_)
