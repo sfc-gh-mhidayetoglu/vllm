@@ -211,12 +211,12 @@ class Attention(nn.Module):
                     #     recv,
                     #     query.contiguous(),
                     #     group=get_sp_group().device_group)
-                    query = query.contiguous()
                     # torch.distributed.all_reduce(
                     #     query, group=get_sp_group().device_group)
-                    recv = get_sp_group().all_to_all(query)
-                else:
                     recv = query
+                else:
+                    query = query.contiguous()
+                    recv = get_sp_group().all_to_all(query)
                 query = recv
             if self.use_direct_call:
                 forward_context: ForwardContext = get_forward_context()
