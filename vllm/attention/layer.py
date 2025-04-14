@@ -194,48 +194,71 @@ class Attention(nn.Module):
             # backend since these tensors have different semantics and are
             # processed differently.
             if not self.use_mla:
-                # Reshape the query, key, and value tensors.
-                # NOTE(woosuk): We do this outside the custom op to minimize the
-                # CPU overheads from the non-CUDA-graph regions.
-                # pass
-                # query = query.view(-1, self.num_heads, self.head_size)
-                # output = output.view(-1, self.num_heads, self.head_size)
-                # if key is not None:
-                #     key = key.view(-1, self.num_kv_heads, self.head_size)
-                # if value is not None:
-                #     value = value.view(-1, self.num_kv_heads, self.head_size)
                 from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
                 if SP_TP_MODE:
-                    # recv = torch.empty_like(query)
-                    # torch.distributed.all_to_all_single(
-                    #     recv,
-                    #     query.contiguous(),
-                    #     group=get_sp_group().device_group)
-                    # torch.distributed.all_reduce(
-                    #     query, group=get_sp_group().device_group)
-                    recv = query
+                    # Reshape the query, key, and value tensors.
+                    # NOTE(woosuk): We do this outside the custom op to minimize the
+                    # CPU overheads from the non-CUDA-graph regions.
+                    q_ = query.view(-1, self.num_heads, self.head_size)
+                    c_ = output.view(-1, self.num_heads, self.head_size)
+                    if key is not None:
+                        k_ = key.view(-1, self.num_kv_heads, self.head_size)
+                    if value is not None:
+                        v_ = value.view(-1, self.num_kv_heads, self.head_size)
                 else:
-                    query = query.contiguous()
-                    recv = get_sp_group().all_to_all(query)
-                query = recv
+                    # Ulysses all-to-all 2/2
+                    qkv = torch.cat(
+                        (query.view(-1, self.SP, self.num_heads * self.head_size),
+                        key.view(-1, self.SP, self.num_kv_heads * self.head_size),
+                        value.view(-1, self.SP, self.num_kv_heads * self.head_size)),
+                        dim=-1).transpose(0, 1).reshape(
+                            -1,
+                            (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+                    # all-to-all
+                    qkv_ = torch.empty_like(qkv)
+                    torch.distributed.all_to_all_single(qkv_,
+                                                        qkv,
+                                                        group=self.device_group)
+                    # unpack
+                    q_, k_, v_ = qkv_.split([
+                        self.num_heads * self.head_size, self.num_kv_heads *
+                        self.head_size, self.num_kv_heads * self.head_size
+                    ],
+                                            dim=-1)
+                    # prepare
+                    q_ = q_.reshape(-1, self.num_heads, self.head_size)
+                    k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
+                    v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
+                    c_ = output.view(-1, self.num_heads, self.head_size)
+
             if self.use_direct_call:
                 forward_context: ForwardContext = get_forward_context()
                 attn_metadata = forward_context.attn_metadata
                 self_kv_cache = self.kv_cache[forward_context.virtual_engine]
                 self.impl.forward(self,
-                                  query,
-                                  key,
-                                  value,
+                                  q_,
+                                  k_,
+                                  v_,
                                   self_kv_cache,
                                   attn_metadata,
-                                  output=output)
+                                  output=c_)
             else:
                 torch.ops.vllm.unified_attention_with_output(
-                    query, key, value, output, self.layer_name)
+                    q_, k_, v_, c_, self.layer_name)
                 
-            out = get_sp_group().all_to_all(output)
+            # out = get_sp_group().all_to_all(output)
+            # Ulysses all-to-all 2/2
+            if SP_TP_MODE:
+                output = c_.reshape(output.shape)
+            else:
+                c = torch.empty_like(c_)
+                torch.distributed.all_to_all_single(c, c_, group=self.device_group)
+                output.copy_(
+                    torch.transpose(
+                        c.view(self.SP, -1, self.num_heads * self.head_size), 0,
+                        1).reshape(-1, self.num_heads * self.SP * self.head_size))
 
-            return out.view(-1, hidden_size)
+            return output.view(-1, hidden_size)
         else:
             if self.use_direct_call:
                 forward_context = get_forward_context()
