@@ -208,13 +208,13 @@ class Attention(nn.Module):
                 else:
                     # SP = get_sp_group().world_size
                     # Ulysses all-to-all 2/2
-                    # qkv = torch.cat(
-                    #     (query.view(-1, SP, self.num_heads * self.head_size),
-                    #     key.view(-1, SP, self.num_kv_heads * self.head_size),
-                    #     value.view(-1, SP, self.num_kv_heads * self.head_size)),
-                    #     dim=-1).transpose(0, 1).reshape(
-                    #         -1,
-                    #         (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+                    qkv = torch.cat(
+                        (query.view(-1, SP, self.num_heads * self.head_size),
+                        key.view(-1, SP, self.num_kv_heads * self.head_size),
+                        value.view(-1, SP, self.num_kv_heads * self.head_size)),
+                        dim=-1).transpose(0, 1).reshape(
+                            -1,
+                            (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
                     # all-to-all
                     # qkv_ = torch.empty_like(qkv)
                     # torch.distributed.all_to_all_single(qkv_,
@@ -249,7 +249,6 @@ class Attention(nn.Module):
                 torch.ops.vllm.unified_attention_with_output(
                     q_, k_, v_, c_, self.layer_name)
                 
-            # out = get_sp_group().all_to_all(output)
             # Ulysses all-to-all 2/2
             if SP_TP_MODE:
                 output = c_.reshape(output.shape)
