@@ -197,7 +197,7 @@ class Attention(nn.Module):
                 # Reshape the query, key, and value tensors.
                 # NOTE(woosuk): We do this outside the custom op to minimize the
                 # CPU overheads from the non-CUDA-graph regions.
-                pass
+                # pass
                 # query = query.view(-1, self.num_heads, self.head_size)
                 # output = output.view(-1, self.num_heads, self.head_size)
                 # if key is not None:
