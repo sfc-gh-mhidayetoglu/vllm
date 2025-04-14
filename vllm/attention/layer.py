@@ -216,10 +216,11 @@ class Attention(nn.Module):
                             -1,
                             (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
                     # all-to-all
-                    qkv_ = torch.empty_like(qkv)
-                    torch.distributed.all_to_all_single(qkv_,
-                                                        qkv,
-                                                        group=self.device_group)
+                    # qkv_ = torch.empty_like(qkv)
+                    # torch.distributed.all_to_all_single(qkv_,
+                    #                                     qkv,
+                    #                                     group=self.device_group)
+                    qkv_ = get_sp_group().all_to_all(qkv)
                     # unpack
                     q_, k_, v_ = qkv_.split([
                         self.num_heads * self.head_size, self.num_kv_heads *
