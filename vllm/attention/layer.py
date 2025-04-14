@@ -220,7 +220,8 @@ class Attention(nn.Module):
                     # torch.distributed.all_to_all_single(qkv_,
                     #                                     qkv,
                     #                                     group=self.device_group)
-                    qkv_ = get_sp_group().all_to_all(qkv)
+                    # qkv_ = get_sp_group().all_to_all(qkv)
+                    qkv_ = qkv
                     # unpack
                     q_, k_, v_ = qkv_.split([
                         self.num_heads * self.head_size, self.num_kv_heads *
@@ -255,7 +256,8 @@ class Attention(nn.Module):
             else:
                 # c = torch.empty_like(c_)
                 # torch.distributed.all_to_all_single(c, c_, group=self.device_group)
-                c = get_sp_group().all_to_all(c_)
+                # c = get_sp_group().all_to_all(c_)
+                c = c_
                 output.copy_(
                     torch.transpose(
                         c.view(SP, -1, self.num_heads * self.head_size), 0,
