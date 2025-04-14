@@ -208,13 +208,13 @@ class Attention(nn.Module):
                 else:
                     SP = get_sp_group().world_size
                     # Ulysses all-to-all 2/2
-                    qkv = torch.cat(
-                        (query.view(-1, SP, self.num_heads * self.head_size),
-                        key.view(-1, SP, self.num_kv_heads * self.head_size),
-                        value.view(-1, SP, self.num_kv_heads * self.head_size)),
-                        dim=-1).transpose(0, 1).reshape(
-                            -1,
-                            (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+                    # qkv = torch.cat(
+                    #     (query.view(-1, SP, self.num_heads * self.head_size),
+                    #     key.view(-1, SP, self.num_kv_heads * self.head_size),
+                    #     value.view(-1, SP, self.num_kv_heads * self.head_size)),
+                    #     dim=-1).transpose(0, 1).reshape(
+                    #         -1,
+                    #         (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
                     # all-to-all
                     # qkv_ = torch.empty_like(qkv)
                     # torch.distributed.all_to_all_single(qkv_,
@@ -223,15 +223,22 @@ class Attention(nn.Module):
                     # qkv_ = get_sp_group().all_to_all(qkv)
                     # qkv_ = qkv
                     # unpack
-                    q_, k_, v_ = qkv.split([
-                        self.num_heads * self.head_size, self.num_kv_heads *
-                        self.head_size, self.num_kv_heads * self.head_size
-                    ],
-                                            dim=-1)
+                    # q_, k_, v_ = qkv.split([
+                    #     self.num_heads * self.head_size, self.num_kv_heads *
+                    #     self.head_size, self.num_kv_heads * self.head_size
+                    # ],
+                    #                         dim=-1)
+                    q_ = query.view(-1, SP, self.num_heads * self.head_size).transpose(
+                        0, 1).reshape(-1, self.num_heads * self.head_size)
+                    k_ = key.view(-1, SP, self.num_kv_heads * self.head_size).transpose(
+                        0, 1).reshape(-1, self.num_kv_heads * self.head_size)
+                    v_ = value.view(-1, SP, self.num_kv_heads * self.head_size).transpose(
+                        0, 1).reshape(-1, self.num_kv_heads * self.head_size)
+                    
                     # prepare
-                    q_ = query.reshape(-1, self.num_heads, self.head_size)
-                    k_ = key.reshape(-1, self.num_kv_heads, self.head_size)
-                    v_ = value.reshape(-1, self.num_kv_heads, self.head_size)
+                    q_ = q_.reshape(-1, self.num_heads, self.head_size)
+                    k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
+                    v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
                     c_ = output.view(-1, self.num_heads, self.head_size)
 
             if self.use_direct_call:
