@@ -206,11 +206,12 @@ class Attention(nn.Module):
                     if value is not None:
                         v_ = value.view(-1, self.num_kv_heads, self.head_size)
                 else:
+                    SP = get_sp_group().world_size
                     # Ulysses all-to-all 2/2
                     qkv = torch.cat(
-                        (query.view(-1, self.SP, self.num_heads * self.head_size),
-                        key.view(-1, self.SP, self.num_kv_heads * self.head_size),
-                        value.view(-1, self.SP, self.num_kv_heads * self.head_size)),
+                        (query.view(-1, SP, self.num_heads * self.head_size),
+                        key.view(-1, SP, self.num_kv_heads * self.head_size),
+                        value.view(-1, SP, self.num_kv_heads * self.head_size)),
                         dim=-1).transpose(0, 1).reshape(
                             -1,
                             (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
@@ -255,7 +256,7 @@ class Attention(nn.Module):
                 torch.distributed.all_to_all_single(c, c_, group=self.device_group)
                 output.copy_(
                     torch.transpose(
-                        c.view(self.SP, -1, self.num_heads * self.head_size), 0,
+                        c.view(SP, -1, self.num_heads * self.head_size), 0,
                         1).reshape(-1, self.num_heads * self.SP * self.head_size))
 
             return output.view(-1, hidden_size)
