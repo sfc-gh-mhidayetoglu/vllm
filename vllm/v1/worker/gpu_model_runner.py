@@ -1563,7 +1563,8 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 SP = self.parallel_config.sequence_parallel_size
                 if torch.distributed.get_rank() == 0:
                     print(f"capture SP: {num_tokens * SP}")
-                if num_tokens * SP >= sp_tp_threshold:
+                if num_tokens * SP >= sp_tp_threshold and \
+                    num_tokens * SP <= self.max_num_tokens:
                     for _ in range(self.vllm_config.compilation_config.
                                    cudagraph_num_of_warmups):
                         self._dummy_run(num_tokens * SP)
