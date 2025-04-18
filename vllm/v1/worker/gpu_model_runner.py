@@ -1522,10 +1522,11 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         SP = self.parallel_config.sequence_parallel_size
         with graph_capture(device=self.device):
             for num_tokens in reversed(self.cudagraph_batch_sizes):
-                for _ in range(self.vllm_config.compilation_config.
-                               cudagraph_num_of_warmups):
+                if SP * num_tokens <= self.max_num_tokens:
+                    for _ in range(self.vllm_config.compilation_config.
+                                   cudagraph_num_of_warmups):
+                        self._dummy_run(num_tokens * SP)
                     self._dummy_run(num_tokens * SP)
-                self._dummy_run(num_tokens * SP)
 
         end_time = time.perf_counter()
         end_free_gpu_memory = torch.cuda.mem_get_info()[0]
