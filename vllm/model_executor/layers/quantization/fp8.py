@@ -215,6 +215,13 @@ class Fp8LinearMethod(LinearMethodBase):
                                       output_dim=0,
                                       weight_loader=weight_loader)
         layer.register_parameter("weight", weight)
+        if torch.distributed.get_rank() == 0:
+            print(f"loaded weight shape: {weight.shape} for layer {layer}")
+            print(f"       logical widths: {layer.logical_widths}")
+            print(f"       input_size_per_partition: "
+                  f"{layer.input_size_per_partition}")
+            print(f"       output_size_per_partition: "
+                  f"{layer.output_size_per_partition}")
 
         # If checkpoint is serialized fp8, load them.
         # Otherwise, wait until process_weights_after_loading.
