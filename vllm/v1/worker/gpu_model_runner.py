@@ -994,7 +994,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             self._prepare_inputs(scheduler_output))
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
         sp_tp_threshold = self.parallel_config.shapeshifter_threshold
-        if num_scheduled_tokens < sp_tp_threshold:
+        if num_scheduled_tokens <= sp_tp_threshold:
             if (self.use_cuda_graph and num_scheduled_tokens
                     <= self.cudagraph_batch_sizes[-1]):
                 # Use piecewise CUDA graphs.
@@ -1195,7 +1195,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         device_group = get_sp_group().device_group
         model_forward = self.model.forward
 
-        def forward(*args, **kwargs):
+        def ulysses_forward(*args, **kwargs):
             # update inputs
             input_ids = kwargs['input_ids']
             positions = kwargs['positions']
@@ -1203,7 +1203,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             N = input_ids.shape[0]
             global SP_TP_MODE
             sp_tp_threshold = self.parallel_config.shapeshifter_threshold
-            SP_TP_MODE = bool(sp_tp_threshold > N)
+            SP_TP_MODE = bool(sp_tp_threshold >= N)
             if SP_TP_PROFILE_RUN or SP_TP_MODE is True:
                 # if torch.distributed.get_rank() == 0:
                 #     print(f"N {N}")
@@ -1230,7 +1230,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                                                          group=device_group)
             return model_output
 
-        self.model.forward = forward
+        self.model.forward = ulysses_forward
 
     def load_model(self) -> None:
         logger.info("Starting to load model %s...", self.model_config.model)
@@ -1563,7 +1563,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 SP = self.parallel_config.sequence_parallel_size
                 if torch.distributed.get_rank() == 0:
                     print(f"capture SP: {num_tokens * SP}")
-                if num_tokens * SP >= sp_tp_threshold and \
+                if num_tokens * SP > sp_tp_threshold and \
                     num_tokens * SP <= self.max_num_tokens:
                     for _ in range(self.vllm_config.compilation_config.
                                    cudagraph_num_of_warmups):
@@ -1572,7 +1572,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             for num_tokens in reversed(self.cudagraph_batch_sizes):
                 if torch.distributed.get_rank() == 0:
                     print(f"capture SP_TP: {num_tokens}")
-                if num_tokens < sp_tp_threshold:
+                if num_tokens <= sp_tp_threshold:
                     for _ in range(self.vllm_config.compilation_config.
                                    cudagraph_num_of_warmups):
                         self._dummy_run(num_tokens)
