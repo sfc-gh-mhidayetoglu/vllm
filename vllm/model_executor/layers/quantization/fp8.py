@@ -359,10 +359,10 @@ class Fp8LinearMethod(LinearMethodBase):
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape}")
             print(f"       logical widths: {layer.logical_widths}")
-            print(f"       input_size_per_partition: "
-                  f"{layer.input_size_per_partition}")
-            print(f"       output_size_per_partition: "
-                  f"{layer.output_size_per_partition}")
+            # print(f"       input_size_per_partition: "
+            #       f"{layer.input_size_per_partition}")
+            # print(f"       output_size_per_partition: "
+            #       f"{layer.output_size_per_partition}")
 
     def apply(self,
               layer: torch.nn.Module,
@@ -380,11 +380,11 @@ class Fp8LinearMethod(LinearMethodBase):
             print(f"              x shape {x.shape} {x.dtype}\n"
                   f"              weight {layer.weight.shape}"
                   f" {layer.weight.dtype}\n"
-                  f"              bias {None if bias is None else bias.shape}"
-                  f" {None if bias is None else bias.dtype}\n"
+                  # f"              bias {None if bias is None else bias.shape}"
+                  # f" {None if bias is None else bias.dtype}\n"
                   f"              output_partition_sizes"
-                  f" {output_partition_sizes}\n"
-                  f"              sp_tp_mode {sp_tp_mode}\n")
+                  f" {output_partition_sizes}\n")
+                  # f"              sp_tp_mode {sp_tp_mode}\n")
 
         if self.use_marlin:
             return apply_fp8_marlin_linear(
