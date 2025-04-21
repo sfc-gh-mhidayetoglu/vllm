@@ -371,19 +371,19 @@ class Fp8LinearMethod(LinearMethodBase):
               column_parallel: bool = False,
               output_partition_sizes: list = None) -> torch.Tensor:
 
-        # if torch.distributed.get_rank() == 0:
-        #     if column_parallel:
-        #         print("FP8 column parallel linear: ")
-        #     else:
-        #         print("FP8 row parallel linear: ")
-        #     print(f"              x shape {x.shape} {x.dtype}\n"
-        #           f"              weight {layer.weight.shape}"
-        #           f" {layer.weight.dtype}\n"
-        #           f"              bias {None if bias is None else bias.shape}"
-        #           f" {None if bias is None else bias.dtype}\n"
-        #           f"              output_partition_sizes"
-        #           f" {output_partition_sizes}\n"
-        #           f"              sp_tp_mode {sp_tp_mode}\n")
+        if torch.distributed.get_rank() == 0:
+            if column_parallel:
+                print("FP8 column parallel linear: ")
+            else:
+                print("FP8 row parallel linear: ")
+            print(f"              x shape {x.shape} {x.dtype}\n"
+                  f"              weight {layer.weight.shape}"
+                  f" {layer.weight.dtype}\n"
+                  f"              bias {None if bias is None else bias.shape}"
+                  f" {None if bias is None else bias.dtype}\n"
+                  f"              output_partition_sizes"
+                  f" {output_partition_sizes}\n"
+                  f"              sp_tp_mode {sp_tp_mode}\n")
 
         if self.use_marlin:
             return apply_fp8_marlin_linear(
