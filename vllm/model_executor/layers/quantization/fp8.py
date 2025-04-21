@@ -363,6 +363,9 @@ class Fp8LinearMethod(LinearMethodBase):
             # Activations not quantized for marlin.
             del layer.input_scale
 
+        if torch.distributed.get_rank() == 0:
+            print(f"test weight shape: {layer.weight.shape}")
+
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
