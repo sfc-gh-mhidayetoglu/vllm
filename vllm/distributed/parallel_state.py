@@ -302,6 +302,9 @@ class GroupCoordinator:
         # Bypass the function if we are using only 1 GPU.
         if self.world_size == 1:
             return input_
+        
+        if torch.distributed.get_rank() == 0:
+            print(f"all-reduce input_ {input_.shape}")
 
         if self.use_custom_op_call:
             return torch.ops.vllm.all_reduce(input_,
