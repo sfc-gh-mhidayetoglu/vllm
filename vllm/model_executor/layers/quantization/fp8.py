@@ -215,13 +215,13 @@ class Fp8LinearMethod(LinearMethodBase):
                                       output_dim=0,
                                       weight_loader=weight_loader)
         layer.register_parameter("weight", weight)
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"loaded weight shape: {weight.shape} for layer {layer}")
-        #     print(f"       logical widths: {layer.logical_widths}")
-        #     print(f"       input_size_per_partition: "
-        #           f"{layer.input_size_per_partition}")
-        #     print(f"       output_size_per_partition: "
-        #           f"{layer.output_size_per_partition}")
+        if torch.distributed.get_rank() == 0:
+            print(f"loaded weight shape: {weight.shape}")
+            print(f"       logical widths: {layer.logical_widths}")
+            print(f"       input_size_per_partition: "
+                  f"{layer.input_size_per_partition}")
+            print(f"       output_size_per_partition: "
+                  f"{layer.output_size_per_partition}")
 
         # If checkpoint is serialized fp8, load them.
         # Otherwise, wait until process_weights_after_loading.
@@ -423,11 +423,11 @@ class Fp8LinearMethod(LinearMethodBase):
                 weight = torch.empty([size, layer.weight.shape[0]],
                                      dtype=layer.weight.dtype,
                                      device=layer.weight.device).t()
-                offset = 0
-                for i in range(sp_rank, len(split), sp_size):
-                    weight[:,
-                           offset:offset + split[i].shape[1]].copy_(split[i])
-                    offset += split[i].shape[1]
+                # offset = 0
+                # for i in range(sp_rank, len(split), sp_size):
+                #     weight[:,
+                #            offset:offset + split[i].shape[1]].copy_(split[i])
+                #     offset += split[i].shape[1]
             else:
                 # row parallel linear
                 assert layer.weight.shape[0] % sp_size == 0
