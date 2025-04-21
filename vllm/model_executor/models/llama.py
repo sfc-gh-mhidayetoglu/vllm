@@ -354,7 +354,8 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        for layer in self.layers[self.start_layer:self.end_layer]:
+        # for layer in self.layers[self.start_layer:self.end_layer]:
+        for layer in self.layers[0:1]:
             hidden_states, residual = layer(positions, hidden_states, residual)
 
         if not get_pp_group().is_last_rank:
@@ -512,6 +513,11 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
 
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
+        
+        self.numiter = 0
+        self.prefill = 0
+        self.decode = 0
+        self.mixed = 0
 
     def _init_model(self, vllm_config: VllmConfig, prefix: str = ""):
         return LlamaModel(vllm_config=vllm_config, prefix=prefix)
@@ -526,6 +532,30 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+        
+        from vllm.forward_context import get_forward_context
+        metadata = get_forward_context().attn_metadata
+        if torch.distributed.get_rank() == 0:
+            print(f"numiter: {self.numiter} "
+                  f"input_ids: {input_ids.shape} ")
+            if metadata is None:
+                print("metadata: None")
+            else:
+                seq_lens = metadata.seq_lens.tolist()
+                num_actual_tokens = metadata.num_actual_tokens
+                self.numiter += 1
+                if len(seq_lens) == num_actual_tokens:
+                    self.decode += 1
+                else:
+                    if len(seq_lens) == 1 and num_actual_tokens > 1:
+                        self.prefill += 1
+                    else:
+                        self.mixed += 1
+                print(f"metadata: "
+                      f"actual tokens: {num_actual_tokens} "
+                      f"seq. lens: {seq_lens} "
+                      f"prefill {self.prefill}, decode {self.decode}, mixed {self.mixed}")
+
         model_output = self.model(input_ids, positions, intermediate_tensors,
                                   inputs_embeds)
         return model_output
