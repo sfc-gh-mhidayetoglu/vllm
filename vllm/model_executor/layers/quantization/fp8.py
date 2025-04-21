@@ -416,11 +416,11 @@ class Fp8LinearMethod(LinearMethodBase):
                 weight = torch.empty([size, layer.weight.shape[0]],
                                      dtype=layer.weight.dtype,
                                      device=layer.weight.device).t()
-                offset = 0
-                for i in range(sp_rank, len(split), sp_size):
-                    weight[:,
-                           offset:offset + split[i].shape[1]].copy_(split[i])
-                    offset += split[i].shape[1]
+                # offset = 0
+                # for i in range(sp_rank, len(split), sp_size):
+                #     weight[:,
+                #            offset:offset + split[i].shape[1]].copy_(split[i])
+                #     offset += split[i].shape[1]
             else:
                 # row parallel linear
                 assert layer.weight.shape[0] % sp_size == 0
