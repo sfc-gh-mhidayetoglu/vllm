@@ -355,7 +355,7 @@ class LlamaModel(nn.Module):
             residual = intermediate_tensors["residual"]
 
         # for layer in self.layers[self.start_layer:self.end_layer]:
-        for layer in self.layers[0:1]:
+        for layer in self.layers[0:3]:
             hidden_states, residual = layer(positions, hidden_states, residual)
 
         if not get_pp_group().is_last_rank:
