@@ -383,6 +383,9 @@ class Fp8LinearMethod(LinearMethodBase):
                 cutlass_block_fp8_supported=self.cutlass_block_fp8_supported,
             )
 
+        if torch.distributed.get_rank() == 0:
+            print(f"fp8 linear x {x.shape} {x.dtype} weight: {layer.weight.shape} {layer.weight.dtype} bias {bias.shape if bias is not None else None} {bias.dtype if bias is not None else None}")
+
         return self.fp8_linear.apply(input=x,
                                      weight=layer.weight,
                                      weight_scale=layer.weight_scale,

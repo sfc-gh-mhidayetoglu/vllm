@@ -187,6 +187,9 @@ class UnquantizedLinearMethod(LinearMethodBase):
               layer: torch.nn.Module,
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
+        
+        if torch.distributed.get_rank() == 0:
+            print(f"unquantized linear x {x.shape} {x.dtype} weight: {layer.weight.shape} {layer.weight.dtype} bias {bias.shape if bias is not None else None} {bias.dtype if bias is not None else None}")
 
         return F.linear(x, layer.weight, bias)
 
