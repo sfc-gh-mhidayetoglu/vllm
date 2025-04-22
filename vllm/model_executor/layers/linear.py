@@ -186,7 +186,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
 
         sp_size = get_sp_group().world_size
         sp_rank = get_sp_group().rank_in_group
-        if output_partition_sizes == [layer.weight.shape[1]]:
+        if output_partition_sizes == [layer.weight.shape[0]]:
             # row parallel linear
             assert layer.weight.shape[1] % sp_size == 0
             chunk_size = layer.weight.shape[1] // sp_size
