@@ -184,6 +184,33 @@ class UnquantizedLinearMethod(LinearMethodBase):
         layer.register_parameter("weight", weight)
         set_weight_attrs(weight, extra_weight_attrs)
 
+        sp_size = get_sp_group().world_size
+        sp_rank = get_sp_group().rank_in_group
+        if output_partition_sizes == [layer.weight.shape[1]]:
+            # row parallel linear
+            assert layer.weight.shape[1] % sp_size == 0
+            chunk_size = layer.weight.shape[1] // sp_size
+            self.sp_tp_weight = layer.weight.split(chunk_size, dim=1)[sp_rank]
+        else:
+            # column parallel linear
+            assert layer.weight.shape[0] % sp_size == 0
+            chunk_sizes = []
+            for size in output_partition_sizes:
+                chunk_size = size // sp_size
+                chunk_sizes.extend([chunk_size] * sp_size)
+            split = layer.weight.split(chunk_sizes, dim=0)
+            self.sp_tp_weight = torch.cat(
+                [split[i] for i in range(sp_rank, len(split), sp_size)])
+
+        if torch.distributed.get_rank() == 0:
+            print(
+                f"        loaded weight shape: {layer.weight.shape} {layer.weight.dtype}"
+            )
+            print(f"     output_partition_sizes: {layer.logical_widths}")
+            print(
+                f"              SP_TP weights: {self.sp_tp_weight.shape} {self.sp_tp_weight.dtype}"
+            )
+
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
@@ -207,23 +234,24 @@ class UnquantizedLinearMethod(LinearMethodBase):
                   f"              sp_tp_mode {sp_tp_mode}\n")
 
         if sp_tp_mode:
-            sp_size = get_sp_group().world_size
-            sp_rank = get_sp_group().rank_in_group
-            if column_parallel:
-                # column parallel linear
-                assert layer.weight.shape[0] % sp_size == 0
-                chunk_sizes = []
-                for size in output_partition_sizes:
-                    chunk_size = size // sp_size
-                    chunk_sizes.extend([chunk_size] * sp_size)
-                split = layer.weight.split(chunk_sizes, dim=0)
-                weight = torch.cat(
-                    [split[i] for i in range(sp_rank, len(split), sp_size)])
-            else:
-                # row parallel linear
-                assert layer.weight.shape[1] % sp_size == 0
-                chunk_size = layer.weight.shape[1] // sp_size
-                weight = layer.weight.split(chunk_size, dim=1)[sp_rank]
+            # sp_size = get_sp_group().world_size
+            # sp_rank = get_sp_group().rank_in_group
+            # if column_parallel:
+            #     # column parallel linear
+            #     assert layer.weight.shape[0] % sp_size == 0
+            #     chunk_sizes = []
+            #     for size in output_partition_sizes:
+            #         chunk_size = size // sp_size
+            #         chunk_sizes.extend([chunk_size] * sp_size)
+            #     split = layer.weight.split(chunk_sizes, dim=0)
+            #     weight = torch.cat(
+            #         [split[i] for i in range(sp_rank, len(split), sp_size)])
+            # else:
+            # row parallel linear
+            #     assert layer.weight.shape[1] % sp_size == 0
+            #     chunk_size = layer.weight.shape[1] // sp_size
+            #     weight = layer.weight.split(chunk_size, dim=1)[sp_rank]
+            weight = self.sp_tp_weight
         else:
             weight = layer.weight
 
