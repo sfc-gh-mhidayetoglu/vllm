@@ -356,6 +356,25 @@ class Fp8LinearMethod(LinearMethodBase):
             # Activations not quantized for marlin.
             del layer.input_scale
 
+        # if column parallel, split the weigth
+        output_partition_sizes = layer.logical_widths
+        if output_partition_sizes != [layer.weight.shape[1]]:
+            sp_size = get_sp_group().world_size
+            sp_rank = get_sp_group().rank_in_group
+            assert layer.weight.shape[1] % sp_size == 0
+            chunk_sizes = []
+            for size in output_partition_sizes:
+                chunk_size = size // sp_size
+                chunk_sizes.extend([chunk_size] * sp_size)
+            split = layer.weight.split(chunk_sizes, dim=1)
+            size = sum(chunk_sizes[i]
+                       for i in range(sp_rank, len(chunk_sizes), sp_size))
+            weight = torch.empty([size, layer.weight.shape[0]],
+                                 dtype=layer.weight.dtype,
+                                 device=layer.weight.device).t()
+            self.sp_tp_weight = weight
+
+
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape}")
             print(f"       logical widths: {layer.logical_widths}")
@@ -413,17 +432,18 @@ class Fp8LinearMethod(LinearMethodBase):
             sp_rank = get_sp_group().rank_in_group
             if column_parallel:
                 # column parallel linear
-                assert layer.weight.shape[1] % sp_size == 0
-                chunk_sizes = []
-                for size in output_partition_sizes:
-                    chunk_size = size // sp_size
-                    chunk_sizes.extend([chunk_size] * sp_size)
-                split = layer.weight.split(chunk_sizes, dim=1)
-                size = sum(chunk_sizes[i]
-                           for i in range(sp_rank, len(chunk_sizes), sp_size))
-                weight = torch.empty([size, layer.weight.shape[0]],
-                                     dtype=layer.weight.dtype,
-                                     device=layer.weight.device).t()
+                # assert layer.weight.shape[1] % sp_size == 0
+                # chunk_sizes = []
+                # for size in output_partition_sizes:
+                #     chunk_size = size // sp_size
+                #     chunk_sizes.extend([chunk_size] * sp_size)
+                # split = layer.weight.split(chunk_sizes, dim=1)
+                # size = sum(chunk_sizes[i]
+                #            for i in range(sp_rank, len(chunk_sizes), sp_size))
+                # weight = torch.empty([size, layer.weight.shape[0]],
+                #                      dtype=layer.weight.dtype,
+                #                      device=layer.weight.device).t()
+                weight = self.sp_tp_weight
                 # offset = 0
                 # for i in range(sp_rank, len(split), sp_size):
                 #     weight[:,
