@@ -381,7 +381,6 @@ class Fp8LinearMethod(LinearMethodBase):
             # TODO: fill in the weights here
             self.sp_tp_weight = weight
 
-
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape}")
             print(f"       logical widths: {layer.logical_widths}")
@@ -398,19 +397,15 @@ class Fp8LinearMethod(LinearMethodBase):
               column_parallel: bool = False,
               output_partition_sizes: list = None) -> torch.Tensor:
 
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         if torch.distributed.get_rank() == 0:
-            if column_parallel:
-                print("FP8 column parallel linear: ")
-            else:
-                print("FP8 row parallel linear: ")
-            print(f"              x shape {x.shape} {x.dtype}\n"
-                  f"              weight {layer.weight.shape}"
-                  f" {layer.weight.dtype}\n"
-                  # f"              bias {None if bias is None else bias.shape}"
-                  # f" {None if bias is None else bias.dtype}\n"
-                  f"              output_partition_sizes"
-                  f" {output_partition_sizes}\n")
-                  # f"              sp_tp_mode {sp_tp_mode}\n")
+            print("FP8 linear: SP_TP_MODE", SP_TP_MODE)
+            print(
+                f"              x shape {x.shape} {x.dtype}\n"
+                f"              TP weight {layer.weight.shape}"
+                f" {layer.weight.dtype}\n"
+                f"              SP_TP weight {self.sp_tp_weight.shape}"
+                f" {self.sp_tp_weight.dtype}\n")
 
         if self.use_marlin:
             return apply_fp8_marlin_linear(
@@ -434,19 +429,16 @@ class Fp8LinearMethod(LinearMethodBase):
                 cutlass_block_fp8_supported=self.cutlass_block_fp8_supported,
             )
 
-        weight = self.sp_tp_weight if sp_tp_mode else layer.weight
 
         output = self.fp8_linear.apply(input=x,
-                                       weight=weight,
+                                       weight=self.sp_tp_weight if sp_tp_mode else layer.weight,
                                        weight_scale=layer.weight_scale,
                                        input_scale=layer.input_scale,
                                        bias=bias)
 
-        # if torch.distributed.get_rank() == 0:
-        #     print(
-        #         f"              sharded weight {weight.shape}"
-        #         f" {weight.dtype}\n"
-        #         f"              output shape {output.shape} {output.dtype}\n")
+        if torch.distributed.get_rank() == 0:
+            print(
+                f"              output {output.shape} {output.dtype}\n")
 
         return output
 
