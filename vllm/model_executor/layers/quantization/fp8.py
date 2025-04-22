@@ -375,6 +375,7 @@ class Fp8LinearMethod(LinearMethodBase):
             split = layer.weight.split(chunk_sizes, dim=1)
             size = sum(chunk_sizes[i]
                        for i in range(sp_rank, len(chunk_sizes), sp_size))
+            # allocate new memory for the slice
             weight = torch.empty([size, layer.weight.shape[0]],
                                  dtype=layer.weight.dtype,
                                  device=layer.weight.device).t()
@@ -382,8 +383,9 @@ class Fp8LinearMethod(LinearMethodBase):
             self.sp_tp_weight = weight
 
         if torch.distributed.get_rank() == 0:
-            print(f"loaded weight shape: {layer.weight.shape}")
-            print(f"       logical widths: {layer.logical_widths}")
+            print(f"loaded weight shape: {layer.weight.shape} {layer.weight.dtype}")
+            print(f"     logical widths: {layer.logical_widths}")
+            print(f"      SP_TP weights: {self.sp_tp_weight.shape} {self.sp_tp_weight.dtype}")
             # print(f"       input_size_per_partition: "
             #       f"{layer.input_size_per_partition}")
             # print(f"       output_size_per_partition: "
