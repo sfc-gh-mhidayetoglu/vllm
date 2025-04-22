@@ -203,13 +203,9 @@ class UnquantizedLinearMethod(LinearMethodBase):
                 [split[i] for i in range(sp_rank, len(split), sp_size)])
 
         if torch.distributed.get_rank() == 0:
-            print(
-                f"        loaded weight shape: {layer.weight.shape} {layer.weight.dtype}"
-            )
-            print(f"     output_partition_sizes: {layer.logical_widths}")
-            print(
-                f"              SP_TP weights: {self.sp_tp_weight.shape} {self.sp_tp_weight.dtype}"
-            )
+            print(f"        loaded weight shape: {layer.weight.shape} {layer.weight.dtype}")
+            print(f"     output_partition_sizes: {layer.output_partition_sizes}")
+            print(f"              SP_TP weights: {self.sp_tp_weight.shape} {self.sp_tp_weight.dtype}")
 
     def apply(self,
               layer: torch.nn.Module,
