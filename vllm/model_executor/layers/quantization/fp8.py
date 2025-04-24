@@ -376,14 +376,14 @@ class Fp8LinearMethod(LinearMethodBase):
             size = sum(chunk_sizes[i]
                        for i in range(sp_rank, len(chunk_sizes), sp_size))
             # # allocate new memory for the slice
-            weight = torch.empty((layer.weight.shape[0], size),
+            weight = torch.empty((size, layer.weight.shape[0]),
                                  dtype=layer.weight.dtype,
-                                 device=layer.weight.device)  # .t()
+                                 device=layer.weight.device).t()
             offset = 0
             for i in range(sp_rank, len(split), sp_size):
                 weight[:, offset:offset + split[i].shape[1]].copy_(split[i])
                 offset += split[i].shape[1]
-            self.sp_tp_weight = weight
+            self.sp_tp_weight = weight.contiguous()
 
             # TODO: fill in the weights here
             # self.sp_tp_weight = torch.cat(
