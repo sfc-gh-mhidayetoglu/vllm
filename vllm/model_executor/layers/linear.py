@@ -184,6 +184,10 @@ class UnquantizedLinearMethod(LinearMethodBase):
         layer.register_parameter("weight", weight)
         set_weight_attrs(weight, extra_weight_attrs)
 
+    def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
+        if torch.distributed.get_rank() == 0:
+            print(f"              weight {layer.weight.shape}")
+
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
