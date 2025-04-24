@@ -367,7 +367,7 @@ class Fp8LinearMethod(LinearMethodBase):
             chunk_size = layer.weight.shape[0] // sp_size
             # this is just a view of the original weight, no memory overhead
             self.sp_tp_weight = layer.weight.split(
-                chunk_size, dim=0)[sp_rank].contiguous().t()
+                chunk_size, dim=0)[sp_rank].t().contiguous().t()
         else:
             if torch.distributed.get_rank() == 0:
                 print("column parallel.")
