@@ -392,7 +392,8 @@ class Fp8LinearMethod(LinearMethodBase):
 
             # TODO: fill in the weights here
             self.sp_tp_weight = torch.cat(
-                [split[i] for i in range(sp_rank, len(split), sp_size)], dim=1)
+                [split[i] for i in range(sp_rank, len(split), sp_size)],
+                dim=1).t().contiguous().t()
 
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape} "
