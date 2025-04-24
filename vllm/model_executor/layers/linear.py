@@ -186,7 +186,12 @@ class UnquantizedLinearMethod(LinearMethodBase):
 
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
         if torch.distributed.get_rank() == 0:
-            print(f"              weight {layer.weight.shape}")
+            print(f"loaded weight shape: {layer.weight.shape} "
+                  f"stride {layer.weight.stride()} "
+                  f"contiguous {layer.weight.is_contiguous()} "
+                  f"tcontiguous {layer.weight.t().is_contiguous()} "
+                  f" {layer.weight.dtype}")
+            print(f"     logical widths: {layer.weight.logical_widths} ")
 
     def apply(self,
               layer: torch.nn.Module,
