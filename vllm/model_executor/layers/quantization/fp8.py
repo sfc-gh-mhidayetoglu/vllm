@@ -365,6 +365,8 @@ class Fp8LinearMethod(LinearMethodBase):
             chunk_size = layer.weight.shape[0] // sp_size
             # this is just a view of the original weight, no memory overhead
             self.sp_tp_weight = layer.weight.split(chunk_size, dim=0)[sp_rank]
+            if torch.distributed.get_rank() == 0:
+                print(f"row parallel. sp_tp_strid: {self.sp_tp_weight.stride()} stride: {layer.weight.stride()}")
         else:
             # if column parallel, replicate slices of the original weight
             assert layer.weight.shape[1] % sp_size == 0
@@ -384,6 +386,8 @@ class Fp8LinearMethod(LinearMethodBase):
                 weight[:, offset:offset + split[i].shape[1]].copy_(split[i])
                 offset += split[i].shape[1]
             self.sp_tp_weight = weight
+            if torch.distributed.get_rank() == 0:
+                print(f"row parallel. sp_tp_strid: {self.sp_tp_weight.stride()} stride: {layer.weight.stride()}")
 
             # TODO: fill in the weights here
             # self.sp_tp_weight = torch.cat(
@@ -393,10 +397,6 @@ class Fp8LinearMethod(LinearMethodBase):
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape} \
                 {layer.weight.dtype}")
-            if output_partition_sizes == [layer.weight.shape[1]]:
-                print("     row parallel")
-            else:
-                print("     column parallel")
             print(f"     logical widths: {layer.logical_widths}")
             print(f"      SP_TP weights: {self.sp_tp_weight.shape} \
                     {self.sp_tp_weight.dtype}")
