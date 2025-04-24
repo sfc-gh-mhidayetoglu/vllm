@@ -382,7 +382,7 @@ class Fp8LinearMethod(LinearMethodBase):
             offset = 0
             for i in range(sp_rank, len(split), sp_size):
                 weight[offset:offset + split[i].shape[0], :].copy_(split[i])
-                offset += split[i].shape[1]
+                offset += split[i].shape[0]
             self.sp_tp_weight = weight.t()
 
             # TODO: fill in the weights here
