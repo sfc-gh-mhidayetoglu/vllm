@@ -383,7 +383,7 @@ class Fp8LinearMethod(LinearMethodBase):
             for i in range(sp_rank, len(split), sp_size):
                 weight[:, offset:offset + split[i].shape[1]].copy_(split[i])
                 offset += split[i].shape[1]
-            self.sp_tp_weight = weight.contiguous()
+            self.sp_tp_weight = weight
 
             # TODO: fill in the weights here
             # self.sp_tp_weight = torch.cat(
