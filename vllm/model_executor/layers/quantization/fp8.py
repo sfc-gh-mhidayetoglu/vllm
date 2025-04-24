@@ -378,22 +378,21 @@ class Fp8LinearMethod(LinearMethodBase):
                 chunk_size = size // sp_size
                 chunk_sizes.extend([chunk_size] * sp_size)
             split = layer.weight.split(chunk_sizes, dim=1)
-            size = sum(chunk_sizes[i]
-                       for i in range(sp_rank, len(chunk_sizes), sp_size))
+            # size = sum(chunk_sizes[i]
+            #            for i in range(sp_rank, len(chunk_sizes), sp_size))
             # # allocate new memory for the slice
-            weight = torch.empty((size, layer.weight.shape[0]),
-                                 dtype=layer.weight.dtype,
-                                 device=layer.weight.device).t()
-            offset = 0
-            for i in range(sp_rank, len(split), sp_size):
-                weight[:, offset:offset + split[i].shape[1]].copy_(split[i])
-                offset += split[i].shape[1]
-            self.sp_tp_weight = weight
+            # weight = torch.empty((size, layer.weight.shape[0]),
+            #                      dtype=layer.weight.dtype,
+            #                      device=layer.weight.device).t()
+            # offset = 0
+            # for i in range(sp_rank, len(split), sp_size):
+            #     weight[:, offset:offset + split[i].shape[1]].copy_(split[i])
+            #     offset += split[i].shape[1]
+            # self.sp_tp_weight = weight
 
             # TODO: fill in the weights here
-            # self.sp_tp_weight = torch.cat(
-            #     [split[i] for i in range(sp_rank, len(split), sp_size)],
-            #     dim=1).contiguous()
+            self.sp_tp_weight = torch.cat(
+                [split[i] for i in range(sp_rank, len(split), sp_size)], dim=1)
 
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape} "
