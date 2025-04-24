@@ -372,7 +372,7 @@ class Fp8LinearMethod(LinearMethodBase):
             for size in output_partition_sizes:
                 chunk_size = size // sp_size
                 chunk_sizes.extend([chunk_size] * sp_size)
-            split = layer.weight.t().split(chunk_sizes, dim=0)
+            split = layer.weight.split(chunk_sizes, dim=0)
             size = sum(chunk_sizes[i]
                        for i in range(sp_rank, len(chunk_sizes), sp_size))
             # # allocate new memory for the slice
