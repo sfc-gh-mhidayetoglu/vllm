@@ -362,35 +362,19 @@ class Fp8LinearMethod(LinearMethodBase):
         if output_partition_sizes == [layer.weight.shape[1]]:
             if torch.distributed.get_rank() == 0:
                 print("row parallel.")
-            # if row parallel, split the original weight
             assert layer.weight.shape[0] % sp_size == 0
             chunk_size = layer.weight.shape[0] // sp_size
-            # this is just a view of the original weight, no memory overhead
             self.sp_tp_weight = layer.weight.split(
                 chunk_size, dim=0)[sp_rank].t().contiguous().t()
         else:
             if torch.distributed.get_rank() == 0:
                 print("column parallel.")
-            # if column parallel, replicate slices of the original weight
             assert layer.weight.shape[1] % sp_size == 0
             chunk_sizes = []
             for size in output_partition_sizes:
                 chunk_size = size // sp_size
                 chunk_sizes.extend([chunk_size] * sp_size)
             split = layer.weight.split(chunk_sizes, dim=1)
-            # size = sum(chunk_sizes[i]
-            #            for i in range(sp_rank, len(chunk_sizes), sp_size))
-            # # allocate new memory for the slice
-            # weight = torch.empty((size, layer.weight.shape[0]),
-            #                      dtype=layer.weight.dtype,
-            #                      device=layer.weight.device).t()
-            # offset = 0
-            # for i in range(sp_rank, len(split), sp_size):
-            #     weight[:, offset:offset + split[i].shape[1]].copy_(split[i])
-            #     offset += split[i].shape[1]
-            # self.sp_tp_weight = weight
-
-            # TODO: fill in the weights here
             self.sp_tp_weight = torch.cat(
                 [split[i] for i in range(sp_rank, len(split), sp_size)],
                 dim=1).t().contiguous().t()
@@ -407,10 +391,6 @@ class Fp8LinearMethod(LinearMethodBase):
                   f"contiguous {self.sp_tp_weight.is_contiguous()} "
                   f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
                   f" {self.sp_tp_weight.dtype}")
-            # print(f"       input_size_per_partition: "
-            #       f"{layer.input_size_per_partition}")
-            # print(f"       output_size_per_partition: "
-            #       f"{layer.output_size_per_partition}")
 
     def apply(self,
               layer: torch.nn.Module,
