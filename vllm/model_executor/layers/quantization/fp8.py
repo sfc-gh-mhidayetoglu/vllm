@@ -372,7 +372,7 @@ class Fp8LinearMethod(LinearMethodBase):
             for size in output_partition_sizes:
                 chunk_size = size // sp_size
                 chunk_sizes.extend([chunk_size] * sp_size)
-            split = layer.weight.t().split(chunk_sizes, dim=0)
+            split = layer.weight.split(chunk_sizes, dim=1)
             size = sum(chunk_sizes[i]
                        for i in range(sp_rank, len(chunk_sizes), sp_size))
             # # allocate new memory for the slice
@@ -381,8 +381,9 @@ class Fp8LinearMethod(LinearMethodBase):
                                  device=layer.weight.device)
             offset = 0
             for i in range(sp_rank, len(split), sp_size):
-                weight[offset:offset + split[i].shape[0], :].copy_(split[i])
-                offset += split[i].shape[0]
+                weight[offset:offset + split[i].shape[1], :].copy_(
+                    split[i].t())
+                offset += split[i].shape[1]
             self.sp_tp_weight = weight.t()
 
             # TODO: fill in the weights here
