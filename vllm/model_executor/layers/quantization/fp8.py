@@ -373,19 +373,26 @@ class Fp8LinearMethod(LinearMethodBase):
                 chunk_size = size // sp_size
                 chunk_sizes.extend([chunk_size] * sp_size)
             split = layer.weight.split(chunk_sizes, dim=1)
-            size = sum(chunk_sizes[i]
-                       for i in range(sp_rank, len(chunk_sizes), sp_size))
+            # size = sum(chunk_sizes[i]
+            #            for i in range(sp_rank, len(chunk_sizes), sp_size))
             # allocate new memory for the slice
-            weight = torch.empty([size, layer.weight.shape[0]],
-                                 dtype=layer.weight.dtype,
-                                 device=layer.weight.device).t()
+            # weight = torch.empty([size, layer.weight.shape[0]],
+            #                      dtype=layer.weight.dtype,
+            #                      device=layer.weight.device).t()
             # TODO: fill in the weights here
-            self.sp_tp_weight = weight
+            self.sp_tp_weight = torch.cat(
+                [split[i] for i in range(sp_rank, len(split), sp_size)], dim=1)
 
         if torch.distributed.get_rank() == 0:
-            print(f"loaded weight shape: {layer.weight.shape} {layer.weight.dtype}")
+            print(f"loaded weight shape: {layer.weight.shape} \
+                {layer.weight.dtype}")
+            if output_partition_sizes == [layer.weight.shape[1]]:
+                print("     row parallel")
+            else:
+                print("     column parallel")
             print(f"     logical widths: {layer.logical_widths}")
-            print(f"      SP_TP weights: {self.sp_tp_weight.shape} {self.sp_tp_weight.dtype}")
+            print(f"      SP_TP weights: {self.sp_tp_weight.shape} \
+                    {self.sp_tp_weight.dtype}")
             # print(f"       input_size_per_partition: "
             #       f"{layer.input_size_per_partition}")
             # print(f"       output_size_per_partition: "
@@ -430,13 +437,13 @@ class Fp8LinearMethod(LinearMethodBase):
                 cutlass_block_fp8_supported=self.cutlass_block_fp8_supported,
             )
 
-
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        output = self.fp8_linear.apply(input=x,
-                                       weight=self.sp_tp_weight if SP_TP_MODE else layer.weight,
-                                       weight_scale=layer.weight_scale,
-                                       input_scale=layer.input_scale,
-                                       bias=bias)
+        output = self.fp8_linear.apply(
+            input=x,
+            weight=self.sp_tp_weight if SP_TP_MODE else layer.weight,
+            weight_scale=layer.weight_scale,
+            input_scale=layer.input_scale,
+            bias=bias)
 
         # if torch.distributed.get_rank() == 0:
         #     print(
