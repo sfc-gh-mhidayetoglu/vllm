@@ -396,12 +396,15 @@ class Fp8LinearMethod(LinearMethodBase):
 
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape} "
-                  f"stride {layer.weight.stride()} {layer.weight.dtype} "
-                  f"contiguous {layer.weight.is_contiguous()}")
+                  f"stride {layer.weight.stride()} "
+                  f"contiguous {layer.weight.is_contiguous()} "
+                  f"tcontiguous {layer.weight.t().is_contiguous()} "
+                  f" {layer.weight.dtype}")
             print(f"     logical widths: {layer.logical_widths}")
             print(f"      SP_TP weights: {self.sp_tp_weight.shape} "
                   f"stride {self.sp_tp_weight.stride()} "
-                  f"conti {self.sp_tp_weight.is_contiguous()} "
+                  f"contiguous {self.sp_tp_weight.is_contiguous()} "
+                  f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
                   f" {self.sp_tp_weight.dtype}")
             # print(f"       input_size_per_partition: "
             #       f"{layer.input_size_per_partition}")
