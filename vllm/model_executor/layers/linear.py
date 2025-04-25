@@ -194,7 +194,8 @@ class UnquantizedLinearMethod(LinearMethodBase):
             # row parallel linear
             assert layer.weight.shape[1] % sp_size == 0
             chunk_size = layer.weight.shape[1] // sp_size
-            weight = layer.weight.split(chunk_size, dim=1)[sp_rank]
+            weight = layer.weight.split(chunk_size,
+                                        dim=1)[sp_rank].contiguous()
         else:
             # column parallel linear
             assert layer.weight.shape[0] % sp_size == 0
