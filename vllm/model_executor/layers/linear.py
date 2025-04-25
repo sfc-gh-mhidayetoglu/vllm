@@ -191,7 +191,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
                   f"contiguous {layer.weight.is_contiguous()} "
                   f"tcontiguous {layer.weight.t().is_contiguous()} "
                   f" {layer.weight.dtype}")
-            print(f"     logical widths: {layer.weight.logical_widths} ")
+            print(f"     logical widths: {layer.logical_widths} ")
 
     def apply(self,
               layer: torch.nn.Module,
