@@ -184,6 +184,8 @@ class UnquantizedLinearMethod(LinearMethodBase):
         layer.register_parameter("weight", weight)
         set_weight_attrs(weight, extra_weight_attrs)
 
+        self.output_partition_sizes = output_partition_sizes
+
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape} "
@@ -191,7 +193,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
                   f"contiguous {layer.weight.is_contiguous()} "
                   f"tcontiguous {layer.weight.t().is_contiguous()} "
                   f" {layer.weight.dtype}")
-            print(f"     logical widths: {layer.logical_widths} ")
+            print(f"     output_partition_sizes {self.output_partition_sizes}")
 
     def apply(self,
               layer: torch.nn.Module,
