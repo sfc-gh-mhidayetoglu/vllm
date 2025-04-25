@@ -187,13 +187,37 @@ class UnquantizedLinearMethod(LinearMethodBase):
         self.output_partition_sizes = output_partition_sizes
 
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
+        output_partition_sizes = self.output_partition_sizes
+        sp_size = get_sp_group().world_size
+        sp_rank = get_sp_group().rank_in_group
+        if output_partition_sizes == [layer.weight.shape[0]]:
+            # row parallel linear
+            assert layer.weight.shape[1] % sp_size == 0
+            chunk_size = layer.weight.shape[1] // sp_size
+            weight = layer.weight.split(chunk_size, dim=1)[sp_rank]
+        else:
+            # column parallel linear
+            assert layer.weight.shape[0] % sp_size == 0
+            chunk_sizes = []
+            for size in output_partition_sizes:
+                chunk_size = size // sp_size
+                chunk_sizes.extend([chunk_size] * sp_size)
+            split = layer.weight.split(chunk_sizes, dim=0)
+            weight = torch.cat(
+                [split[i] for i in range(sp_rank, len(split), sp_size)])
+
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape} "
                   f"stride {layer.weight.stride()} "
                   f"contiguous {layer.weight.is_contiguous()} "
                   f"tcontiguous {layer.weight.t().is_contiguous()} "
                   f" {layer.weight.dtype}")
-            print(f"     output_partition_sizes {self.output_partition_sizes}")
+            print(f"     output_partition_sizes {output_partition_sizes}")
+            print(f"     SP_TP weights: {weight.shape} "
+                  f"stride {weight.stride()} "
+                  f"contiguous {weight.is_contiguous()} "
+                  f"tcontiguous {weight.t().is_contiguous()} "
+                  f" {weight.dtype}")
 
     def apply(self,
               layer: torch.nn.Module,
