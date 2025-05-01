@@ -391,14 +391,14 @@ class Fp8LinearMethod(LinearMethodBase):
         output_partition_sizes = layer.logical_widths
         if output_partition_sizes == [layer.weight.shape[1]]:
             if torch.distributed.get_rank() == 0:
-                print("row parallel.")
+                print(f"row parallel SP: {sp_size}.")
             assert layer.weight.shape[0] % sp_size == 0
             chunk_size = layer.weight.shape[0] // sp_size
             self.sp_tp_weight = layer.weight.split(
                 chunk_size, dim=0)[sp_rank].t().contiguous().t()
         else:
             if torch.distributed.get_rank() == 0:
-                print("column parallel.")
+                print(f"column parallel {sp_size}.")
             assert layer.weight.shape[1] % sp_size == 0
             chunk_sizes = []
             for size in output_partition_sizes:
