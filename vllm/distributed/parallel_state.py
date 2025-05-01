@@ -942,6 +942,7 @@ def initialize_model_parallel(
     if torch.distributed.get_rank() == 0:
         print(f"tensor_model_parallel_size: {tensor_model_parallel_size}")
         print(f"sequence_parallel_size: {sequence_parallel_size}")
+        print(f"world_size {world_size}")
 
     # Build the tensor model-parallel groups.
     global _TP
