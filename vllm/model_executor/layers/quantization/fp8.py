@@ -425,10 +425,10 @@ class Fp8LinearMethod(LinearMethodBase):
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
-              bias: Optional[torch.Tensor] = None,
-              sp_tp_mode: bool = False,
-              column_parallel: bool = False,
-              output_partition_sizes: list = None) -> torch.Tensor:
+              bias: Optional[torch.Tensor] = None) -> torch.Tensor:
+        # sp_tp_mode: bool = False,
+        # column_parallel: bool = False,
+        # output_partition_sizes: list = None) -> torch.Tensor:
 
         # if torch.distributed.get_rank() == 0:
         #     print("FP8 linear: SP_TP_MODE", SP_TP_MODE)
