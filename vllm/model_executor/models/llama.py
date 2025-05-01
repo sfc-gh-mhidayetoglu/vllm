@@ -367,7 +367,7 @@ class LlamaModel(nn.Module):
             residual = intermediate_tensors["residual"]
 
         for layer in self.layers[self.start_layer:self.end_layer]:
-        # for layer in self.layers[0:1]:
+            # for layer in self.layers[0:1]:
             hidden_states, residual = layer(positions, hidden_states, residual)
 
         if not get_pp_group().is_last_rank:
@@ -564,6 +564,11 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
 
+        self.prefill = 0
+        self.decode = 0
+        self.mixed = 0
+        self.numiter = 0
+
     def _init_model(self,
                     vllm_config: VllmConfig,
                     prefix: str = "",
@@ -583,57 +588,31 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
 
-        # from vllm.forward_context import get_forward_context
-        # metadata = get_forward_context().attn_metadata
-        # if metadata is None:
-        #     if torch.distributed.get_rank() == 0:
-        #         print(f"numforward {self.numforward} N {N} "
-        #               f"N_ranks {[N_ulysses] * SP}")
-        # else:
-        #     self.numforward += 1
-        #     if torch.distributed.get_rank() == 0:
-        #         print(f"numforward {self.numforward} N {N} "
-        #               f"N_ranks {[N_ulysses] * SP} "
-        #               f"actual tokens: {metadata.num_actual_tokens} "
-        #               f"seq. lens: {metadata.seq_lens.tolist()}")
-
+        from vllm.forward_context import get_forward_context
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-
-        # from vllm.forward_context import get_forward_context
-        # metadata = get_forward_context().attn_metadata
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"numiter: {self.numiter} "
-        #           f"input_ids: {input_ids.shape} SP_TP_MODE: {SP_TP_MODE} ")
-        #     if metadata is None:
-        #         print("metadata: None")
-        #     else:
-        #         seq_lens = metadata.seq_lens.tolist()
-        #         num_actual_tokens = metadata.num_actual_tokens
-        #         self.numiter += 1
-        #         if len(seq_lens) == num_actual_tokens:
-        #             self.decode += 1
-        #         else:
-        #             if len(seq_lens) == 1 and num_actual_tokens > 1:
-        #                 self.prefill += 1
-        #             else:
-        #                 self.mixed += 1
-        #         print(f"metadata: "
-        #               f"actual tokens: {num_actual_tokens} "
-        #               f"seq. lens: {seq_lens} "
-        #               f"prefill {self.prefill}, decode {self.decode}, mixed {self.mixed}")
-
-        # metadata = get_forward_context().attn_metadata
-        # if torch.distributed.get_rank() == 0:
-        #     print(f"numiter: {self.numiter} "
-        #           f"input_ids: {input_ids.shape} "
-        #           f"SP_TP_MODE: {SP_TP_MODE} ")
-        #     if metadata is None:
-        #         print("metadata: None")
-        #     else:
-        #         print(f"metadata: "
-        #               f"actual tokens: {metadata.num_actual_tokens} "
-        #               f"seq. lens: {metadata.seq_lens.tolist()}")
-        # self.numiter += 1
+        metadata = get_forward_context().attn_metadata
+        if torch.distributed.get_rank() == 0:
+            print(f"numiter: {self.numiter} "
+                  f"input_ids: {input_ids.shape} SP_TP_MODE: {SP_TP_MODE} ")
+            if metadata is None:
+                print("metadata: None")
+            else:
+                seq_lens = metadata.seq_lens.tolist()
+                num_actual_tokens = metadata.num_actual_tokens
+                self.numiter += 1
+                if len(seq_lens) == num_actual_tokens:
+                    self.decode += 1
+                else:
+                    if len(seq_lens) == 1 and num_actual_tokens > 1:
+                        self.prefill += 1
+                    else:
+                        self.mixed += 1
+                print(f"metadata: "
+                      f"actual tokens: {num_actual_tokens} "
+                      f"seq. lens: {seq_lens} "
+                      f"prefill {self.prefill} "
+                      f"decode {self.decode} "
+                      f"mixed {self.mixed}")
 
         if SP_TP_MODE is True:
             model_output = self.model_tp(input_ids, positions,
