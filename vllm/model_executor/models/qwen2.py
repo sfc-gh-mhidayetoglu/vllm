@@ -454,6 +454,11 @@ class Qwen2ForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
 
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
+        
+        self.numiter = 0
+        self.prefill = 0
+        self.decode = 0
+        self.mixed = 0
 
     def get_input_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.model.get_input_embeddings(input_ids)
@@ -465,6 +470,30 @@ class Qwen2ForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+        
+        from vllm.forward_context import get_forward_context
+        metadata = get_forward_context().attn_metadata
+        if torch.distributed.get_rank() == 0:
+            print(f"numiter: {self.numiter} "
+                  f"input_ids: {input_ids.shape} ")
+            if metadata is None:
+                print("metadata: None")
+            else:
+                seq_lens = metadata.seq_lens.tolist()
+                num_actual_tokens = metadata.num_actual_tokens
+                self.numiter += 1
+                if len(seq_lens) == num_actual_tokens:
+                    self.decode += 1
+                else:
+                    if len(seq_lens) == 1 and num_actual_tokens > 1:
+                        self.prefill += 1
+                    else:
+                        self.mixed += 1
+                print(f"metadata: "
+                      f"actual tokens: {num_actual_tokens} "
+                      f"seq. lens: {seq_lens} "
+                      f"prefill {self.prefill}, decode {self.decode}, mixed {self.mixed}")
+
         hidden_states = self.model(input_ids, positions, intermediate_tensors,
                                    inputs_embeds)
         return hidden_states

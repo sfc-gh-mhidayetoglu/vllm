@@ -13,7 +13,8 @@ import torch.nn as nn
 from vllm.attention import AttentionType, get_attn_backend
 from vllm.attention.layer import Attention
 from vllm.config import CompilationLevel, VllmConfig
-from vllm.distributed.parallel_state import get_pp_group, graph_capture
+from vllm.distributed.parallel_state import (get_pp_group, get_sp_group,
+                                             graph_capture)
 from vllm.forward_context import set_forward_context
 from vllm.logger import init_logger
 from vllm.model_executor.layers.fused_moe import FusedMoE
@@ -55,6 +56,9 @@ else:
     xgr = LazyLoader("xgr", globals(), "xgrammar")
 
 logger = init_logger(__name__)
+
+SP_TP_MODE = False
+SP_TP_PROFILE_RUN = False
 
 
 class GPUModelRunner(LoRAModelRunnerMixin):
@@ -271,6 +275,19 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                                         device="cpu",
                                         pin_memory=self.pin_memory)
         self.seq_lens_np = self.seq_lens_cpu.numpy()
+
+        def monkeypatch_profile_run(self):
+            orig_profile_run = self.profile_run
+
+            def profile_run():
+                global SP_TP_PROFILE_RUN
+                SP_TP_PROFILE_RUN = True
+                orig_profile_run()
+                SP_TP_PROFILE_RUN = False
+
+            self.profile_run = profile_run
+
+        monkeypatch_profile_run(self)
 
     def _update_states(self, scheduler_output: "SchedulerOutput") -> None:
         """Update the cached states and the persistent batch with the scheduler
@@ -1008,18 +1025,27 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         attn_metadata, logits_indices, spec_decode_metadata = (
             self._prepare_inputs(scheduler_output))
         num_scheduled_tokens = scheduler_output.total_num_scheduled_tokens
-        # add padding to the batch size to make it a multiple of SP
-        SP = self.parallel_config.sequence_parallel_size
-        num_input_tokens = (num_scheduled_tokens + SP - 1) // SP * SP
-        if (self.use_cuda_graph
-                and num_input_tokens // SP <= self.cudagraph_batch_sizes[-1]):
-            # Use piecewise CUDA graphs.
-            # Add padding to the batch size.
-            num_input_tokens = SP * self.vllm_config.pad_for_cudagraph(
-                num_input_tokens // SP)
+        sp_tp_threshold = self.parallel_config.shapeshifter_threshold
+        if num_scheduled_tokens <= sp_tp_threshold:
+            if (self.use_cuda_graph and num_scheduled_tokens
+                    <= self.cudagraph_batch_sizes[-1]):
+                # Use piecewise CUDA graphs.
+                # Add padding to the batch size.
+                num_input_tokens = self.vllm_config.pad_for_cudagraph(
+                    num_scheduled_tokens)
+            else:
+                # Eager mode.
+                num_input_tokens = num_scheduled_tokens
         else:
-            # Eager mode.
-            pass
+            # add padding to the batch size to make it a multiple of SP
+            SP = self.parallel_config.sequence_parallel_size
+            num_input_tokens = (num_scheduled_tokens + SP - 1) // SP * SP
+            if (self.use_cuda_graph and num_input_tokens // SP
+                    <= self.cudagraph_batch_sizes[-1]):
+                num_input_tokens = SP * self.vllm_config.pad_for_cudagraph(
+                    num_input_tokens // SP)
+            else:
+                pass
         attn_metadata.num_input_tokens = num_input_tokens
 
         if self.is_multimodal_model:
@@ -1276,8 +1302,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         return draft_token_ids
 
     def monkeypatch_forward(self):
-        from vllm.distributed import get_sp_group
-        SP = get_sp_group().world_size
+        SP_size = get_sp_group().world_size
         SP_rank = get_sp_group().rank_in_group
         device_group = get_sp_group().device_group
         model_forward = self.model.forward
@@ -1288,20 +1313,33 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             positions = kwargs['positions']
             # Ulysses parameters
             N = input_ids.shape[0]
-            N_ulysses = N // SP
-            N_offset = N_ulysses * SP_rank
-            # narrow the input
-            kwargs['input_ids'] = input_ids[N_offset:N_offset + N_ulysses]
-            kwargs['positions'] = positions[N_offset:N_offset + N_ulysses]
-            # original forward
-            output = model_forward(*args, **kwargs)
-            # all-gather model_output
-            model_output = torch.empty((N, self.model.config.hidden_size),
-                                       dtype=output.dtype,
-                                       device=output.device)
-            torch.distributed.all_gather_into_tensor(model_output,
-                                                     output,
-                                                     group=device_group)
+            global SP_TP_MODE
+            sp_tp_threshold = self.parallel_config.shapeshifter_threshold
+            SP_TP_MODE = bool(sp_tp_threshold >= N)
+            if SP_TP_PROFILE_RUN or SP_TP_MODE is True:
+                # if torch.distributed.get_rank() == 0:
+                #     print(f"N {N}")
+                if SP_TP_PROFILE_RUN:
+                    SP_TP_MODE = True
+                model_output = model_forward(*args, **kwargs)
+            if SP_TP_PROFILE_RUN or SP_TP_MODE is False:
+                N_ulysses = N // SP_size
+                N_offset = N_ulysses * SP_rank
+                # if torch.distributed.get_rank() == 0:
+                #     print(f"N {N}, N_ranks {[N_ulysses] * SP_size}")
+                # narrow the input
+                kwargs['input_ids'] = input_ids[N_offset:N_offset + N_ulysses]
+                kwargs['positions'] = positions[N_offset:N_offset + N_ulysses]
+                if SP_TP_PROFILE_RUN:
+                    SP_TP_MODE = False
+                output = model_forward(*args, **kwargs)
+                # all-gather model_output
+                model_output = torch.empty((N, self.model.config.hidden_size),
+                                           dtype=output.dtype,
+                                           device=output.device)
+                torch.distributed.all_gather_into_tensor(model_output,
+                                                         output,
+                                                         group=device_group)
             return model_output
 
         self.model.forward = ulysses_forward
@@ -1646,14 +1684,27 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         # Trigger CUDA graph capture for specific shapes.
         # Capture the large shapes first so that the smaller shapes
         # can reuse the memory pool allocated for the large shapes.
-        SP = self.parallel_config.sequence_parallel_size
         with graph_capture(device=self.device):
+            sp_tp_threshold = self.parallel_config.shapeshifter_threshold
             for num_tokens in reversed(self.cudagraph_batch_sizes):
-                if SP * num_tokens <= self.max_num_tokens:
+                SP = self.parallel_config.sequence_parallel_size
+                if torch.distributed.get_rank() == 0:
+                    print(f"capture SP: {num_tokens * SP}")
+                if num_tokens * SP > sp_tp_threshold and \
+                    num_tokens * SP <= self.max_num_tokens:
                     for _ in range(self.vllm_config.compilation_config.
                                    cudagraph_num_of_warmups):
                         self._dummy_run(num_tokens * SP)
                     self._dummy_run(num_tokens * SP)
+
+            for num_tokens in reversed(self.cudagraph_batch_sizes):
+                if torch.distributed.get_rank() == 0:
+                    print(f"capture SP_TP: {num_tokens}")
+                if num_tokens <= sp_tp_threshold:
+                    for _ in range(self.vllm_config.compilation_config.
+                                   cudagraph_num_of_warmups):
+                        self._dummy_run(num_tokens)
+                    self._dummy_run(num_tokens)
 
         end_time = time.perf_counter()
         end_free_gpu_memory = torch.cuda.mem_get_info()[0]

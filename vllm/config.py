@@ -1537,6 +1537,8 @@ class ParallelConfig:
     """Number of tensor parallel groups."""
     sequence_parallel_size: int = 1
     """Number of sequence parallel groups."""
+    shapeshifter_threshold: int = 0
+    """Threshold for SP_TP."""
     data_parallel_size: int = 1
     """Number of data parallel groups. MoE layers will be sharded according to
     the product of the tensor parallel size and data parallel size."""
@@ -1653,6 +1655,7 @@ class ParallelConfig:
         factors.append(self.pipeline_parallel_size)
         factors.append(self.tensor_parallel_size)
         factors.append(self.sequence_parallel_size)
+        factors.append(self.shapeshifter_threshold)
         return hashlib.sha256(str(factors).encode()).hexdigest()
 
     def __post_init__(self) -> None:
@@ -3871,6 +3874,7 @@ class VllmConfig:
             f"load_format={self.load_config.load_format}, "
             f"tensor_parallel_size={self.parallel_config.tensor_parallel_size},"
             f" sequence_parallel_size={self.parallel_config.sequence_parallel_size}, "  # noqa
+            f"shapeshifter_threshold={self.parallel_config.shapeshifter_threshold}, "  # noqa
             f"pipeline_parallel_size={self.parallel_config.pipeline_parallel_size}, "  # noqa
             f"disable_custom_all_reduce={self.parallel_config.disable_custom_all_reduce}, "  # noqa
             f"quantization={self.model_config.quantization}, "
