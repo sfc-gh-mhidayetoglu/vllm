@@ -555,13 +555,10 @@ class ColumnParallelLinear(LinearBase):
         # Matrix multiply.
         assert self.quant_method is not None
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        output_parallel = self.quant_method.apply(
-            self,
-            input_,
-            bias,
-            sp_tp_mode=SP_TP_MODE,
-            column_parallel=True,
-            output_partition_sizes=self.output_partition_sizes)
+        output_parallel = self.quant_method.apply(self, input_, bias)
+        # sp_tp_mode=SP_TP_MODE,
+        # column_parallel=True,
+        # output_partition_sizes=self.output_partition_sizes)
         if self.gather_output:
             # All-gather across the partitions.
             if SP_TP_MODE:
@@ -1363,8 +1360,8 @@ class RowParallelLinear(LinearBase):
                              or self.skip_bias_add) else self.bias
         output_parallel = self.quant_method.apply(self,
                                                   input_parallel,
-                                                  bias=bias_,
-                                                  sp_tp_mode=SP_TP_MODE)
+                                                  bias=bias_)  #,
+        # sp_tp_mode=SP_TP_MODE)
         if self.reduce_results and SP_TP_MODE and sp_tp_size > 1:
             output = get_sp_tp_group().all_reduce(output_parallel)
         elif self.reduce_results and not SP_TP_MODE and self.tp_size > 1:
