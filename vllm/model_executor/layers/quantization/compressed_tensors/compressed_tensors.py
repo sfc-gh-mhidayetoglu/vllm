@@ -574,6 +574,8 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
 
         """
 
+        print("*************************************************")
+
         scheme = layer.scheme
         if scheme is None:
             raise ValueError("A scheme must be defined for each layer")
