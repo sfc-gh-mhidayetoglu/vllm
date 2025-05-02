@@ -184,9 +184,16 @@ class UnquantizedLinearMethod(LinearMethodBase):
         layer.register_parameter("weight", weight)
         set_weight_attrs(weight, extra_weight_attrs)
 
-        # self.output_partition_sizes = output_partition_sizes
+        self.output_partition_sizes = output_partition_sizes
         # self.sp_tp_weight = torch.empty_like(weight)
+
+    def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
+        output_partition_sizes = self.output_partition_sizes
         if torch.distributed.get_rank() == 0:
+            if output_partition_sizes == [layer.weight.shape[0]]:
+                print("row parallel linear")
+            else:
+                print("column parallel linear")
             print(f"loaded weight shape: {layer.weight.shape} "
                   f"stride {layer.weight.stride()} "
                   f"contiguous {layer.weight.is_contiguous()} "
@@ -199,7 +206,6 @@ class UnquantizedLinearMethod(LinearMethodBase):
             #       f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
             #       f" {self.sp_tp_weight.dtype}")
 
-    # def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
     #     output_partition_sizes = self.output_partition_sizes
     #     sp_size = get_sp_group().world_size
     #     sp_rank = get_sp_group().rank_in_group
