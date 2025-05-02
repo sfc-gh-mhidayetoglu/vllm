@@ -185,6 +185,8 @@ class UnquantizedLinearMethod(LinearMethodBase):
         set_weight_attrs(weight, extra_weight_attrs)
 
         self.output_partition_sizes = output_partition_sizes
+        if torch.distributed.get_rank() == 0:
+            print("unquantized weights: ", weight.shape, weight.dtype)
 
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
         output_partition_sizes = self.output_partition_sizes

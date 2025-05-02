@@ -574,7 +574,9 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
 
         """
 
-        print("*************************************************")
+        print(
+            f"************************* weight {layer.weight.shape} x {x.shape}"
+        )
 
         scheme = layer.scheme
         if scheme is None:
