@@ -200,11 +200,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
                   f"tcontiguous {layer.weight.t().is_contiguous()} "
                   f" {layer.weight.dtype}")
             print(f"     output_partition_sizes {output_partition_sizes}")
-            # print(f"     SP_TP weights: {self.sp_tp_weight.shape} "
-            #       f"stride {self.sp_tp_weight.stride()} "
-            #       f"contiguous {self.sp_tp_weight.is_contiguous()} "
-            #       f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
-            #       f" {self.sp_tp_weight.dtype}")
+        get_sp_tp_group().barrier()
 
     #     output_partition_sizes = self.output_partition_sizes
     #     sp_size = get_sp_group().world_size
@@ -225,6 +221,12 @@ class UnquantizedLinearMethod(LinearMethodBase):
     #         split = layer.weight.split(chunk_sizes, dim=0)
     #         self.sp_tp_weight = torch.cat(
     #             [split[i] for i in range(sp_rank, len(split), sp_size)])
+
+    # print(f"     SP_TP weights: {self.sp_tp_weight.shape} "
+    #       f"stride {self.sp_tp_weight.stride()} "
+    #       f"contiguous {self.sp_tp_weight.is_contiguous()} "
+    #       f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
+    #       f" {self.sp_tp_weight.dtype}")
 
     #     if torch.distributed.get_rank() == 0:
     #         print(f"loaded weight shape: {layer.weight.shape} "
