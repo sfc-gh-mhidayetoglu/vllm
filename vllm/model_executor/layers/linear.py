@@ -194,8 +194,8 @@ class UnquantizedLinearMethod(LinearMethodBase):
             # row parallel linear
             assert layer.weight.shape[1] % sp_size == 0
             chunk_size = layer.weight.shape[1] // sp_size
-            weight = layer.weight.split(chunk_size,
-                                        dim=1)[sp_rank].contiguous()
+            self.sp_tp_weight = layer.weight.split(
+                chunk_size, dim=1)[sp_rank].contiguous()
         else:
             # column parallel linear
             assert layer.weight.shape[0] % sp_size == 0
@@ -204,7 +204,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
                 chunk_size = size // sp_size
                 chunk_sizes.extend([chunk_size] * sp_size)
             split = layer.weight.split(chunk_sizes, dim=0)
-            weight = torch.cat(
+            self.sp_tp_weight = torch.cat(
                 [split[i] for i in range(sp_rank, len(split), sp_size)])
 
         if torch.distributed.get_rank() == 0:
@@ -214,19 +214,25 @@ class UnquantizedLinearMethod(LinearMethodBase):
                   f"tcontiguous {layer.weight.t().is_contiguous()} "
                   f" {layer.weight.dtype}")
             print(f"     output_partition_sizes {output_partition_sizes}")
-            print(f"     SP_TP weights: {weight.shape} "
-                  f"stride {weight.stride()} "
-                  f"contiguous {weight.is_contiguous()} "
-                  f"tcontiguous {weight.t().is_contiguous()} "
-                  f" {weight.dtype}")
+            print(f"     SP_TP weights: {self.sp_tp_weight.shape} "
+                  f"stride {self.sp_tp_weight.stride()} "
+                  f"contiguous {self.sp_tp_weight.is_contiguous()} "
+                  f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
+                  f" {self.sp_tp_weight.dtype}")
 
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
-              bias: Optional[torch.Tensor] = None,
-              sp_tp_mode: bool = False,
-              column_parallel: bool = False,
-              output_partition_sizes: list = None) -> torch.Tensor:
+              bias: Optional[torch.Tensor] = None) -> torch.Tensor:
+
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        if SP_TP_MODE:
+            return F.linear(x, self.sp_tp_weight, bias)
+        else:
+            return F.linear(x, layer.weight, bias)
+            # sp_tp_mode: bool = False,
+            # column_parallel: bool = False,
+            # output_partition_sizes: list = None) -> torch.Tensor:
 
         # if torch.distributed.get_rank() == 0:
         #     if column_parallel:
@@ -242,36 +248,37 @@ class UnquantizedLinearMethod(LinearMethodBase):
         #           f" {output_partition_sizes}\n"
         #           f"              sp_tp_mode {sp_tp_mode}\n")
 
-        if sp_tp_mode:
-            sp_size = get_sp_group().world_size
-            sp_rank = get_sp_group().rank_in_group
-            if column_parallel:
-                # column parallel linear
-                assert layer.weight.shape[0] % sp_size == 0
-                chunk_sizes = []
-                for size in output_partition_sizes:
-                    chunk_size = size // sp_size
-                    chunk_sizes.extend([chunk_size] * sp_size)
-                split = layer.weight.split(chunk_sizes, dim=0)
-                weight = torch.cat(
-                    [split[i] for i in range(sp_rank, len(split), sp_size)])
-            else:
-                # row parallel linear
-                assert layer.weight.shape[1] % sp_size == 0
-                chunk_size = layer.weight.shape[1] // sp_size
-                weight = layer.weight.split(chunk_size, dim=1)[sp_rank]
-        else:
-            weight = layer.weight
+        # if sp_tp_mode:
+        #     sp_size = get_sp_group().world_size
+        #     sp_rank = get_sp_group().rank_in_group
+        #     if column_parallel:
+        #         # column parallel linear
+        #         assert layer.weight.shape[0] % sp_size == 0
+        #         chunk_sizes = []
+        #         for size in output_partition_sizes:
+        #             chunk_size = size // sp_size
+        #             chunk_sizes.extend([chunk_size] * sp_size)
+        #         split = layer.weight.split(chunk_sizes, dim=0)
+        #         weight = torch.cat(
+        #             [split[i] for i in range(sp_rank, len(split), sp_size)])
+        #     else:
+        #         # row parallel linear
+        #         assert layer.weight.shape[1] % sp_size == 0
+        #         chunk_size = layer.weight.shape[1] // sp_size
+        #         weight = layer.weight.split(chunk_size, dim=1)[sp_rank]
+        # else:
+        #     weight = layer.weight
 
-        output = F.linear(x, weight, bias)
+        # output = F.linear(x, weight, bias)
 
-        # if torch.distributed.get_rank() == 0:
-        #     print(
-        #         f"              sharded weight {weight.shape}"
-        #         f" {weight.dtype}\n"
-        #         f"              output shape {output.shape} {output.dtype}\n")
+        # # if torch.distributed.get_rank() == 0:
+        # #     print(
+        # #         f"              sharded weight {weight.shape}"
+        # #         f" {weight.dtype}\n"
+        # #         f"
+        #  output shape {output.shape} {output.dtype}\n")
 
-        return output
+        # return output
 
 
 class LinearBase(torch.nn.Module):
@@ -556,9 +563,6 @@ class ColumnParallelLinear(LinearBase):
         assert self.quant_method is not None
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         output_parallel = self.quant_method.apply(self, input_, bias)
-        # sp_tp_mode=SP_TP_MODE,
-        # column_parallel=True,
-        # output_partition_sizes=self.output_partition_sizes)
         if self.gather_output:
             # All-gather across the partitions.
             if SP_TP_MODE:
@@ -1360,8 +1364,7 @@ class RowParallelLinear(LinearBase):
                              or self.skip_bias_add) else self.bias
         output_parallel = self.quant_method.apply(self,
                                                   input_parallel,
-                                                  bias=bias_)  #,
-        # sp_tp_mode=SP_TP_MODE)
+                                                  bias=bias_)
         if self.reduce_results and SP_TP_MODE and sp_tp_size > 1:
             output = get_sp_tp_group().all_reduce(output_parallel)
         elif self.reduce_results and not SP_TP_MODE and self.tp_size > 1:
