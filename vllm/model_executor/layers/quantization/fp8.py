@@ -386,19 +386,16 @@ class Fp8LinearMethod(LinearMethodBase):
             # Activations not quantized for marlin.
             del layer.input_scale
 
+        # TODO: skip below if shapeshifter threshold is 0
         sp_size = get_sp_group().world_size
         sp_rank = get_sp_group().rank_in_group
         output_partition_sizes = layer.logical_widths
         if output_partition_sizes == [layer.weight.shape[1]]:
-            if torch.distributed.get_rank() == 0:
-                print(f"row parallel SP: {sp_size}.")
             assert layer.weight.shape[0] % sp_size == 0
             chunk_size = layer.weight.shape[0] // sp_size
             self.sp_tp_weight = layer.weight.split(
                 chunk_size, dim=0)[sp_rank].t().contiguous().t()
         else:
-            if torch.distributed.get_rank() == 0:
-                print(f"column parallel {sp_size}.")
             assert layer.weight.shape[1] % sp_size == 0
             chunk_sizes = []
             for size in output_partition_sizes:
@@ -410,6 +407,10 @@ class Fp8LinearMethod(LinearMethodBase):
                 dim=1).t().contiguous().t()
 
         if torch.distributed.get_rank() == 0:
+            if output_partition_sizes == [layer.weight.shape[1]]:
+                print(f"row parallel SP: {sp_size}.")
+            else:
+                print(f"column parallel {sp_size}.")
             print(f"loaded weight shape: {layer.weight.shape} "
                   f"stride {layer.weight.stride()} "
                   f"contiguous {layer.weight.is_contiguous()} "
@@ -426,18 +427,6 @@ class Fp8LinearMethod(LinearMethodBase):
               layer: torch.nn.Module,
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
-        # sp_tp_mode: bool = False,
-        # column_parallel: bool = False,
-        # output_partition_sizes: list = None) -> torch.Tensor:
-
-        # if torch.distributed.get_rank() == 0:
-        #     print("FP8 linear: SP_TP_MODE", SP_TP_MODE)
-        #     print(
-        #         f"              x shape {x.shape} {x.dtype}\n"
-        #         f"              TP weight {layer.weight.shape}"
-        #         f" {layer.weight.dtype}\n"
-        #         f"              SP_TP weight {self.sp_tp_weight.shape}"
-        #         f" {self.sp_tp_weight.dtype}\n")
 
         if self.use_marlin:
             return apply_fp8_marlin_linear(
@@ -469,6 +458,14 @@ class Fp8LinearMethod(LinearMethodBase):
             input_scale=layer.input_scale,
             bias=bias)
 
+        if torch.distributed.get_rank() == 0:
+            print("FP8 linear: SP_TP_MODE", SP_TP_MODE)
+        #     print(
+        #         f"              x shape {x.shape} {x.dtype}\n"
+        #         f"              TP weight {layer.weight.shape}"
+        #         f" {layer.weight.dtype}\n"
+        #         f"              SP_TP weight {self.sp_tp_weight.shape}"
+        #         f" {self.sp_tp_weight.dtype}\n")
         # if torch.distributed.get_rank() == 0:
         #     print(
         #          f"              output {output.shape} {output.dtype}\n")
