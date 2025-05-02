@@ -184,8 +184,8 @@ class UnquantizedLinearMethod(LinearMethodBase):
         layer.register_parameter("weight", weight)
         set_weight_attrs(weight, extra_weight_attrs)
 
-        self.output_partition_sizes = output_partition_sizes
-        self.sp_tp_weight = torch.empty_like(weight)
+        # self.output_partition_sizes = output_partition_sizes
+        # self.sp_tp_weight = torch.empty_like(weight)
         if torch.distributed.get_rank() == 0:
             print(f"loaded weight shape: {layer.weight.shape} "
                   f"stride {layer.weight.stride()} "
@@ -193,11 +193,11 @@ class UnquantizedLinearMethod(LinearMethodBase):
                   f"tcontiguous {layer.weight.t().is_contiguous()} "
                   f" {layer.weight.dtype}")
             print(f"     output_partition_sizes {output_partition_sizes}")
-            print(f"     SP_TP weights: {self.sp_tp_weight.shape} "
-                  f"stride {self.sp_tp_weight.stride()} "
-                  f"contiguous {self.sp_tp_weight.is_contiguous()} "
-                  f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
-                  f" {self.sp_tp_weight.dtype}")
+            # print(f"     SP_TP weights: {self.sp_tp_weight.shape} "
+            #       f"stride {self.sp_tp_weight.stride()} "
+            #       f"contiguous {self.sp_tp_weight.is_contiguous()} "
+            #       f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
+            #       f" {self.sp_tp_weight.dtype}")
 
     # def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
     #     output_partition_sizes = self.output_partition_sizes
@@ -237,11 +237,11 @@ class UnquantizedLinearMethod(LinearMethodBase):
               layer: torch.nn.Module,
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
-        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        if SP_TP_MODE:
-            return F.linear(x, self.sp_tp_weight, bias)
-        else:
-            return F.linear(x, layer.weight, bias)
+        # from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        # if SP_TP_MODE:
+        #     return F.linear(x, self.sp_tp_weight, bias)
+        # else:
+        return F.linear(x, layer.weight, bias)
 
 
 class LinearBase(torch.nn.Module):
