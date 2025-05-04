@@ -219,8 +219,7 @@ class UnquantizedLinearMethod(LinearMethodBase):
                   f"contiguous {layer.weight.is_contiguous()} "
                   f"tcontiguous {layer.weight.t().is_contiguous()} "
                   f" {layer.weight.dtype}")
-            # print(f"     output_partition_sizes {output_partition_sizes}")
-            print(f"    logical widths: {layer.logical_widths}")
+            print(f"     output_partition_sizes {output_partition_sizes}")
             print(f"     SP_TP weights: {self.sp_tp_weight.shape} "
                   f"stride {self.sp_tp_weight.stride()} "
                   f"contiguous {self.sp_tp_weight.is_contiguous()} "
