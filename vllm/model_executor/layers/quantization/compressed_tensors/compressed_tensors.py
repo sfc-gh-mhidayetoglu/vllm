@@ -542,9 +542,11 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
 
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
         layer.scheme.process_weights_after_loading(layer)
-        if torch.distributed.get_rank() == 0:
+        from vllm.distributed import get_sp_group
+        if get_sp_group().rank == 0:
             print("************************* weight after loading "
                   f"{layer.weight.shape} {layer.weight.dtype}\n")
+        get_sp_group().barrier()
 
     def create_weights(self, layer: torch.nn.Module,
                        input_size_per_partition: int,
@@ -577,9 +579,12 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
 
         """
 
-        print(f"************************* x {x.shape} {x.dtype}\n"
-              f"************************* weight {layer.weight.shape} "
-              f"{layer.weight.dtype}\n")
+        from vllm.distributed import get_sp_group
+        if get_sp_group().rank == 0:
+            print(f"************************* x {x.shape} {x.dtype}\n"
+                  f"************************* weight {layer.weight.shape} "
+                  f"{layer.weight.dtype}\n")
+        get_sp_group().barrier()
 
         scheme = layer.scheme
         if scheme is None:
