@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter, UninitializedParameter
 
-from vllm.distributed import (divide, get_sp_tp_group,
+from vllm.distributed import (divide, get_sp_group, get_sp_tp_group,
                               get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size,
                               split_tensor_along_last_dim,
@@ -245,8 +245,9 @@ class UnquantizedLinearMethod(LinearMethodBase):
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        if torch.distributed.get_rank() == 0:
+        if get_sp_group().rank == 0:
             print("Unquantized linear: SP_TP_MODE", SP_TP_MODE)
+        get_sp_group().barrier()
         if SP_TP_MODE:
             return F.linear(x, self.sp_tp_weight, bias)
         else:
