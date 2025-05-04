@@ -565,6 +565,7 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
                 dim=1).t().contiguous().t()
 
         if torch.distributed.get_rank() == 0:
+            print(f"layer {layer}")
             if output_partition_sizes == [layer.weight.shape[1]]:
                 print(f"row parallel SP: {sp_size}.")
             else:
@@ -617,12 +618,18 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
             print(f"************************* x {x.shape} {x.dtype}\n"
                   f"************************* weight {layer.weight.shape} "
                   f"{layer.weight.dtype}\n")
+            print(f"layer scheme {layer.scheme}")
         get_sp_group().barrier()
 
         scheme = layer.scheme
         if scheme is None:
             raise ValueError("A scheme must be defined for each layer")
-        return scheme.apply_weights(layer, x, bias=bias)
+
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        if SP_TP_MODE:
+            return scheme.apply_weights(layer, x, bias=bias)
+        else:
+            return scheme.apply_weights(layer, x, bias=bias)
 
 
 class CompressedTensorsKVCacheMethod(BaseKVCacheMethod):
