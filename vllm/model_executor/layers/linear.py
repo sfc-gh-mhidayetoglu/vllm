@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter, UninitializedParameter
 
-from vllm.distributed import (divide, get_sp_group, get_sp_tp_group,
+from vllm.distributed import (divide, get_sp_tp_group,
                               get_tensor_model_parallel_rank,
                               get_tensor_model_parallel_world_size,
                               split_tensor_along_last_dim,
@@ -188,44 +188,44 @@ class UnquantizedLinearMethod(LinearMethodBase):
         if torch.distributed.get_rank() == 0:
             print("unquantized weights: ", weight.shape, weight.dtype)
 
-    def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
-        output_partition_sizes = self.output_partition_sizes
-        sp_size = get_sp_group().world_size
-        sp_rank = get_sp_group().rank_in_group
-        if output_partition_sizes == [layer.weight.shape[0]]:
-            # row parallel linear
-            assert layer.weight.shape[1] % sp_size == 0
-            chunk_size = layer.weight.shape[1] // sp_size
-            self.sp_tp_weight = layer.weight.split(
-                chunk_size, dim=1)[sp_rank].contiguous()
-        else:
-            # column parallel linear
-            assert layer.weight.shape[0] % sp_size == 0
-            chunk_sizes = []
-            for size in output_partition_sizes:
-                chunk_size = size // sp_size
-                chunk_sizes.extend([chunk_size] * sp_size)
-            split = layer.weight.split(chunk_sizes, dim=0)
-            self.sp_tp_weight = torch.cat(
-                [split[i] for i in range(sp_rank, len(split), sp_size)])
+    # def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
+    #     output_partition_sizes = self.output_partition_sizes
+    #     sp_size = get_sp_group().world_size
+    #     sp_rank = get_sp_group().rank_in_group
+    #     if output_partition_sizes == [layer.weight.shape[0]]:
+    #         # row parallel linear
+    #         assert layer.weight.shape[1] % sp_size == 0
+    #         chunk_size = layer.weight.shape[1] // sp_size
+    #         self.sp_tp_weight = layer.weight.split(
+    #             chunk_size, dim=1)[sp_rank].contiguous()
+    #     else:
+    #         # column parallel linear
+    #         assert layer.weight.shape[0] % sp_size == 0
+    #         chunk_sizes = []
+    #         for size in output_partition_sizes:
+    #             chunk_size = size // sp_size
+    #             chunk_sizes.extend([chunk_size] * sp_size)
+    #         split = layer.weight.split(chunk_sizes, dim=0)
+    #         self.sp_tp_weight = torch.cat(
+    #             [split[i] for i in range(sp_rank, len(split), sp_size)])
 
-        if torch.distributed.get_rank() == 0:
-            if output_partition_sizes == [layer.weight.shape[0]]:
-                print("row parallel linear")
-            else:
-                print("column parallel linear")
-            print(f"loaded weight shape: {layer.weight.shape} "
-                  f"stride {layer.weight.stride()} "
-                  f"contiguous {layer.weight.is_contiguous()} "
-                  f"tcontiguous {layer.weight.t().is_contiguous()} "
-                  f" {layer.weight.dtype}")
-            print(f"     output_partition_sizes {output_partition_sizes}")
-            print(f"     SP_TP weights: {self.sp_tp_weight.shape} "
-                  f"stride {self.sp_tp_weight.stride()} "
-                  f"contiguous {self.sp_tp_weight.is_contiguous()} "
-                  f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
-                  f" {self.sp_tp_weight.dtype}")
-        get_sp_tp_group().barrier()
+    #     if torch.distributed.get_rank() == 0:
+    #         if output_partition_sizes == [layer.weight.shape[0]]:
+    #             print("row parallel linear")
+    #         else:
+    #             print("column parallel linear")
+    #         print(f"loaded weight shape: {layer.weight.shape} "
+    #               f"stride {layer.weight.stride()} "
+    #               f"contiguous {layer.weight.is_contiguous()} "
+    #               f"tcontiguous {layer.weight.t().is_contiguous()} "
+    #               f" {layer.weight.dtype}")
+    #         print(f"     output_partition_sizes {output_partition_sizes}")
+    #         print(f"     SP_TP weights: {self.sp_tp_weight.shape} "
+    #               f"stride {self.sp_tp_weight.stride()} "
+    #               f"contiguous {self.sp_tp_weight.is_contiguous()} "
+    #               f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
+    #               f" {self.sp_tp_weight.dtype}")
+    #     get_sp_tp_group().barrier()
 
     #     if torch.distributed.get_rank() == 0:
     #         print(f"loaded weight shape: {layer.weight.shape} "
