@@ -542,6 +542,9 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
 
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
         layer.scheme.process_weights_after_loading(layer)
+        if torch.distributed.get_rank() == 0:
+            print("************************* weight after loading "
+                  f"{layer.weight.shape} {layer.weight.dtype}\n")
 
     def create_weights(self, layer: torch.nn.Module,
                        input_size_per_partition: int,
