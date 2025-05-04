@@ -89,6 +89,9 @@ class CompressedTensorsW8A8Fp8(CompressedTensorsScheme):
         else:
             layer.input_scale = None
 
+        if torch.distributed.get_rank() == 0:
+            print("CompressedTensorsW8A8Fp8 process_weights_after_loading")
+
     def create_weights(self, layer: torch.nn.Module,
                        output_partition_sizes: List[int],
                        input_size_per_partition: int,
@@ -136,10 +139,16 @@ class CompressedTensorsW8A8Fp8(CompressedTensorsScheme):
             input_scale[:] = torch.finfo(torch.float32).min
             layer.register_parameter("input_scale", input_scale)
 
+        if torch.distributed.get_rank() == 0:
+            print("CompressedTensorsW8A8Fp8 create_weights")
+
     def apply_weights(self,
                       layer: torch.nn.Module,
                       x: torch.Tensor,
                       bias: Optional[torch.Tensor] = None) -> torch.Tensor:
+
+        if torch.distributed.get_rank() == 0:
+            print("CompressedTensorsW8A8Fp8 apply_weights")
 
         return self.fp8_linear.apply(input=x,
                                      weight=layer.weight,
