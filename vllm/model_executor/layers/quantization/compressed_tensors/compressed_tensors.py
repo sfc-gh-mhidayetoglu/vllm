@@ -12,7 +12,6 @@ from compressed_tensors.quantization import (QuantizationArgs,
                                              QuantizationType)
 from pydantic import BaseModel
 
-from vllm.distributed import get_sp_group
 from vllm.logger import init_logger
 from vllm.model_executor.layers.fused_moe import FusedMoE
 from vllm.model_executor.layers.linear import (LinearBase, LinearMethodBase,
@@ -544,44 +543,6 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
         layer.scheme.process_weights_after_loading(layer)
 
-        # TODO: skip below if shapeshifter threshold is 0
-        sp_size = get_sp_group().world_size
-        sp_rank = get_sp_group().rank_in_group
-        output_partition_sizes = layer.logical_widths
-        if output_partition_sizes == [layer.weight.shape[1]]:
-            assert layer.weight.shape[0] % sp_size == 0
-            chunk_size = layer.weight.shape[0] // sp_size
-            self.sp_tp_weight = layer.weight.split(
-                chunk_size, dim=0)[sp_rank].t().contiguous().t()
-        else:
-            assert layer.weight.shape[1] % sp_size == 0
-            chunk_sizes = []
-            for size in output_partition_sizes:
-                chunk_size = size // sp_size
-                chunk_sizes.extend([chunk_size] * sp_size)
-            split = layer.weight.split(chunk_sizes, dim=1)
-            self.sp_tp_weight = torch.cat(
-                [split[i] for i in range(sp_rank, len(split), sp_size)],
-                dim=1).t().contiguous().t()
-
-        if torch.distributed.get_rank() == 0:
-            print(f"layer {layer}")
-            if output_partition_sizes == [layer.weight.shape[1]]:
-                print(f"row parallel SP: {sp_size}.")
-            else:
-                print(f"column parallel {sp_size}.")
-            print(f"loaded weight shape: {layer.weight.shape} "
-                  f"stride {layer.weight.stride()} "
-                  f"contiguous {layer.weight.is_contiguous()} "
-                  f"tcontiguous {layer.weight.t().is_contiguous()} "
-                  f" {layer.weight.dtype}")
-            print(f"     logical widths: {layer.logical_widths}")
-            print(f"      SP_TP weights: {self.sp_tp_weight.shape} "
-                  f"stride {self.sp_tp_weight.stride()} "
-                  f"contiguous {self.sp_tp_weight.is_contiguous()} "
-                  f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
-                  f" {self.sp_tp_weight.dtype}")
-
     def create_weights(self, layer: torch.nn.Module,
                        input_size_per_partition: int,
                        output_partition_sizes: List[int], input_size: int,
@@ -613,23 +574,10 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
 
         """
 
-        from vllm.distributed import get_sp_group
-        if get_sp_group().rank == 0:
-            print(f"************************* x {x.shape} {x.dtype}\n"
-                  f"************************* weight {layer.weight.shape} "
-                  f"{layer.weight.dtype}\n")
-            print(f"layer scheme {layer.scheme}")
-        get_sp_group().barrier()
-
         scheme = layer.scheme
         if scheme is None:
             raise ValueError("A scheme must be defined for each layer")
-
-        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        if SP_TP_MODE:
-            return scheme.apply_weights(layer, x, bias=bias)
-        else:
-            return scheme.apply_weights(layer, x, bias=bias)
+        return scheme.apply_weights(layer, x, bias=bias)
 
 
 class CompressedTensorsKVCacheMethod(BaseKVCacheMethod):
