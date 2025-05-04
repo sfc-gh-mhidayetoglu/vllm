@@ -183,10 +183,16 @@ class UnquantizedLinearMethod(LinearMethodBase):
         layer.register_parameter("weight", weight)
         set_weight_attrs(weight, extra_weight_attrs)
 
+        if torch.distributed.get_rank() == 0:
+            print("UnquantizedLinearMethod create_weights")
+
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
+
+        if torch.distributed.get_rank() == 0:
+            print("UnquantizedLinearMethod apply")
 
         return F.linear(x, layer.weight, bias)
 

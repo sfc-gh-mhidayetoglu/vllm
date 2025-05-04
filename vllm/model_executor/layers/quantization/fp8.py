@@ -285,6 +285,9 @@ class Fp8LinearMethod(LinearMethodBase):
             else:
                 layer.register_parameter("input_scale", None)
 
+        if torch.distributed.get_rank() == 0:
+            print("Fp8LinearMethod create_weights")
+
     def _maybe_pad_weight(self, weight: torch.Tensor) -> torch.Tensor:
         # Pad the weight tensor. This is an optimization on ROCm platform, which
         # can benefit from tensors located far enough from one another in memory
@@ -386,6 +389,9 @@ class Fp8LinearMethod(LinearMethodBase):
             # Activations not quantized for marlin.
             del layer.input_scale
 
+        if torch.distributed.get_rank() == 0:
+            print("Fp8LinearMethod process_weights_after_loading")
+
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
@@ -412,6 +418,9 @@ class Fp8LinearMethod(LinearMethodBase):
                 bias=bias,
                 cutlass_block_fp8_supported=self.cutlass_block_fp8_supported,
             )
+
+        if torch.distributed.get_rank() == 0:
+            print("Fp8LinearMethod apply")
 
         return self.fp8_linear.apply(input=x,
                                      weight=layer.weight,
