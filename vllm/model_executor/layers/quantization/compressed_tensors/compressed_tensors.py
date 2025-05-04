@@ -543,9 +543,19 @@ class CompressedTensorsLinearMethod(LinearMethodBase):
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
         layer.scheme.process_weights_after_loading(layer)
         from vllm.distributed import get_sp_group
+
+        # sp_size = get_sp_group().size
         if get_sp_group().rank == 0:
-            print("************************* weight after loading "
-                  f"{layer.weight.shape} {layer.weight.dtype}\n")
+            # if output_partition_sizes == [layer.weight.shape[1]]:
+            #     print(f"row parallel SP: {sp_size}.")
+            # else:
+            #     print(f"column parallel {sp_size}.")
+            print(f"loaded weight shape: {layer.weight.shape} "
+                  f"stride {layer.weight.stride()} "
+                  f"contiguous {layer.weight.is_contiguous()} "
+                  f"tcontiguous {layer.weight.t().is_contiguous()} "
+                  f" {layer.weight.dtype}")
+            print(f"     logical widths: {layer.logical_widths}")
         get_sp_group().barrier()
 
     def create_weights(self, layer: torch.nn.Module,
