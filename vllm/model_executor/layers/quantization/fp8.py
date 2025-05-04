@@ -406,7 +406,7 @@ class Fp8LinearMethod(LinearMethodBase):
                 [split[i] for i in range(sp_rank, len(split), sp_size)],
                 dim=1).t().contiguous().t()
 
-        if torch.distributed.get_rank() == 0:
+        if get_sp_group().rank == 0:
             if output_partition_sizes == [layer.weight.shape[1]]:
                 print(f"row parallel SP: {sp_size}.")
             else:
@@ -451,26 +451,12 @@ class Fp8LinearMethod(LinearMethodBase):
             )
 
         from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
-        output = self.fp8_linear.apply(
+        return self.fp8_linear.apply(
             input=x,
             weight=self.sp_tp_weight if SP_TP_MODE else layer.weight,
             weight_scale=layer.weight_scale,
             input_scale=layer.input_scale,
             bias=bias)
-
-        if torch.distributed.get_rank() == 0:
-            print("FP8 linear: SP_TP_MODE", SP_TP_MODE)
-        #     print(
-        #         f"              x shape {x.shape} {x.dtype}\n"
-        #         f"              TP weight {layer.weight.shape}"
-        #         f" {layer.weight.dtype}\n"
-        #         f"              SP_TP weight {self.sp_tp_weight.shape}"
-        #         f" {self.sp_tp_weight.dtype}\n")
-        # if torch.distributed.get_rank() == 0:
-        #     print(
-        #          f"              output {output.shape} {output.dtype}\n")
-
-        return output
 
 
 class Fp8MoEMethod(FusedMoEMethodBase):

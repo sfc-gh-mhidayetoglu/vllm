@@ -244,11 +244,8 @@ class UnquantizedLinearMethod(LinearMethodBase):
               layer: torch.nn.Module,
               x: torch.Tensor,
               bias: Optional[torch.Tensor] = None) -> torch.Tensor:
-        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
 
-        # if get_sp_group().rank == 0:
-        #     print("Unquantized linear: SP_TP_MODE", SP_TP_MODE)
-        # get_sp_group().barrier()
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
         if SP_TP_MODE:
             return F.linear(x, self.sp_tp_weight, bias)
         else:
