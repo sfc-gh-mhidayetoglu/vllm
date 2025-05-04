@@ -6,6 +6,7 @@ import torch
 from compressed_tensors.quantization import QuantizationStrategy
 from torch.nn import Parameter
 
+from vllm.distributed import get_sp_group
 from vllm.model_executor.layers.quantization.compressed_tensors.schemes import (
     CompressedTensorsScheme)
 from vllm.model_executor.layers.quantization.utils.w8a8_utils import (
@@ -89,6 +90,10 @@ class CompressedTensorsW8A8Fp8(CompressedTensorsScheme):
         else:
             layer.input_scale = None
 
+        if get_sp_group().rank == 0:
+            print(f"process weights after loading {layer.weight.shape} "
+                  f"{layer.weight.dtype}")
+
     def create_weights(self, layer: torch.nn.Module,
                        output_partition_sizes: List[int],
                        input_size_per_partition: int,
@@ -136,10 +141,16 @@ class CompressedTensorsW8A8Fp8(CompressedTensorsScheme):
             input_scale[:] = torch.finfo(torch.float32).min
             layer.register_parameter("input_scale", input_scale)
 
+        if get_sp_group().rank == 0:
+            print(f"create weights {layer.weight.shape} {layer.weight.dtype}")
+
     def apply_weights(self,
                       layer: torch.nn.Module,
                       x: torch.Tensor,
                       bias: Optional[torch.Tensor] = None) -> torch.Tensor:
+
+        if get_sp_group().rank == 0:
+            print(f"apply weights {layer.weight.shape} {layer.weight.dtype}")
 
         return self.fp8_linear.apply(input=x,
                                      weight=layer.weight,
