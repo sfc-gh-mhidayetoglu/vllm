@@ -6,6 +6,7 @@ import torch
 from compressed_tensors.quantization import QuantizationStrategy
 from torch.nn import Parameter
 
+from vllm.distributed import get_sp_group
 from vllm.model_executor.layers.quantization.compressed_tensors.schemes import (
     CompressedTensorsScheme)
 from vllm.model_executor.layers.quantization.utils.w8a8_utils import (
@@ -89,6 +90,44 @@ class CompressedTensorsW8A8Fp8(CompressedTensorsScheme):
         else:
             layer.input_scale = None
 
+        # TODO: skip below if shapeshifter threshold is 0
+        sp_size = get_sp_group().world_size
+        sp_rank = get_sp_group().rank_in_group
+        output_partition_sizes = layer.logical_widths
+        if output_partition_sizes == [layer.weight.shape[1]]:
+            assert layer.weight.shape[0] % sp_size == 0
+            chunk_size = layer.weight.shape[0] // sp_size
+            self.sp_tp_weight = layer.weight.split(
+                chunk_size, dim=0)[sp_rank].t().contiguous().t()
+        else:
+            assert layer.weight.shape[1] % sp_size == 0
+            chunk_sizes = []
+            for size in output_partition_sizes:
+                chunk_size = size // sp_size
+                chunk_sizes.extend([chunk_size] * sp_size)
+            split = layer.weight.split(chunk_sizes, dim=1)
+            self.sp_tp_weight = torch.cat(
+                [split[i] for i in range(sp_rank, len(split), sp_size)],
+                dim=1).t().contiguous().t()
+
+        if get_sp_group().rank == 0:
+            print(f"layer {layer}")
+            if output_partition_sizes == [layer.weight.shape[1]]:
+                print(f"row parallel SP: {sp_size}.")
+            else:
+                print(f"column parallel {sp_size}.")
+            print(f"loaded weight shape: {layer.weight.shape} "
+                  f"stride {layer.weight.stride()} "
+                  f"contiguous {layer.weight.is_contiguous()} "
+                  f"tcontiguous {layer.weight.t().is_contiguous()} "
+                  f" {layer.weight.dtype}")
+            print(f"     logical widths: {layer.logical_widths}")
+            print(f"      SP_TP weights: {self.sp_tp_weight.shape} "
+                  f"stride {self.sp_tp_weight.stride()} "
+                  f"contiguous {self.sp_tp_weight.is_contiguous()} "
+                  f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
+                  f" {self.sp_tp_weight.dtype}")
+
     def create_weights(self, layer: torch.nn.Module,
                        output_partition_sizes: List[int],
                        input_size_per_partition: int,
@@ -136,14 +175,19 @@ class CompressedTensorsW8A8Fp8(CompressedTensorsScheme):
             input_scale[:] = torch.finfo(torch.float32).min
             layer.register_parameter("input_scale", input_scale)
 
+        if get_sp_group().rank == 0:
+            print(f"create weights {layer.weight.shape} {layer.weight.dtype}")
+
     def apply_weights(self,
                       layer: torch.nn.Module,
                       x: torch.Tensor,
                       bias: Optional[torch.Tensor] = None) -> torch.Tensor:
 
-        return self.fp8_linear.apply(input=x,
-                                     weight=layer.weight,
-                                     weight_scale=layer.weight_scale,
-                                     out_dtype=self.out_dtype,
-                                     input_scale=layer.input_scale,
-                                     bias=bias)
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        return self.fp8_linear.apply(
+            input=x,
+            weight=self.sp_tp_weight if SP_TP_MODE else layer.weight,
+            weight_scale=layer.weight_scale,
+            out_dtype=self.out_dtype,
+            input_scale=layer.input_scale,
+            bias=bias)

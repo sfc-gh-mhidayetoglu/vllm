@@ -761,6 +761,15 @@ def get_sp_group() -> GroupCoordinator:
     return _SP
 
 
+_SP_TP: Optional[GroupCoordinator] = None
+
+
+def get_sp_tp_group() -> GroupCoordinator:
+    assert _SP_TP is not None, (
+        "sequence_tensor parallel group is not initialized")
+    return _SP_TP
+
+
 _PP: Optional[GroupCoordinator] = None
 
 _DP: Optional[GroupCoordinator] = None
@@ -806,7 +815,7 @@ def graph_capture(device: torch.device):
     """
     context = GraphCaptureContext(torch.cuda.Stream(device=device))
     with get_tp_group().graph_capture(context), get_pp_group().graph_capture(
-            context):
+            context), get_sp_tp_group().graph_capture(context):
         yield context
 
 
@@ -973,6 +982,17 @@ def initialize_model_parallel(
                                     get_world_group().local_rank,
                                     backend,
                                     group_name="sp")
+    global _SP_TP
+    assert _SP_TP is None
+    group_ranks = []
+    for i in range(pipeline_model_parallel_size):
+        ranks = list(
+            range(i * ulysses_parallel_size, (i + 1) * ulysses_parallel_size))
+        group_ranks.append(ranks)
+    _SP_TP = init_model_parallel_group(group_ranks,
+                                       get_world_group().local_rank,
+                                       backend,
+                                       group_name="sp_tp")
     global _DP
     assert _DP is None, ("data parallel group is already initialized")
     group_ranks = all_ranks.transpose(1,
@@ -986,9 +1006,9 @@ def initialize_model_parallel(
 
     logger.info(
         "rank %s in world size %s is assigned as "
-        "DP rank %s, PP rank %s, SP rank %s, TP rank %s", rank, world_size,
-        _DP.rank_in_group, _PP.rank_in_group, _SP.rank_in_group,
-        _TP.rank_in_group)
+        "DP rank %s, PP rank %s, SP_TP rank %s, SP rank %s, TP rank %s", rank,
+        world_size, _DP.rank_in_group, _PP.rank_in_group, _SP_TP.rank_in_group,
+        _SP.rank_in_group, _TP.rank_in_group)
 
 
 def ensure_kv_transfer_initialized(vllm_config: "VllmConfig") -> None:

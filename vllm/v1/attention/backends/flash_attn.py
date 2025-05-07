@@ -454,6 +454,10 @@ class FlashAttentionImpl(AttentionImpl):
         # Whenever making a change in this method, please benchmark the
         # performance to make sure it does not introduce any overhead.
 
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"SP_TP_MODE {SP_TP_MODE}")
         # Ulysses Attention
         # if torch.distributed.get_rank() == 0:
         #     print(f"FlashAttentionImpl.forward \n \
@@ -465,31 +469,40 @@ class FlashAttentionImpl(AttentionImpl):
         #     self.num_heads {self.num_heads}\n \
         #     self.num_kv_heads {self.num_kv_heads}\n \
         #     self.head_size {self.head_size}\n")
-        # output.copy_(query)
-        # return output
-        # traceback.print_stack()
-        # Ulysses all-to-all 1/2
-        # pack
-        qkv = torch.cat(
-            (query.view(-1, self.SP, self.num_heads * self.head_size),
-             key.view(-1, self.SP, self.num_kv_heads * self.head_size),
-             value.view(-1, self.SP, self.num_kv_heads * self.head_size)),
-            dim=-1).transpose(0, 1).reshape(
-                -1, (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
-        # all-to-all
-        qkv_ = torch.empty_like(qkv)
-        torch.distributed.all_to_all_single(qkv_, qkv, group=self.device_group)
-        # unpack
-        q_, k_, v_ = qkv_.split([
-            self.num_heads * self.head_size, self.num_kv_heads *
-            self.head_size, self.num_kv_heads * self.head_size
-        ],
-                                dim=-1)
-        # prepare
-        q_ = q_.reshape(-1, self.num_heads, self.head_size)
-        k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
-        v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
-        c_ = output.view(-1, self.num_heads, self.head_size)
+        if SP_TP_MODE:
+            q_ = query.reshape(-1, self.num_heads, self.head_size)
+            k_ = key.reshape(-1, self.num_kv_heads, self.head_size)
+            v_ = value.reshape(-1, self.num_kv_heads, self.head_size)
+            c_ = output.reshape(-1, self.num_heads, self.head_size)
+        else:
+            # output.copy_(query)
+            # return output
+            # traceback.print_stack()
+            # Ulysses all-to-all 1/2
+            # pack
+            qkv = torch.cat(
+                (query.view(-1, self.SP, self.num_heads * self.head_size),
+                 key.view(-1, self.SP, self.num_kv_heads * self.head_size),
+                 value.view(-1, self.SP, self.num_kv_heads * self.head_size)),
+                dim=-1).transpose(0, 1).reshape(
+                    -1,
+                    (self.num_heads + 2 * self.num_kv_heads) * self.head_size)
+            # all-to-all
+            qkv_ = torch.empty_like(qkv)
+            torch.distributed.all_to_all_single(qkv_,
+                                                qkv,
+                                                group=self.device_group)
+            # unpack
+            q_, k_, v_ = qkv_.split([
+                self.num_heads * self.head_size, self.num_kv_heads *
+                self.head_size, self.num_kv_heads * self.head_size
+            ],
+                                    dim=-1)
+            # prepare
+            q_ = q_.reshape(-1, self.num_heads, self.head_size)
+            k_ = k_.reshape(-1, self.num_kv_heads, self.head_size)
+            v_ = v_.reshape(-1, self.num_kv_heads, self.head_size)
+            c_ = output.view(-1, self.num_heads, self.head_size)
 
         # if torch.distributed.get_rank() == 0:
         #     print(f"\n \
@@ -596,12 +609,15 @@ class FlashAttentionImpl(AttentionImpl):
                 v_descale=layer._v_scale,
             )
         # Ulysses all-to-all 2/2
-        c = torch.empty_like(c_)
-        torch.distributed.all_to_all_single(c, c_, group=self.device_group)
-        output.copy_(
-            torch.transpose(
-                c.view(self.SP, -1, self.num_heads * self.head_size), 0,
-                1).reshape(-1, self.num_heads * self.SP * self.head_size))
+        if SP_TP_MODE:
+            output = c_.reshape(output.shape)
+        else:
+            c = torch.empty_like(c_)
+            torch.distributed.all_to_all_single(c, c_, group=self.device_group)
+            output.copy_(
+                torch.transpose(
+                    c.view(self.SP, -1, self.num_heads * self.head_size), 0,
+                    1).reshape(-1, self.num_heads * self.SP * self.head_size))
         return output
 
 

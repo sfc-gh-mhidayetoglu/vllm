@@ -31,7 +31,8 @@ from transformers import LlamaConfig
 from vllm.attention import Attention
 from vllm.compilation.decorators import support_torch_compile
 from vllm.config import CacheConfig, VllmConfig
-from vllm.distributed import get_pp_group, get_tensor_model_parallel_world_size
+from vllm.distributed import (get_pp_group, get_sp_group,
+                              get_tensor_model_parallel_world_size)
 from vllm.model_executor.layers.activation import SiluAndMul
 from vllm.model_executor.layers.layernorm import RMSNorm
 from vllm.model_executor.layers.linear import (MergedColumnParallelLinear,
@@ -195,13 +196,22 @@ class LlamaAttention(nn.Module):
             prefix=f"{prefix}.attn",
         )
 
+        self.SP = get_sp_group().world_size
+
     def forward(
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
-        q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        if SP_TP_MODE:
+            q_size = self.q_size // self.SP
+            kv_size = self.kv_size // self.SP
+        else:
+            q_size = self.q_size
+            kv_size = self.kv_size
+        q, k, v = qkv.split([q_size, kv_size, kv_size], dim=-1)
         q, k = self.rotary_emb(positions, q, k)
         attn_output = self.attn(q, k, v)
         output, _ = self.o_proj(attn_output)
@@ -357,6 +367,7 @@ class LlamaModel(nn.Module):
             residual = intermediate_tensors["residual"]
 
         for layer in self.layers[self.start_layer:self.end_layer]:
+            # for layer in self.layers[0:1]:
             hidden_states, residual = layer(positions, hidden_states, residual)
 
         if not get_pp_group().is_last_rank:
@@ -435,6 +446,33 @@ class LlamaModel(nn.Module):
         return loaded_params
 
 
+@support_torch_compile
+class LlamaModelTP(nn.Module):
+
+    def __init__(self,
+                 *,
+                 vllm_config: VllmConfig,
+                 model: LlamaModel,
+                 prefix: str = ""):
+        super().__init__()
+        self.config = vllm_config.model_config.hf_config
+        self._model = [model]  # Box it to avoid recursive registration
+
+    @property
+    def model(self) -> LlamaModel:
+        return self._model[0]
+
+    def forward(
+        self,
+        input_ids: Optional[torch.Tensor],
+        positions: torch.Tensor,
+        intermediate_tensors: Optional[IntermediateTensors],
+        inputs_embeds: Optional[torch.Tensor] = None,
+    ) -> Union[torch.Tensor, IntermediateTensors]:
+        return self.model.forward(input_ids, positions, intermediate_tensors,
+                                  inputs_embeds)
+
+
 class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
     packed_modules_mapping = {
         "qkv_proj": ["q_proj", "k_proj", "v_proj"],
@@ -487,6 +525,12 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                                       prefix=maybe_prefix(prefix, "model"),
                                       layer_type=layer_type)
 
+        vllm_config.compilation_config = (
+            vllm_config.compilation_config.model_copy())
+        vllm_config.compilation_config.inductor_compile_config = (
+            vllm_config.compilation_config.inductor_compile_config.copy())
+        self.model_tp = LlamaModelTP(vllm_config=vllm_config, model=self.model)
+
         if get_pp_group().is_last_rank:
             self.unpadded_vocab_size = config.vocab_size
             if lora_config:
@@ -520,6 +564,11 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
 
+        self.prefill = 0
+        self.decode = 0
+        self.mixed = 0
+        self.numiter = 0
+
     def _init_model(self,
                     vllm_config: VllmConfig,
                     prefix: str = "",
@@ -538,8 +587,40 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
-        model_output = self.model(input_ids, positions, intermediate_tensors,
-                                  inputs_embeds)
+
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+
+        # from vllm.forward_context import get_forward_context
+        # metadata = get_forward_context().attn_metadata
+        # if torch.distributed.get_rank() == 0:
+        #     print(f"numiter: {self.numiter} "
+        #           f"input_ids: {input_ids.shape} SP_TP_MODE: {SP_TP_MODE} ")
+        #     if metadata is None:
+        #         print("metadata: None")
+        #     else:
+        #         seq_lens = metadata.seq_lens.tolist()
+        #         num_actual_tokens = metadata.num_actual_tokens
+        #         self.numiter += 1
+        #         if len(seq_lens) == num_actual_tokens:
+        #             self.decode += 1
+        #         else:
+        #             if len(seq_lens) == 1 and num_actual_tokens > 1:
+        #                 self.prefill += 1
+        #             else:
+        #                 self.mixed += 1
+        #         print(f"metadata: "
+        #               f"actual tokens: {num_actual_tokens} "
+        #               f"seq. lens: {seq_lens} "
+        #               f"prefill {self.prefill} "
+        #               f"decode {self.decode} "
+        #               f"mixed {self.mixed}")
+
+        if SP_TP_MODE is True:
+            model_output = self.model_tp(input_ids, positions,
+                                         intermediate_tensors, inputs_embeds)
+        if SP_TP_MODE is False:
+            model_output = self.model(input_ids, positions,
+                                      intermediate_tensors, inputs_embeds)
         return model_output
 
     def compute_logits(

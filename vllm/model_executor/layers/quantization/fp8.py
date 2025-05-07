@@ -10,7 +10,7 @@ from torch.nn.parameter import Parameter
 
 import vllm.envs as envs
 from vllm import _custom_ops as ops
-from vllm.distributed import get_tensor_model_parallel_world_size
+from vllm.distributed import get_sp_group, get_tensor_model_parallel_world_size
 from vllm.logger import init_logger
 from vllm.model_executor.layers.fused_moe import (FusedMoE, FusedMoEMethodBase,
                                                   FusedMoeWeightScaleSupported)
@@ -386,6 +386,43 @@ class Fp8LinearMethod(LinearMethodBase):
             # Activations not quantized for marlin.
             del layer.input_scale
 
+        # TODO: skip below if shapeshifter threshold is 0
+        sp_size = get_sp_group().world_size
+        sp_rank = get_sp_group().rank_in_group
+        output_partition_sizes = layer.logical_widths
+        if output_partition_sizes == [layer.weight.shape[1]]:
+            assert layer.weight.shape[0] % sp_size == 0
+            chunk_size = layer.weight.shape[0] // sp_size
+            self.sp_tp_weight = layer.weight.split(
+                chunk_size, dim=0)[sp_rank].t().contiguous().t()
+        else:
+            assert layer.weight.shape[1] % sp_size == 0
+            chunk_sizes = []
+            for size in output_partition_sizes:
+                chunk_size = size // sp_size
+                chunk_sizes.extend([chunk_size] * sp_size)
+            split = layer.weight.split(chunk_sizes, dim=1)
+            self.sp_tp_weight = torch.cat(
+                [split[i] for i in range(sp_rank, len(split), sp_size)],
+                dim=1).t().contiguous().t()
+
+        if get_sp_group().rank == 0:
+            if output_partition_sizes == [layer.weight.shape[1]]:
+                print(f"row parallel SP: {sp_size}.")
+            else:
+                print(f"column parallel {sp_size}.")
+            print(f"loaded weight shape: {layer.weight.shape} "
+                  f"stride {layer.weight.stride()} "
+                  f"contiguous {layer.weight.is_contiguous()} "
+                  f"tcontiguous {layer.weight.t().is_contiguous()} "
+                  f" {layer.weight.dtype}")
+            print(f"     logical widths: {layer.logical_widths}")
+            print(f"      SP_TP weights: {self.sp_tp_weight.shape} "
+                  f"stride {self.sp_tp_weight.stride()} "
+                  f"contiguous {self.sp_tp_weight.is_contiguous()} "
+                  f"tcontiguous {self.sp_tp_weight.t().is_contiguous()} "
+                  f" {self.sp_tp_weight.dtype}")
+
     def apply(self,
               layer: torch.nn.Module,
               x: torch.Tensor,
@@ -413,12 +450,13 @@ class Fp8LinearMethod(LinearMethodBase):
                 cutlass_block_fp8_supported=self.cutlass_block_fp8_supported,
             )
 
-        return self.fp8_linear.apply(input=x,
-                                     weight=layer.weight,
-                                     weight_scale=layer.weight_scale,
-                                     out_dtype=self.out_dtype,
-                                     input_scale=layer.input_scale,
-                                     bias=bias)
+        from vllm.v1.worker.gpu_model_runner import SP_TP_MODE
+        return self.fp8_linear.apply(
+            input=x,
+            weight=self.sp_tp_weight if SP_TP_MODE else layer.weight,
+            weight_scale=layer.weight_scale,
+            input_scale=layer.input_scale,
+            bias=bias)
 
 
 class Fp8MoEMethod(FusedMoEMethodBase):

@@ -117,6 +117,7 @@ class EngineArgs:
     pipeline_parallel_size: int = ParallelConfig.pipeline_parallel_size
     tensor_parallel_size: int = ParallelConfig.tensor_parallel_size
     sequence_parallel_size: int = ParallelConfig.sequence_parallel_size
+    shapeshifter_threshold: int = ParallelConfig.shapeshifter_threshold
     data_parallel_size: int = ParallelConfig.data_parallel_size
     enable_expert_parallel: bool = ParallelConfig.enable_expert_parallel
     max_parallel_loading_workers: Optional[
@@ -450,6 +451,9 @@ class EngineArgs:
         parallel_group.add_argument(
             '--sequence-parallel-size', '-sp',
             **parallel_kwargs["sequence_parallel_size"])
+        parallel_group.add_argument(
+            '--shapeshifter-threshold', '-sst',
+            **parallel_kwargs["shapeshifter_threshold"])
         parallel_group.add_argument('--data-parallel-size', '-dp',
                                     **parallel_kwargs["data_parallel_size"])
         parallel_group.add_argument(
@@ -1211,6 +1215,7 @@ class EngineArgs:
             pipeline_parallel_size=self.pipeline_parallel_size,
             tensor_parallel_size=self.tensor_parallel_size,
             sequence_parallel_size=self.sequence_parallel_size,
+            shapeshifter_threshold=self.shapeshifter_threshold,
             data_parallel_size=self.data_parallel_size,
             enable_expert_parallel=self.enable_expert_parallel,
             max_parallel_loading_workers=self.max_parallel_loading_workers,
