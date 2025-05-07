@@ -447,8 +447,9 @@ class EngineArgs:
             **parallel_kwargs["pipeline_parallel_size"])
         parallel_group.add_argument('--tensor-parallel-size', '-tp',
                                     **parallel_kwargs["tensor_parallel_size"])
-        parallel_group.add_argument('--sequence-parallel-size', '-sp',
-                                    **parallel_kwargs["sequence_parallel_size"])
+        parallel_group.add_argument(
+            '--sequence-parallel-size', '-sp',
+            **parallel_kwargs["sequence_parallel_size"])
         parallel_group.add_argument('--data-parallel-size', '-dp',
                                     **parallel_kwargs["data_parallel_size"])
         parallel_group.add_argument(
@@ -1208,8 +1209,8 @@ class EngineArgs:
 
         parallel_config = ParallelConfig(
             pipeline_parallel_size=self.pipeline_parallel_size,
-            sequence_parallel_size=self.sequence_parallel_size,
             tensor_parallel_size=self.tensor_parallel_size,
+            sequence_parallel_size=self.sequence_parallel_size,
             data_parallel_size=self.data_parallel_size,
             enable_expert_parallel=self.enable_expert_parallel,
             max_parallel_loading_workers=self.max_parallel_loading_workers,

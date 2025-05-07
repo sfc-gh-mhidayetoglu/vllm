@@ -757,7 +757,7 @@ _SP: Optional[GroupCoordinator] = None
 
 
 def get_sp_group() -> GroupCoordinator:
-    assert _SP is not None
+    assert _SP is not None, ("sequence parallel group is not initialized")
     return _SP
 
 
