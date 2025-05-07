@@ -1658,15 +1658,9 @@ class ParallelConfig:
         return hashlib.sha256(str(factors).encode()).hexdigest()
 
     def __post_init__(self) -> None:
-        print(f"pipeline_parallel_size: {self.pipeline_parallel_size}")
-        print(f"tensor_parallel_size: {self.tensor_parallel_size}")
-        print(f"sequence_parallel_size: {self.sequence_parallel_size}")
-        print(f"shapeshifter_threshold: {self.shapeshifter_threshold}")
-        print(f"data_parallel_size: {self.data_parallel_size}")
         self.world_size = self.pipeline_parallel_size * \
             self.tensor_parallel_size * \
             self.sequence_parallel_size
-        print(f"world_size: {self.world_size}")
 
         if self.data_parallel_size > 1:
             # Data parallel was specified in the engine args.
