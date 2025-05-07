@@ -1655,7 +1655,6 @@ class ParallelConfig:
         factors.append(self.pipeline_parallel_size)
         factors.append(self.tensor_parallel_size)
         factors.append(self.sequence_parallel_size)
-        factors.append(self.shapeshifter_threshold)
         return hashlib.sha256(str(factors).encode()).hexdigest()
 
     def __post_init__(self) -> None:
