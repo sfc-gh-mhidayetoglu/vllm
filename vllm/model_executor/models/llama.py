@@ -579,10 +579,9 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
                                   inputs_embeds)
         torch.cuda.synchronize()
         elapsed_time = time.time() - start_time
-        print(f"Time taken by self.model: {elapsed_time:.6f} seconds")
+        if get_world_group().rank == 0:
+            print(f"Time taken by self.model: {elapsed_time:.6f} seconds")
 
-        model_output = self.model(input_ids, positions, intermediate_tensors,
-                                  inputs_embeds)
         return model_output
 
     def compute_logits(
