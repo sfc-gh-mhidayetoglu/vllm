@@ -580,7 +580,8 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         torch.cuda.synchronize()
         elapsed_time = time.time() - start_time
         if get_world_group().rank == 0:
-            print(f"Time taken by self.model: {elapsed_time:.6f} seconds")
+            print(f"Time taken by self.model: {elapsed_time/1000:.6f} "
+                  f"milliseconds")
 
         return model_output
 
