@@ -520,6 +520,11 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         self.make_empty_intermediate_tensors = (
             self.model.make_empty_intermediate_tensors)
 
+        self.prefill = 0
+        self.decode = 0
+        self.mixed = 0
+        self.numiter = 0
+
     def _init_model(self,
                     vllm_config: VllmConfig,
                     prefix: str = "",
@@ -538,6 +543,44 @@ class LlamaForCausalLM(nn.Module, SupportsLoRA, SupportsPP):
         intermediate_tensors: Optional[IntermediateTensors] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
     ) -> Union[torch.Tensor, IntermediateTensors]:
+
+        from vllm.forward_context import get_forward_context
+        metadata = get_forward_context().attn_metadata
+        if torch.distributed.get_rank() == 0:
+            print(f"numiter: {self.numiter} "
+                  f"input_ids: {input_ids.shape}")
+            if metadata is None:
+                print("metadata: None")
+            else:
+                seq_lens = metadata.seq_lens.tolist()
+                num_actual_tokens = metadata.num_actual_tokens
+                self.numiter += 1
+                if len(seq_lens) == num_actual_tokens:
+                    self.decode += 1
+                else:
+                    if len(seq_lens) == 1 and num_actual_tokens > 1:
+                        self.prefill += 1
+                    else:
+                        self.mixed += 1
+                print(f"metadata: "
+                      f"actual tokens: {num_actual_tokens} "
+                      f"seq. lens: {seq_lens} "
+                      f"prefill {self.prefill} "
+                      f"decode {self.decode} "
+                      f"mixed {self.mixed}")
+
+        import time
+
+        from vllm.distributed import get_world_group
+        torch.cuda.synchronize()
+        get_world_group().barrier()
+        start_time = time.time()
+        model_output = self.model(input_ids, positions, intermediate_tensors,
+                                  inputs_embeds)
+        torch.cuda.synchronize()
+        elapsed_time = time.time() - start_time
+        print(f"Time taken by self.model: {elapsed_time:.6f} seconds")
+
         model_output = self.model(input_ids, positions, intermediate_tensors,
                                   inputs_embeds)
         return model_output
