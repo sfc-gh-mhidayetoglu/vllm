@@ -356,8 +356,10 @@ class LlamaModel(nn.Module):
             hidden_states = intermediate_tensors["hidden_states"]
             residual = intermediate_tensors["residual"]
 
-        for layer in self.layers[self.start_layer:self.end_layer]:
-            hidden_states, residual = layer(positions, hidden_states, residual)
+        # for layer in self.layers[self.start_layer:self.end_layer]:
+        #     hidden_states, residual =
+        # layer(positions, hidden_states, residual)
+        residual = hidden_states
 
         if not get_pp_group().is_last_rank:
             return IntermediateTensors({
