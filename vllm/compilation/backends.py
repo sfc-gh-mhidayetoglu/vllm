@@ -646,6 +646,7 @@ class PiecewiseBackend:
                         entry.num_finished_warmup,
                         self.compilation_config.cudagraph_num_of_warmups,
                         runtime_shape)
+                    print("warmup test")
                 return entry.runnable(*args)
 
             if self.is_first_graph:
@@ -654,6 +655,7 @@ class PiecewiseBackend:
                 # We only log it in the debug mode.
                 logger.debug("Capturing a cudagraph for shape %s",
                              runtime_shape)
+                print("capture test")
 
             input_addresses = [
                 x.data_ptr() for x in args if isinstance(x, torch.Tensor)
@@ -674,7 +676,8 @@ class PiecewiseBackend:
                         patch("torch.cuda.empty_cache", lambda: None))
 
                 # mind-exploding: carefully manage the reference and memory.
-                with torch.cuda.graph(cudagraph, pool=self.graph_pool):
+                # with torch.cuda.graph(cudagraph, pool=self.graph_pool):
+                if True:
                     # `output` is managed by pytorch's cudagraph pool
                     output = entry.runnable(*args)
                     if self.is_last_graph:
