@@ -1,108 +1,71 @@
-from http import HTTPStatus
-from unittest.mock import MagicMock
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+
+import asyncio
+import time
+from unittest.mock import Mock
 
 import pytest
 
 from vllm.config import ModelConfig
-from vllm.engine.protocol import EngineClient
-from vllm.entrypoints.openai.protocol import (ErrorResponse,
-                                              LoadLoraAdapterRequest,
-                                              UnloadLoraAdapterRequest)
-from vllm.entrypoints.openai.serving_engine import BaseModelPath, OpenAIServing
-
-MODEL_NAME = "meta-llama/Llama-2-7b"
-BASE_MODEL_PATHS = [BaseModelPath(name=MODEL_NAME, model_path=MODEL_NAME)]
-LORA_LOADING_SUCCESS_MESSAGE = (
-    "Success: LoRA adapter '{lora_name}' added successfully.")
-LORA_UNLOADING_SUCCESS_MESSAGE = (
-    "Success: LoRA adapter '{lora_name}' removed successfully.")
+from vllm.entrypoints.openai.serving_engine import OpenAIServing
+from vllm.entrypoints.openai.serving_models import OpenAIServingModels
+from vllm.tokenizers.mistral import MistralTokenizer
 
 
-async def _async_serving_engine_init():
-    mock_engine_client = MagicMock(spec=EngineClient)
-    mock_model_config = MagicMock(spec=ModelConfig)
-    # Set the max_model_len attribute to avoid missing attribute
-    mock_model_config.max_model_len = 2048
+@pytest.fixture()
+def serving() -> OpenAIServing:
+    """Create a minimal OpenAIServing instance for testing."""
 
-    serving_engine = OpenAIServing(mock_engine_client,
-                                   mock_model_config,
-                                   BASE_MODEL_PATHS,
-                                   lora_modules=None,
-                                   prompt_adapters=None,
-                                   request_logger=None)
-    return serving_engine
+    # Create minimal mocks
+    engine_client = Mock()
+    model_config = Mock(spec=ModelConfig)
+    model_config.max_model_len = 32768
+    models = Mock(spec=OpenAIServingModels)
+    models.model_config = model_config
+    models.input_processor = Mock()
+    models.io_processor = Mock()
+
+    serving = OpenAIServing(
+        engine_client=engine_client,
+        models=models,
+        request_logger=None,
+    )
+    return serving
 
 
 @pytest.mark.asyncio
-async def test_load_lora_adapter_success():
-    serving_engine = await _async_serving_engine_init()
-    request = LoadLoraAdapterRequest(lora_name="adapter",
-                                     lora_path="/path/to/adapter2")
-    response = await serving_engine.load_lora_adapter(request)
-    assert response == LORA_LOADING_SUCCESS_MESSAGE.format(lora_name='adapter')
-    assert len(serving_engine.lora_requests) == 1
-    assert serving_engine.lora_requests[0].lora_name == "adapter"
+async def test_async_mistral_tokenizer_does_not_block_event_loop(
+    serving: OpenAIServing,
+):
+    expected_tokens = [1, 2, 3]
 
+    # Mock the blocking version to sleep
+    def mocked_apply_chat_template(*_args, **_kwargs):
+        time.sleep(2)
+        return expected_tokens
 
-@pytest.mark.asyncio
-async def test_load_lora_adapter_missing_fields():
-    serving_engine = await _async_serving_engine_init()
-    request = LoadLoraAdapterRequest(lora_name="", lora_path="")
-    response = await serving_engine.load_lora_adapter(request)
-    assert isinstance(response, ErrorResponse)
-    assert response.type == "InvalidUserInput"
-    assert response.code == HTTPStatus.BAD_REQUEST
+    mock_tokenizer = Mock(spec=MistralTokenizer)
+    mock_tokenizer.apply_chat_template.side_effect = mocked_apply_chat_template
 
+    task = serving._apply_mistral_chat_template_async(
+        tokenizer=mock_tokenizer, messages=[], chat_template=None, tools=[]
+    )
 
-@pytest.mark.asyncio
-async def test_load_lora_adapter_duplicate():
-    serving_engine = await _async_serving_engine_init()
-    request = LoadLoraAdapterRequest(lora_name="adapter1",
-                                     lora_path="/path/to/adapter1")
-    response = await serving_engine.load_lora_adapter(request)
-    assert response == LORA_LOADING_SUCCESS_MESSAGE.format(
-        lora_name='adapter1')
-    assert len(serving_engine.lora_requests) == 1
+    # Ensure the event loop is not blocked
+    blocked_count = 0
+    for _i in range(20):  # Check over ~2 seconds
+        start = time.perf_counter()
+        await asyncio.sleep(0)
+        elapsed = time.perf_counter() - start
 
-    request = LoadLoraAdapterRequest(lora_name="adapter1",
-                                     lora_path="/path/to/adapter1")
-    response = await serving_engine.load_lora_adapter(request)
-    assert isinstance(response, ErrorResponse)
-    assert response.type == "InvalidUserInput"
-    assert response.code == HTTPStatus.BAD_REQUEST
-    assert len(serving_engine.lora_requests) == 1
+        # an overly generous elapsed time for slow machines
+        if elapsed >= 0.5:
+            blocked_count += 1
 
+        await asyncio.sleep(0.1)
 
-@pytest.mark.asyncio
-async def test_unload_lora_adapter_success():
-    serving_engine = await _async_serving_engine_init()
-    request = LoadLoraAdapterRequest(lora_name="adapter1",
-                                     lora_path="/path/to/adapter1")
-    response = await serving_engine.load_lora_adapter(request)
-    assert len(serving_engine.lora_requests) == 1
-
-    request = UnloadLoraAdapterRequest(lora_name="adapter1")
-    response = await serving_engine.unload_lora_adapter(request)
-    assert response == LORA_UNLOADING_SUCCESS_MESSAGE.format(
-        lora_name='adapter1')
-    assert len(serving_engine.lora_requests) == 0
-
-
-@pytest.mark.asyncio
-async def test_unload_lora_adapter_missing_fields():
-    serving_engine = await _async_serving_engine_init()
-    request = UnloadLoraAdapterRequest(lora_name="", lora_int_id=None)
-    response = await serving_engine.unload_lora_adapter(request)
-    assert isinstance(response, ErrorResponse)
-    assert response.type == "InvalidUserInput"
-    assert response.code == HTTPStatus.BAD_REQUEST
-
-
-@pytest.mark.asyncio
-async def test_unload_lora_adapter_not_found():
-    serving_engine = await _async_serving_engine_init()
-    request = UnloadLoraAdapterRequest(lora_name="nonexistent_adapter")
-    response = await serving_engine.unload_lora_adapter(request)
-    assert isinstance(response, ErrorResponse)
-    assert response.type == "InvalidUserInput"
-    assert response.code == HTTPStatus.BAD_REQUEST
+    # Ensure task completes
+    tokens = await task
+    assert tokens == expected_tokens, "Mocked blocking tokenizer was not called"
+    assert blocked_count == 0, "Event loop blocked during tokenization"

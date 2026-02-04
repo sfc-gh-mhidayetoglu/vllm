@@ -1,118 +1,90 @@
-from typing import (Iterable, List, Literal, Mapping, Optional, Tuple,
-                    TypedDict, Union)
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+from collections.abc import Iterable, Mapping, Sequence
+from typing import Annotated, Literal, TypeAlias
 
 import torch
 from torch import nn
-from transformers import PaliGemmaConfig
+from transformers import BatchFeature, PaliGemmaConfig
 
-from vllm.attention import AttentionMetadata
-from vllm.config import CacheConfig, MultiModalConfig
-from vllm.inputs import INPUT_REGISTRY, InputContext, LLMInputs
+from vllm.config import VllmConfig
+from vllm.config.multimodal import BaseDummyOptions
 from vllm.logger import init_logger
-from vllm.model_executor.layers.quantization import QuantizationConfig
-from vllm.model_executor.layers.sampler import SamplerOutput
-from vllm.model_executor.models.gemma import GemmaForCausalLM
-from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.multimodal import MULTIMODAL_REGISTRY
-from vllm.multimodal.utils import cached_get_tokenizer
+from vllm.multimodal.inputs import (
+    MultiModalDataDict,
+    MultiModalFieldConfig,
+    MultiModalInputs,
+    MultiModalKwargsItems,
+    MultiModalUUIDDict,
+)
+from vllm.multimodal.parse import (
+    ImageEmbeddingItems,
+    ImageProcessorItems,
+    MultiModalDataItems,
+)
+from vllm.multimodal.processing import (
+    BaseMultiModalProcessor,
+    BaseProcessingInfo,
+    PromptIndexTargets,
+    PromptInsertion,
+    PromptUpdate,
+    PromptUpdateDetails,
+)
+from vllm.multimodal.profiling import BaseDummyInputsBuilder
 from vllm.sequence import IntermediateTensors
+from vllm.utils.tensor_schema import TensorSchema, TensorShape
 
-from .interfaces import SupportsMultiModal, SupportsPP
-from .siglip import (SiglipVisionModel, dummy_image_for_siglip,
-                     dummy_seq_data_for_siglip, get_max_siglip_image_tokens)
-from .utils import AutoWeightsLoader, merge_multimodal_embeddings
+from .interfaces import (
+    MultiModalEmbeddings,
+    SupportsLoRA,
+    SupportsMultiModal,
+    SupportsPP,
+)
+from .module_mapping import MultiModelKeys
+from .siglip import SiglipVisionModel
+from .utils import (
+    AutoWeightsLoader,
+    WeightsMapper,
+    init_vllm_registered_model,
+    maybe_prefix,
+)
+from .vision import get_vision_encoder_info
 
 logger = init_logger(__name__)
 
 
-class PaliGemmaImagePixelInputs(TypedDict):
-    type: Literal["pixel_values"]
-    data: torch.Tensor
-    """Shape: `(batch_size * num_images, num_channels, height, width)`"""
-
-
-class PaliGemmaImageEmbeddingInputs(TypedDict):
-    type: Literal["image_embeds"]
-    data: torch.Tensor
-    """Shape: `(batch_size * num_images, image_feature_size, hidden_size)`
-
-    `hidden_size` must match the hidden size of language model backbone.
+class PaliGemmaImagePixelInputs(TensorSchema):
+    """
+    Dimensions:
+        - bn: Batch size * number of images
+        - c: Number of channels (3)
+        - h: Height
+        - w: Width
     """
 
-
-PaliGemmaImageInputs = Union[PaliGemmaImagePixelInputs,
-                             PaliGemmaImageEmbeddingInputs]
-
-
-def get_max_paligemma_image_tokens(ctx: InputContext):
-    hf_config = ctx.get_hf_config(PaliGemmaConfig)
-    vision_config = hf_config.vision_config
-
-    return get_max_siglip_image_tokens(vision_config)
+    type: Literal["pixel_values"] = "pixel_values"
+    data: Annotated[torch.Tensor, TensorShape("bn", 3, "h", "w")]
 
 
-def dummy_data_for_paligemma(ctx: InputContext, seq_len: int,
-                             mm_counts: Mapping[str, int]):
-    hf_config = ctx.get_hf_config(PaliGemmaConfig)
-    vision_config = hf_config.vision_config
-    num_images = mm_counts["image"]
-
-    seq_data = dummy_seq_data_for_siglip(
-        vision_config,
-        seq_len,
-        num_images,
-        image_token_id=hf_config.image_token_index,
-    )
-
-    mm_data = dummy_image_for_siglip(vision_config, num_images)
-    return seq_data, mm_data
-
-
-def input_processor_for_paligemma(ctx: InputContext, llm_inputs: LLMInputs):
-
+class PaliGemmaImageEmbeddingInputs(TensorSchema):
     """
-    The correct prompt format needs to be:
-    '<image>' * image_feature_size + '<bos>' + prompt + '\n'
+    Dimensions:
+        - bn: Batch size * number of images
+        - ifs: Image feature size
+        - hs: Hidden size (must match language model backbone)
+    """
 
-    See https://github.com/huggingface/transformers/blob/25245ec26dc29bcf6102e1b4ddd0dfd02e720cf5/src/transformers/models/paligemma/processing_paligemma.py#L55
-    """ # noqa
+    type: Literal["image_embeds"] = "image_embeds"
+    data: Annotated[torch.Tensor, TensorShape("bn", "ifs", "hs")]
 
-    multi_modal_data = llm_inputs.get("multi_modal_data")
-    if multi_modal_data is None or "image" not in multi_modal_data:
-        return llm_inputs
 
-    model_config = ctx.model_config
-    hf_config = ctx.get_hf_config(PaliGemmaConfig)
-
-    tokenizer = cached_get_tokenizer(model_config.tokenizer)
-    image_feature_size = hf_config.text_config.num_image_tokens
-    image_token_str = tokenizer.decode(hf_config.image_token_index)
-    bos_token = tokenizer.decode(hf_config.bos_token_id)
-    image_token_str_pad = image_token_str * image_feature_size
-    image_token_ids_pad = [hf_config.image_token_index] * image_feature_size
-
-    orig_prompt = llm_inputs.get("prompt")
-    orig_prompt_ids = llm_inputs.get("prompt_token_ids")
-
-    if orig_prompt is not None and image_token_str in orig_prompt:
-        logger.warning(
-            "The image token '%s' was detected in the prompt and "
-            "will be removed. Please follow the proper prompt format"
-            " documented on HuggingFace.", image_token_str)
-        orig_prompt = orig_prompt.replace(image_token_str, "")
-        orig_prompt_ids.remove(hf_config.image_token_index)
-
-    new_prompt = f"{image_token_str_pad}{bos_token}{orig_prompt}\n"
-    new_token_ids = image_token_ids_pad + orig_prompt_ids + [108]  #newline
-
-    # NOTE: Create a defensive copy of the original inputs
-    return LLMInputs(prompt_token_ids=new_token_ids,
-                     prompt=new_prompt,
-                     multi_modal_data=multi_modal_data)
+PaliGemmaImageInputs: TypeAlias = (
+    PaliGemmaImagePixelInputs | PaliGemmaImageEmbeddingInputs
+)
 
 
 class PaliGemmaMultiModalProjector(nn.Module):
-
     def __init__(self, vision_hidden_size: int, projection_dim: int):
         super().__init__()
 
@@ -123,56 +95,238 @@ class PaliGemmaMultiModalProjector(nn.Module):
         return hidden_states
 
 
-@MULTIMODAL_REGISTRY.register_image_input_mapper()
-@MULTIMODAL_REGISTRY.register_max_image_tokens(get_max_paligemma_image_tokens)
-@INPUT_REGISTRY.register_dummy_data(dummy_data_for_paligemma)
-@INPUT_REGISTRY.register_input_processor(input_processor_for_paligemma)
-class PaliGemmaForConditionalGeneration(nn.Module, SupportsMultiModal,
-                                        SupportsPP):
+class PaliGemmaProcessingInfo(BaseProcessingInfo):
+    def get_hf_config(self):
+        return self.ctx.get_hf_config(PaliGemmaConfig)
 
-    def __init__(self,
-                 config: PaliGemmaConfig,
-                 multimodal_config: MultiModalConfig,
-                 cache_config: Optional[CacheConfig] = None,
-                 quant_config: Optional[QuantizationConfig] = None) -> None:
+    def get_vision_encoder_info(self):
+        return get_vision_encoder_info(self.get_hf_config())
+
+    def get_supported_mm_limits(self) -> Mapping[str, int | None]:
+        return {"image": 1}
+
+    def get_num_image_tokens(
+        self,
+        *,
+        image_width: int,
+        image_height: int,
+    ) -> int:
+        vision_encoder_info = self.get_vision_encoder_info()
+
+        return vision_encoder_info.get_num_image_tokens(
+            image_width=image_width,
+            image_height=image_height,
+        )
+
+
+class PaliGemmaDummyInputsBuilder(BaseDummyInputsBuilder[PaliGemmaProcessingInfo]):
+    def get_dummy_text(self, mm_counts: Mapping[str, int]) -> str:
+        return ""
+
+    def get_dummy_mm_data(
+        self,
+        seq_len: int,
+        mm_counts: Mapping[str, int],
+        mm_options: Mapping[str, BaseDummyOptions] | None = None,
+    ) -> MultiModalDataDict:
+        hf_config = self.info.get_hf_config()
+        vision_config = hf_config.vision_config
+        max_image_size = vision_config.image_size
+
+        num_images = mm_counts.get("image", 0)
+
+        image_overrides = mm_options.get("image") if mm_options else None
+
+        return {
+            "image": self._get_dummy_images(
+                width=max_image_size,
+                height=max_image_size,
+                num_images=num_images,
+                overrides=image_overrides,
+            )
+        }
+
+
+class PaliGemmaMultiModalProcessor(BaseMultiModalProcessor[PaliGemmaProcessingInfo]):
+    def _call_hf_processor(
+        self,
+        prompt: str,
+        mm_data: Mapping[str, object],
+        mm_kwargs: Mapping[str, object],
+        tok_kwargs: Mapping[str, object],
+    ) -> BatchFeature:
+        tokenizer = self.info.get_tokenizer()
+        if not mm_data:
+            prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
+            return BatchFeature(dict(input_ids=[prompt_ids]), tensor_type="pt")
+
+        return super()._call_hf_processor(
+            prompt=prompt,
+            mm_data=mm_data,
+            mm_kwargs=mm_kwargs,
+            tok_kwargs=tok_kwargs,
+        )
+
+    def _get_mm_fields_config(
+        self,
+        hf_inputs: BatchFeature,
+        hf_processor_mm_kwargs: Mapping[str, object],
+    ) -> Mapping[str, MultiModalFieldConfig]:
+        return dict(pixel_values=MultiModalFieldConfig.batched("image"))
+
+    def _get_prompt_updates(
+        self,
+        mm_items: MultiModalDataItems,
+        hf_processor_mm_kwargs: Mapping[str, object],
+        out_mm_kwargs: MultiModalKwargsItems,
+    ) -> Sequence[PromptUpdate]:
+        hf_config = self.info.get_hf_config()
+        image_token_id = hf_config.image_token_index
+
+        tokenizer = self.info.get_tokenizer()
+
+        bos_token_id = tokenizer.bos_token_id
+        assert isinstance(bos_token_id, int)
+
+        def get_insertion(item_idx: int):
+            images = mm_items.get_items(
+                "image", (ImageEmbeddingItems, ImageProcessorItems)
+            )
+
+            if isinstance(images, ImageEmbeddingItems):
+                num_image_tokens = images.get_feature_size(item_idx)
+            else:
+                image_size = images.get_image_size(item_idx)
+                num_image_tokens = self.info.get_num_image_tokens(
+                    image_width=image_size.width,
+                    image_height=image_size.height,
+                )
+
+            image_tokens = [image_token_id] * num_image_tokens
+
+            return PromptUpdateDetails.select_token_id(
+                image_tokens + [bos_token_id],
+                embed_token_id=image_token_id,
+            )
+
+        # Paligemma 1 and 2 have different tokenizer.add_bos_token
+        # Insert <image>*n + <bos> after <bos> for Paligemma 1
+        # Insert <image>*n + <bos> for Paligemma 2
+        return [
+            PromptInsertion(
+                modality="image",
+                target=PromptIndexTargets.prefix(
+                    [bos_token_id] if tokenizer.add_bos_token else []
+                ),
+                insertion=get_insertion,
+            )
+        ]
+
+    def apply(
+        self,
+        prompt: str | list[int],
+        mm_data: MultiModalDataDict,
+        hf_processor_mm_kwargs: Mapping[str, object],
+        tokenization_kwargs: Mapping[str, object] | None = None,
+        mm_uuids: MultiModalUUIDDict | None = None,
+    ) -> MultiModalInputs:
+        mm_inputs = super().apply(
+            prompt,
+            mm_data,
+            hf_processor_mm_kwargs,
+            tokenization_kwargs,
+            mm_uuids=mm_uuids,
+        )
+        prompt_token_ids = mm_inputs["prompt_token_ids"]
+
+        tokenizer = self.info.get_tokenizer()
+        newline_prompt = "\n"
+        newline_token_id = tokenizer.encode(newline_prompt)[-1]  # 108
+        # Force to add newline at the end of prompt for paligemma's format
+        # This step can NOT be replacemented by current PromptUpdate methods
+        if len(prompt_token_ids) and prompt_token_ids[-1] != newline_token_id:
+            prompt_token_ids.append(newline_token_id)
+            mm_inputs["prompt_token_ids"] = prompt_token_ids
+
+        return mm_inputs
+
+
+@MULTIMODAL_REGISTRY.register_processor(
+    PaliGemmaMultiModalProcessor,
+    info=PaliGemmaProcessingInfo,
+    dummy_inputs=PaliGemmaDummyInputsBuilder,
+)
+class PaliGemmaForConditionalGeneration(
+    nn.Module, SupportsLoRA, SupportsMultiModal, SupportsPP
+):
+    packed_modules_mapping = {
+        "qkv_proj": [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+        ],
+        "gate_up_proj": [
+            "gate_proj",
+            "up_proj",
+        ],
+    }
+
+    hf_to_vllm_mapper = WeightsMapper(
+        orig_to_new_prefix={
+            # mapping for new names in checkpoint saved after transformers v4.52
+            "model.language_model.": "language_model.model.",
+            "model.vision_tower.": "vision_tower.",
+            "model.multi_modal_projector.": "multi_modal_projector.",
+            "lm_head.": "language_model.lm_head.",
+        }
+    )
+
+    @classmethod
+    def get_placeholder_str(cls, modality: str, i: int) -> str | None:
+        if modality.startswith("image"):
+            return None
+
+        raise ValueError("Only image modality is supported")
+
+    def __init__(self, *, vllm_config: VllmConfig, prefix: str = ""):
         super().__init__()
-
+        config = vllm_config.model_config.hf_config
+        quant_config = vllm_config.quant_config
+        multimodal_config = vllm_config.model_config.multimodal_config
         self.config = config
         self.multimodal_config = multimodal_config
 
-        self.vision_tower = SiglipVisionModel(config.vision_config)
+        self.vision_tower = SiglipVisionModel(
+            config.vision_config,
+            quant_config,
+            prefix=maybe_prefix(prefix, "vision_tower"),
+        )
         self.multi_modal_projector = PaliGemmaMultiModalProjector(
             vision_hidden_size=config.vision_config.hidden_size,
-            projection_dim=config.vision_config.projection_dim)
+            projection_dim=config.vision_config.projection_dim,
+        )
 
         self.quant_config = quant_config
-        self.language_model = GemmaForCausalLM(config.text_config,
-                                               cache_config, quant_config)
+
+        if config.text_config.model_type == "gemma":
+            config.text_config.architectures = ["GemmaForCausalLM"]
+        else:
+            config.text_config.architectures = ["Gemma2ForCausalLM"]
+        self.language_model = init_vllm_registered_model(
+            vllm_config=vllm_config,
+            hf_config=config.text_config,
+            prefix=maybe_prefix(prefix, "language_model"),
+        )
         logit_scale = getattr(config, "logit_scale", 1.0)
         self.language_model.logits_processor.scale *= logit_scale
 
         self.make_empty_intermediate_tensors = (
-            self.language_model.make_empty_intermediate_tensors)
-
-    @property
-    def sampler(self):
-        return self.language_model.sampler
-
-    def _validate_pixel_values(self, data: torch.Tensor) -> torch.Tensor:
-        h = w = self.config.vision_config.image_size
-        expected_dims = (3, h, w)
-        actual_dims = tuple(data.shape[1:])
-
-        if actual_dims != expected_dims:
-            expected_expr = ("batch_size", *map(str, expected_dims))
-            raise ValueError(
-                f"The expected shape of pixel values is {expected_expr}. "
-                f"You supplied {tuple(data.shape)}.")
-
-        return data
+            self.language_model.make_empty_intermediate_tensors
+        )
 
     def _parse_and_validate_image_input(
-            self, **kwargs: object) -> Optional[PaliGemmaImageInputs]:
+        self, **kwargs: object
+    ) -> PaliGemmaImageInputs | None:
         pixel_values = kwargs.pop("pixel_values", None)
         image_embeds = kwargs.pop("image_embeds", None)
 
@@ -180,26 +334,15 @@ class PaliGemmaForConditionalGeneration(nn.Module, SupportsMultiModal,
             return None
 
         if pixel_values is not None:
-            if not isinstance(pixel_values, torch.Tensor):
-                raise ValueError("Incorrect type of pixel values. "
-                                 f"Got type: {type(pixel_values)}")
-
-            # Remove the N dimension until multiple images are supported.
-            pixel_values = pixel_values.squeeze(1)
+            h = w = self.config.vision_config.image_size
 
             return PaliGemmaImagePixelInputs(
                 type="pixel_values",
-                data=self._validate_pixel_values(pixel_values),
+                data=pixel_values,
+                resolve_bindings={"h": h, "w": w},
             )
 
         if image_embeds is not None:
-            if not isinstance(image_embeds, torch.Tensor):
-                raise ValueError("Incorrect type of image embeddings. "
-                                 f"Got type: {type(image_embeds)}")
-
-            # Remove the N dimension until multiple images are supported.
-            image_embeds = image_embeds.squeeze(1)
-
             return PaliGemmaImageEmbeddingInputs(
                 type="image_embeds",
                 data=image_embeds,
@@ -212,7 +355,6 @@ class PaliGemmaForConditionalGeneration(nn.Module, SupportsMultiModal,
         vision_tower: SiglipVisionModel,
         pixel_values: torch.Tensor,
     ) -> torch.Tensor:
-
         target_dtype = vision_tower.get_input_embeddings().weight.dtype
         image_features = vision_tower(pixel_values.to(dtype=target_dtype))
 
@@ -222,7 +364,6 @@ class PaliGemmaForConditionalGeneration(nn.Module, SupportsMultiModal,
         self,
         image_input: PaliGemmaImageInputs,
     ) -> torch.Tensor:
-
         if image_input["type"] == "image_embeds":
             return image_input["data"]
 
@@ -235,61 +376,54 @@ class PaliGemmaForConditionalGeneration(nn.Module, SupportsMultiModal,
 
         return self.multi_modal_projector(image_features)
 
-    def forward(self,
-                input_ids: torch.Tensor,
-                positions: torch.Tensor,
-                kv_caches: List[torch.Tensor],
-                attn_metadata: AttentionMetadata,
-                intermediate_tensors: Optional[IntermediateTensors] = None,
-                **kwargs: object) -> Union[SamplerOutput, IntermediateTensors]:
+    def get_language_model(self) -> torch.nn.Module:
+        return self.language_model
+
+    def embed_multimodal(self, **kwargs: object) -> MultiModalEmbeddings:
+        image_input = self._parse_and_validate_image_input(**kwargs)
+        if image_input is None:
+            return []
+        vision_embeddings = self._process_image_input(image_input)
+        # https://github.com/huggingface/transformers/blob/main/src/transformers/models/paligemma/modeling_paligemma.py#L294 # noqa
+        vision_embeddings = vision_embeddings * (self.config.hidden_size**-0.5)
+        return vision_embeddings
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        positions: torch.Tensor,
+        intermediate_tensors: IntermediateTensors | None = None,
+        inputs_embeds: torch.Tensor | None = None,
+        **kwargs: object,
+    ) -> IntermediateTensors:
         if intermediate_tensors is not None:
-            input_ids = None
             inputs_embeds = None
-        else:
-            parsed_image_input = self._parse_and_validate_image_input(**kwargs)
 
-            if parsed_image_input is not None:
-                vision_embeddings = self._process_image_input(
-                    parsed_image_input)
-                # https://github.com/huggingface/transformers/blob/main/src/transformers/models/paligemma/modeling_paligemma.py#L294 # noqa
-                vision_embeddings = vision_embeddings * (
-                    self.config.hidden_size**-0.5)
-
-                inputs_embeds = self.language_model.model.get_input_embeddings(
-                    input_ids)
-
-                inputs_embeds = merge_multimodal_embeddings(
-                    input_ids, inputs_embeds, vision_embeddings,
-                    self.config.image_token_index)
-
-                input_ids = None
-            else:
-                inputs_embeds = None
-
-        hidden_states = self.language_model.model(input_ids,
-                                                  positions,
-                                                  kv_caches,
-                                                  attn_metadata,
-                                                  intermediate_tensors,
-                                                  inputs_embeds=inputs_embeds)
+        hidden_states = self.language_model.model(
+            input_ids, positions, intermediate_tensors, inputs_embeds=inputs_embeds
+        )
 
         return hidden_states
 
     def compute_logits(
         self,
         hidden_states: torch.Tensor,
-        sampling_metadata: SamplingMetadata,
-    ) -> Optional[torch.Tensor]:
-        return self.language_model.compute_logits(hidden_states,
-                                                  sampling_metadata)
+    ) -> torch.Tensor | None:
+        return self.language_model.compute_logits(hidden_states)
 
-    def sample(
-        self,
-        logits: torch.Tensor,
-        sampling_metadata: SamplingMetadata,
-    ) -> Optional[SamplerOutput]:
-        return self.language_model.sample(logits, sampling_metadata)
-
-    def load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
+    def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
         loader = AutoWeightsLoader(self)
-        loader.load_weights(weights)
+        return loader.load_weights(weights, mapper=self.hf_to_vllm_mapper)
+
+    def get_mm_mapping(self) -> MultiModelKeys:
+        return MultiModelKeys.from_string_field(
+            language_model="language_model",
+            connector="multi_modal_projector",
+            tower_model="vision_tower",
+        )
+
+    def get_num_mm_encoder_tokens(self, num_image_tokens: int) -> int:
+        return num_image_tokens
+
+    def get_num_mm_connector_tokens(self, num_vision_tokens: int) -> int:
+        return num_vision_tokens

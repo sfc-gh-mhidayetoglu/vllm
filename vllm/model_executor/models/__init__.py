@@ -1,15 +1,32 @@
-from .interfaces import (HasInnerState, SupportsLoRA, SupportsMultiModal,
-                         SupportsPP, has_inner_state, supports_lora,
-                         supports_multimodal, supports_pp)
-from .interfaces_base import (VllmModelForEmbedding,
-                              VllmModelForTextGeneration, is_embedding_model,
-                              is_text_generation_model)
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+
+from .interfaces import (
+    HasInnerState,
+    SupportsLoRA,
+    SupportsMRoPE,
+    SupportsMultiModal,
+    SupportsPP,
+    SupportsTranscription,
+    has_inner_state,
+    supports_lora,
+    supports_mrope,
+    supports_multimodal,
+    supports_pp,
+    supports_transcription,
+)
+from .interfaces_base import (
+    VllmModelForPooling,
+    VllmModelForTextGeneration,
+    is_pooling_model,
+    is_text_generation_model,
+)
 from .registry import ModelRegistry
 
 __all__ = [
     "ModelRegistry",
-    "VllmModelForEmbedding",
-    "is_embedding_model",
+    "VllmModelForPooling",
+    "is_pooling_model",
     "VllmModelForTextGeneration",
     "is_text_generation_model",
     "HasInnerState",
@@ -18,6 +35,10 @@ __all__ = [
     "supports_lora",
     "SupportsMultiModal",
     "supports_multimodal",
+    "SupportsMRoPE",
+    "supports_mrope",
     "SupportsPP",
     "supports_pp",
+    "SupportsTranscription",
+    "supports_transcription",
 ]

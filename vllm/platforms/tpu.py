@@ -1,33 +1,20 @@
-import os
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 
-import torch
+from vllm.logger import init_logger
 
-import vllm.envs as envs
-from vllm.compilation.levels import CompilationLevel
-from vllm.plugins import set_torch_compile_backend
-
-from .interface import Platform, PlatformEnum
-
-if "VLLM_TORCH_COMPILE_LEVEL" not in os.environ:
-    os.environ["VLLM_TORCH_COMPILE_LEVEL"] = str(CompilationLevel.DYNAMO_ONCE)
-
-assert envs.VLLM_TORCH_COMPILE_LEVEL < CompilationLevel.INDUCTOR,\
-     "TPU does not support Inductor."
-
-set_torch_compile_backend("openxla")
+logger = init_logger(__name__)
 
 
-class TpuPlatform(Platform):
-    _enum = PlatformEnum.TPU
+try:
+    from tpu_inference.platforms import (
+        TpuPlatform as TpuInferencePlatform,
+    )
 
-    @classmethod
-    def get_device_name(cls, device_id: int = 0) -> str:
-        raise NotImplementedError
-
-    @classmethod
-    def get_device_total_memory(cls, device_id: int = 0) -> int:
-        raise NotImplementedError
-
-    @classmethod
-    def inference_mode(cls):
-        return torch.no_grad()
+    TpuPlatform = TpuInferencePlatform  # type: ignore
+    USE_TPU_INFERENCE = True
+except ImportError:
+    logger.error(
+        "tpu_inference not found, please install tpu_inference to run vllm on TPU"
+    )
+    pass

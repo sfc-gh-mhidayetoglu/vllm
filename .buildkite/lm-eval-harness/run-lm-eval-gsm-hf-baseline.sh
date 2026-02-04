@@ -2,7 +2,7 @@
 # We can use this script to compute baseline accuracy on GSM for transformers.
 #
 # Make sure you have lm-eval-harness installed:
-#   pip install lm-eval==0.4.4
+#   pip install "lm-eval[api]>=0.4.9.2"
 
 usage() {
     echo``
@@ -41,6 +41,6 @@ while getopts "m:b:l:f:" OPT; do
 done
 
 lm_eval --model hf \
-  --model_args pretrained=$MODEL,parallelize=True \
-  --tasks gsm8k --num_fewshot $FEWSHOT --limit $LIMIT \
-  --batch_size $BATCH_SIZE
+  --model_args "pretrained=$MODEL,parallelize=True" \
+  --tasks gsm8k --num_fewshot "$FEWSHOT" --limit "$LIMIT" \
+  --batch_size "$BATCH_SIZE"
